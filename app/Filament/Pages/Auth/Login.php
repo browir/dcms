@@ -14,7 +14,7 @@ class Login extends BaseLogin
     protected string $view = 'filament.custom-login';
 
     /**
-     * Override method form menggunakan Schema sesuai permintaan parent class tes
+     * Override method form menggunakan Schema sesuai permintaan parent class test2
      */
     public function form(Schema $schema): Schema
     {
