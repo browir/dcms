@@ -1,0 +1,35 @@
+{
+    "name": "DCMS — Syifa Global Group",
+    "short_name": "DCMS",
+    "description": "Sistem Manajemen Rapat & Dokumen Syifa Global Group",
+    "lang": "id",
+    "dir": "ltr",
+    "id": "/admin",
+    "start_url": "/admin?source=pwa",
+    "scope": "/",
+    "display": "standalone",
+    "display_override": ["standalone", "minimal-ui"],
+    "orientation": "portrait-primary",
+    "background_color": "#f1f3f7",
+    "theme_color": "#0B2545",
+    "icons": [
+        {
+            "src": "/pwa-icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        },
+        {
+            "src": "/pwa-icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/images/logo.png",
+            "sizes": "3826x2226",
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ]
+}

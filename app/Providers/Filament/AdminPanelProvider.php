@@ -42,6 +42,10 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Blue,
             ])
             ->renderHook(
+                'panels::head.end',
+                fn(): string => view('filament.pwa-head')->render()
+            )
+            ->renderHook(
                 'panels::body.start',
                 fn(): string => \Illuminate\Support\Facades\Blade::render('filament.loading-screen')
             )

@@ -54,6 +54,62 @@
             </div>
         </div>
 
+        {{-- Tombol Install Aplikasi (PWA) --}}
+        <div x-data="pwaInstall()" x-show="canShow" x-cloak class="w-full -mt-4 mb-8">
+            <button type="button" @click="install()"
+                class="w-full flex items-center justify-center gap-2.5 py-3.5 px-4 bg-white border border-[#cbd5e1] text-[#0B2545] rounded-xl font-bold text-[13px] shadow-sm hover:border-[#2563eb] hover:text-[#2563eb] hover:shadow-md transition-all active:scale-[0.98]">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
+                </svg>
+                <span x-text="isIOS ? 'Pasang Aplikasi ke Layar Utama' : 'Install Aplikasi DCMS'"></span>
+            </button>
+            <p class="mt-2 text-center text-[11px] text-[#94a3b8] font-medium">
+                Akses lebih cepat langsung dari layar ponsel Anda
+            </p>
+
+            {{-- Panduan install manual (iOS / browser tanpa prompt otomatis) --}}
+            <template x-teleport="body">
+                <div x-show="showHelp"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                    class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+                    @keydown.escape.window="showHelp = false" style="display: none;">
+                    <div @click.away="showHelp = false"
+                        class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <h3 class="text-base font-bold text-gray-800">Pasang Aplikasi DCMS</h3>
+                            <button @click="showHelp = false" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="p-6 text-[13px] text-gray-600 leading-relaxed">
+                            <template x-if="isIOS">
+                                <ol class="list-decimal list-inside space-y-2">
+                                    <li>Buka menu <b>Bagikan</b> (ikon kotak dengan panah ke atas) di Safari.</li>
+                                    <li>Pilih <b>Tambah ke Layar Utama</b> / <b>Add to Home Screen</b>.</li>
+                                    <li>Ketuk <b>Tambah</b>. Ikon DCMS akan muncul di layar utama.</li>
+                                </ol>
+                            </template>
+                            <template x-if="!isIOS">
+                                <ol class="list-decimal list-inside space-y-2">
+                                    <li>Buka menu browser (ikon <b>⋮</b> di pojok kanan atas).</li>
+                                    <li>Pilih <b>Install aplikasi</b> atau <b>Tambahkan ke layar utama</b>.</li>
+                                    <li>Konfirmasi dengan menekan <b>Install</b>.</li>
+                                </ol>
+                            </template>
+                        </div>
+                        <div class="px-6 py-4 border-t border-gray-100 text-right">
+                            <button @click="showHelp = false" class="px-5 py-2 bg-gray-800 text-white rounded-lg font-bold text-[13px] hover:bg-gray-900 transition-colors">Mengerti</button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
         <div class="w-full text-center text-[12px] text-[#94a3b8] font-medium tracking-wide">
             &copy; 2026 Syifa Global Group.
         </div>
@@ -96,6 +152,48 @@
             </div>
         </div>
     </template>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('pwaInstall', () => ({
+                isIOS: false,
+                isStandalone: false,
+                installable: false,
+                showHelp: false,
+                get canShow() {
+                    return !this.isStandalone && (this.installable || this.isIOS);
+                },
+                init() {
+                    const ua = window.navigator.userAgent.toLowerCase();
+                    this.isIOS = /iphone|ipad|ipod/.test(ua) ||
+                        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                    this.isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                        window.navigator.standalone === true;
+
+                    if (window.deferredPwaPrompt) {
+                        this.installable = true;
+                    }
+                    window.addEventListener('pwa-installable', () => { this.installable = true; });
+                    window.addEventListener('pwa-installed', () => {
+                        this.installable = false;
+                        this.isStandalone = true;
+                    });
+                },
+                async install() {
+                    const promptEvent = window.deferredPwaPrompt;
+                    if (promptEvent) {
+                        promptEvent.prompt();
+                        try { await promptEvent.userChoice; } catch (e) {}
+                        window.deferredPwaPrompt = null;
+                        this.installable = false;
+                        return;
+                    }
+                    // iOS Safari atau browser yang tidak menyediakan prompt otomatis
+                    this.showHelp = true;
+                },
+            }));
+        });
+    </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -183,6 +281,10 @@
         body {
             background-color: #f1f3f7 !important;
             margin: 0;
+        }
+
+        [x-cloak] {
+            display: none !important;
         }
     </style>
 </div>
