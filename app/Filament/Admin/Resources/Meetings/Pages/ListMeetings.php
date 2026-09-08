@@ -59,7 +59,7 @@ class ListMeetings extends ListRecords
         return [
             null => Tab::make('Semua'),
             'terjadwal' => Tab::make('Terjadwal')->query(fn ($query) => $query->where('status', 'scheduled')),
-            'berakhir' => Tab::make('Berakhir')->query(fn ($query) => $query->where('status', 'completed')),
+            'berakhir' => Tab::make('Selesai')->query(fn ($query) => $query->where('status', 'completed')),
             'batal' => Tab::make('Batal')->query(fn ($query) => $query->where('status', 'cancelled')),
         ];
     }

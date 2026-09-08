@@ -46,7 +46,7 @@ class MeetingsTable
                     ->badge()
                     ->formatStateUsing(fn ($state) => match ($state) {
                         'scheduled' => 'Terjadwal',
-                        'completed' => 'Berakhir',
+                        'completed' => 'Selesai',
                         'cancelled' => 'Batal',
                         default => ucfirst($state),
                     })
@@ -85,7 +85,7 @@ class MeetingsTable
                     ->query(fn (Builder $query) => $query->whereHas('participants', fn ($q) => $q->where('users.id', auth()->id()))),
                 SelectFilter::make('status')->options([
                     'scheduled' => 'Terjadwal',
-                    'completed' => 'Berakhir',
+                    'completed' => 'Selesai',
                     'cancelled' => 'Batal',
                 ]),
                 SelectFilter::make('company_id')

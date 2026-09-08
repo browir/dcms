@@ -233,7 +233,7 @@ class MeetingForm
                 Select::make('status')
                     ->options([
                         'scheduled' => 'Terjadwal',
-                        'completed' => 'Berakhir',
+                        'completed' => 'Selesai',
                         'cancelled' => 'Batal',
                     ])
                     ->default('scheduled')

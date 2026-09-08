@@ -37,7 +37,7 @@ class MeetingInfolist
                                     ->size('md')
                                     ->formatStateUsing(fn ($state) => match ($state) {
                                         'scheduled' => 'Terjadwal',
-                                        'completed' => 'Berakhir',
+                                        'completed' => 'Selesai',
                                         'cancelled' => 'Batal',
                                         default => ucfirst($state),
                                     })

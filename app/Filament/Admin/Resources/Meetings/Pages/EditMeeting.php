@@ -3,10 +3,13 @@
 namespace App\Filament\Admin\Resources\Meetings\Pages;
 
 use App\Filament\Admin\Resources\Meetings\MeetingResource;
+use App\Models\Meeting;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class EditMeeting extends EditRecord
@@ -35,79 +38,128 @@ class EditMeeting extends EditRecord
         return [ViewAction::make(), DeleteAction::make()];
     }
 
-    protected function mutateFormDataBeforeSave(array $data): array
+    /**
+     * Setelah data rapat & notulensi tersimpan, baru buat file PDF notulensi.
+     * Kegagalan pembuatan PDF TIDAK boleh membatalkan penyimpanan data.
+     */
+    protected function afterSave(): void
     {
-        $record = $this->record;
+        $record = $this->record->refresh();
 
-        // Ambil raw content dari form
-        $contentFromEditor = $data['content'] ?? '';
+        $mode = $this->data['mode_notulen'] ?? 'template';
+        $plainContent = trim(strip_tags((string) $record->content));
 
-        // Cek plain text (untuk mengetahui isi kosong/tidak)
-        $plainText = trim(strip_tags($contentFromEditor));
-
-        // --- LOGIKA TEMPLATE BARU (Sesuai Gambar) ---
-        $logoPath = public_path('images/logo.png');
-        $logoBase64 = '';
-        if (file_exists($logoPath)) {
-            $logoData = file_get_contents($logoPath);
-            $logoBase64 = 'data:image/'.pathinfo($logoPath, PATHINFO_EXTENSION).';base64,'.base64_encode($logoData);
+        // Hanya generate PDF bila: status Selesai + mode template + notulensi ada isinya.
+        if ($record->status !== 'completed' || $mode !== 'template' || $plainContent === '') {
+            return;
         }
 
-        // Extract data that might have just been edited from the form instead of the old record
-        $formTitle = $data['title'] ?? $record->title;
-        $formDocNumber = $data['doc_number'] ?? ($record->doc_number ?? '-');
-        $formAgenda = $data['agenda'] ?? ($record->agenda ?? '-');
-        $formLocation = $data['location'] ?? ($record->location ?? '-');
-        $formDateTime = $data['date_time'] ?? $record->date_time;
+        try {
+            @ini_set('memory_limit', '512M');
+            @set_time_limit(120);
+
+            $pdf = Pdf::loadHTML($this->buildNotulensiHtml($record));
+            $filename = 'meetings/notulen_'.$record->id.'_'.time().'.pdf';
+
+            Storage::disk('private')->put($filename, $pdf->output());
+
+            $record->updateQuietly(['file_path' => $filename]);
+        } catch (\Throwable $e) {
+            Log::error('Gagal membuat PDF notulensi rapat #'.$record->id.': '.$e->getMessage(), [
+                'exception' => $e,
+            ]);
+
+            Notification::make()
+                ->title('Notulensi tersimpan, PDF gagal dibuat')
+                ->body('Data rapat dan notulensi sudah tersimpan dengan aman. Pembuatan file PDF notulensi gagal — silakan buka lagi rapat ini lalu simpan ulang. Jika tetap gagal, hubungi admin.')
+                ->warning()
+                ->persistent()
+                ->send();
+        }
+    }
+
+    /**
+     * Bangun HTML notulensi untuk dikonversi ke PDF.
+     */
+    protected function buildNotulensiHtml(Meeting $record): string
+    {
+        // Logo
+        $logoBase64 = '';
+        $logoPath = public_path('images/logo.png');
+        if (is_file($logoPath)) {
+            try {
+                $logoBase64 = 'data:image/png;base64,'.base64_encode((string) file_get_contents($logoPath));
+            } catch (\Throwable $e) {
+                $logoBase64 = '';
+            }
+        }
+
+        $formTitle = $record->title ?? '-';
+        $formDocNumber = $record->doc_number ?: '-';
+        $formAgenda = $record->agenda ?: '-';
+        $formLocation = $record->location ?: '-';
 
         // Format Tanggal Indonesia
         $days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         $months = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
-        $dateTime = \Carbon\Carbon::parse($formDateTime);
-        $dayName = $days[$dateTime->dayOfWeek];
-        $formattedDate = $dayName.', '.$dateTime->day.' '.$months[$dateTime->month].' '.$dateTime->year.' / '.$dateTime->format('H.i').' WITA';
+        $dateTime = \Carbon\Carbon::parse($record->date_time);
+        $formattedDate = $days[$dateTime->dayOfWeek].', '.$dateTime->day.' '.$months[$dateTime->month].' '.$dateTime->year.' / '.$dateTime->format('H.i').' WITA';
 
-        // Lampiran (Foto/Dokumentasi)
+        $notulisName = $record->notulis?->name ?? '-';
+
+        $contentFromEditor = (string) $record->content;
+
+        // Lampiran (Foto/Dokumentasi) — dibaca dari disk "public", tiap gambar dibungkus try/catch
         $attachmentsHtml = '';
-        if (! empty($data['attachments'])) {
-            $attachmentsHtml .= "<div style='page-break-before: always;'></div>";
-            $attachmentsHtml .= "<div style='margin-top: 20px;'>"; // Samakan dengan margin title-section di halaman 1
-            $attachmentsHtml .= "<h4 style='text-transform: uppercase; font-size: 14px; text-align: center; margin-bottom: 40px; color: #000;'>LAMPIRAN / DOKUMENTASI</h4>";
-            $attachmentsHtml .= "<div style='text-align: center;'>";
+        $attachments = is_array($record->attachments) ? $record->attachments : [];
 
-            foreach ($data['attachments'] as $attachment) {
-                $path = storage_path('app/public/'.$attachment);
+        $imagesHtml = '';
+        foreach ($attachments as $attachment) {
+            if (! is_string($attachment) || $attachment === '') {
+                continue;
+            }
 
-                if (file_exists($path)) {
-                    $imgData = file_get_contents($path);
-                    $extension = pathinfo($path, PATHINFO_EXTENSION);
-                    $base64 = 'data:image/'.$extension.';base64,'.base64_encode($imgData);
-
-                    // Gunakan page-break-inside: avoid agar gambar tidak terpotong di tengah halaman
-                    $attachmentsHtml .= "<div style='margin-bottom: 50px; page-break-inside: avoid; clear: both;'>";
-                    $attachmentsHtml .= "<img src='{$base64}' style='max-width: 90%; max-height: 480px; border: 3px solid #f2f2f2; padding: 5px; background: #fff;'>";
-                    $attachmentsHtml .= '</div>';
+            try {
+                if (! Storage::disk('public')->exists($attachment)) {
+                    continue;
                 }
-            }
 
-            $attachmentsHtml .= '</div></div>';
+                $imgData = Storage::disk('public')->get($attachment);
+                if ($imgData === null || $imgData === '') {
+                    continue;
+                }
+
+                $extension = strtolower(pathinfo($attachment, PATHINFO_EXTENSION));
+                $mime = match ($extension) {
+                    'jpg', 'jpeg' => 'image/jpeg',
+                    'png' => 'image/png',
+                    'gif' => 'image/gif',
+                    'webp' => 'image/webp',
+                    'bmp' => 'image/bmp',
+                    default => 'image/jpeg',
+                };
+
+                $base64 = 'data:'.$mime.';base64,'.base64_encode($imgData);
+
+                $imagesHtml .= "<div style='margin-bottom: 50px; page-break-inside: avoid; clear: both;'>";
+                $imagesHtml .= "<img src='{$base64}' style='max-width: 90%; max-height: 480px; border: 3px solid #f2f2f2; padding: 5px; background: #fff;'>";
+                $imagesHtml .= '</div>';
+            } catch (\Throwable $e) {
+                Log::warning('Lewati lampiran notulensi yang gagal dibaca ('.$attachment.'): '.$e->getMessage());
+
+                continue;
+            }
         }
 
-        $notulisName = '-';
-        if (! empty($data['notulis_id'])) {
-            $notulisUser = \App\Models\User::find($data['notulis_id']);
-            if ($notulisUser) {
-                $notulisName = $notulisUser->name;
-            }
-        } elseif (! empty($record->notulis_id)) {
-            $notulisUser = \App\Models\User::find($record->notulis_id);
-            if ($notulisUser) {
-                $notulisName = $notulisUser->name;
-            }
+        if ($imagesHtml !== '') {
+            $attachmentsHtml .= "<div style='page-break-before: always;'></div>";
+            $attachmentsHtml .= "<div style='margin-top: 20px;'>";
+            $attachmentsHtml .= "<h4 style='text-transform: uppercase; font-size: 14px; text-align: center; margin-bottom: 40px; color: #000;'>LAMPIRAN / DOKUMENTASI</h4>";
+            $attachmentsHtml .= "<div style='text-align: center;'>".$imagesHtml.'</div></div>';
         }
 
-        $htmlWithCss = "
+        return "
 <!DOCTYPE html>
 <html>
 <head>
@@ -116,29 +168,29 @@ class EditMeeting extends EditRecord
         @page { margin: 160px 50px 80px 50px; }
         header { position: fixed; top: -145px; left: -50px; right: -50px; height: 140px; }
         footer { position: fixed; bottom: -60px; left: 0px; right: 0px; height: 60px; border-top: 1px solid #ccc; padding-top: 10px; font-size: 9px; line-height: 1.3; }
-        
+
         body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 11px; line-height: 1.4; color: #333; }
-        
+
         .header-content { padding: 30px 50px 0 50px; }
         .logo { height: 75px; width: auto; }
         .doc-no { text-align: right; vertical-align: top; font-weight: bold; font-size: 10px; padding-top: 15px; }
-        
+
         .title-section { text-align: center; margin-top: 20px; margin-bottom: 25px; }
         .title-section h3 { margin: 0; font-size: 14px; text-transform: uppercase; }
         .title-section h4 { margin: 5px 0; font-size: 12px; text-transform: uppercase; font-weight: bold; }
-        
+
         .info-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
         .info-table td { padding: 4px 0; vertical-align: top; }
         .label { width: 120px; font-weight: bold; }
         .colon { width: 15px; text-align: left; }
-        
+
         /* Style untuk tabel yang dibuat di Rich Editor agar rapi di PDF */
         .content-main table { width: 100%; border-collapse: collapse; margin-top: 5px; page-break-inside: auto; }
         .content-main table tr { page-break-inside: avoid; page-break-after: auto; }
         .content-main table th, .content-main table td { border: 1px solid black; padding: 6px; vertical-align: top; }
         .content-main table th { background-color: #f2f2f2; font-weight: bold; text-align: center; }
         .content-main table thead { display: table-header-group; }
-        
+
         .footer-table { width: 100%; font-size: 9px; line-height: 1.3; }
         .footer-left { width: 70%; text-align: left; }
         .footer-right { width: 30%; text-align: right; font-weight: bold; vertical-align: bottom; }
@@ -209,30 +261,5 @@ class EditMeeting extends EditRecord
 </body>
 </html>
 ';
-
-        // --- LOGIKA PEMBUATAN PDF ---
-        if (
-            ($data['status'] ?? null) === 'completed' &&
-            $plainText !== '' && // content tidak kosong
-            ($data['mode_notulen'] ?? null) === 'template' // mode = template
-        ) {
-            // Generate PDF
-            $pdf = PDF::loadHTML($htmlWithCss);
-            $filename = 'notulen_'.time().'.pdf';
-
-            Storage::disk('private')->put('meetings/'.$filename, $pdf->output());
-
-            $data['file_path'] = 'meetings/'.$filename;
-        } else {
-            // MODE UPLOAD atau STATUS bukan completed
-
-            if (! $record) {
-                // Jika CREATE → kosongkan file_path
-                $data['file_path'] = null;
-            }
-            // Jika EDIT → jangan ubah file lama
-        }
-
-        return $data;
     }
 }
