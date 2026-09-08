@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Collection;
 
 class Meeting extends Model
 {
@@ -118,6 +120,89 @@ class Meeting extends Model
     public function scopeOwnCompany(Builder $query)
     {
         return $query->where('company_id', auth()->user()->company_id);
+    }
+
+    /**
+     * Durasi default (jam) yang dipakai untuk menghitung "jam berakhir"
+     * ketika sebuah rapat tidak mengisi end_time.
+     */
+    public const DEFAULT_DURATION_HOURS = 2;
+
+    /**
+     * Jam berakhir efektif rapat ini (end_time, atau date_time + durasi default).
+     */
+    public function effectiveEndTime(): Carbon
+    {
+        return $this->end_time
+            ? $this->end_time->copy()
+            : $this->date_time->copy()->addHours(self::DEFAULT_DURATION_HOURS);
+    }
+
+    /**
+     * Scope: rapat yang rentang waktunya berpotensi bentrok dengan [$start, $end].
+     * Filter kasar di level DB (batas bawah date_time dibatasi 1 hari sebelum $start);
+     * pengecekan tumpang tindih presisi dilakukan di PHP oleh pemanggil.
+     */
+    public function scopeInTimeWindow(Builder $query, Carbon $start, ?Carbon $end, ?int $excludeMeetingId = null): Builder
+    {
+        $end = $end ?: $start->copy()->addHours(self::DEFAULT_DURATION_HOURS);
+
+        return $query
+            ->withoutGlobalScope('latest')
+            ->whereNotIn('status', ['cancelled', 'completed'])
+            ->when($excludeMeetingId, fn ($q) => $q->where('id', '!=', $excludeMeetingId))
+            ->whereNotNull('date_time')
+            ->where('date_time', '<', $end)
+            ->where('date_time', '>=', $start->copy()->subDay());
+    }
+
+    /**
+     * Rapat lain yang benar-benar bertumpang tindih dengan [$start, $end]
+     * pada lokasi tertentu (via FK meeting_location_id atau nama lokasi teks bebas).
+     */
+    public static function locationConflict(
+        ?int $locationId,
+        ?string $locationName,
+        Carbon $start,
+        ?Carbon $end,
+        ?int $excludeMeetingId = null
+    ): ?self {
+        $locationName = filled($locationName) ? trim($locationName) : null;
+
+        if (! $locationId && ! $locationName) {
+            return null;
+        }
+
+        return static::query()
+            ->inTimeWindow($start, $end, $excludeMeetingId)
+            ->where(function ($q) use ($locationId, $locationName) {
+                $q->when($locationId, fn ($qq) => $qq->orWhere('meeting_location_id', $locationId));
+                $q->when($locationName, fn ($qq) => $qq->orWhere('location', $locationName));
+            })
+            ->with('creator')
+            ->get()
+            ->first(fn (self $m) => $m->effectiveEndTime()->gt($start));
+    }
+
+    /**
+     * Kumpulan "kunci lokasi" (id FK + nama teks bebas, huruf kecil) yang sudah
+     * dipesan pada rentang [$start, $end]. Dipakai form untuk mengunci opsi.
+     *
+     * @return array{ids: int[], names: string[], meetings: Collection}
+     */
+    public static function bookedLocationKeys(Carbon $start, ?Carbon $end, ?int $excludeMeetingId = null): array
+    {
+        $meetings = static::query()
+            ->inTimeWindow($start, $end, $excludeMeetingId)
+            ->get()
+            ->filter(fn (self $m) => $m->effectiveEndTime()->gt($start))
+            ->values();
+
+        return [
+            'ids' => $meetings->pluck('meeting_location_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all(),
+            'names' => $meetings->pluck('location')->filter()->map(fn ($n) => mb_strtolower(trim($n)))->unique()->values()->all(),
+            'meetings' => $meetings,
+        ];
     }
 
     /**

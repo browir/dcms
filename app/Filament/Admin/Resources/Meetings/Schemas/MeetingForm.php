@@ -15,6 +15,14 @@ use Filament\Schemas\Schema;
 
 class MeetingForm
 {
+    /**
+     * Cache per-request: daftar nama lokasi (huruf kecil) yang sudah dipesan,
+     * dikunci berdasarkan rentang waktu + rapat yang dikecualikan.
+     *
+     * @var array<string, string[]>
+     */
+    protected static array $bookedLocationMemo = [];
+
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
@@ -179,6 +187,7 @@ class MeetingForm
                 DateTimePicker::make('end_time')
                     ->label('Jam Berakhir')
                     ->nullable()
+                    ->live()
                     ->after('date_time')
                     ->validationMessages(['after' => 'Jam berakhir harus setelah jam mulai.']),
                 Select::make('location')
@@ -186,19 +195,22 @@ class MeetingForm
                     ->placeholder('Ketik atau pilih lokasi...')
                     ->searchable()
                     ->nullable()
-                    ->options(fn () => \App\Models\MeetingLocation::query()
-                        ->when(
-                            auth()->user()?->company_id && ! auth()->user()?->hasRole('super_admin'),
-                            fn ($q) => $q->where(function ($q) {
-                                $q->where('company_id', auth()->user()->company_id)
-                                    ->orWhereNull('company_id');
-                            })
-                        )
-                        ->orderBy('name')
-                        ->pluck('name', 'name')
-                        ->toArray()
-                    )
-                    ->getSearchResultsUsing(function (string $search): array {
+                    ->options(function (callable $get, $record) {
+                        $locations = \App\Models\MeetingLocation::query()
+                            ->when(
+                                auth()->user()?->company_id && ! auth()->user()?->hasRole('super_admin'),
+                                fn ($q) => $q->where(function ($q) {
+                                    $q->where('company_id', auth()->user()->company_id)
+                                        ->orWhereNull('company_id');
+                                })
+                            )
+                            ->orderBy('name')
+                            ->pluck('name', 'name')
+                            ->toArray();
+
+                        return self::decorateLocationOptions($locations, $get, $record);
+                    })
+                    ->getSearchResultsUsing(function (string $search, callable $get, $record): array {
                         $locations = \App\Models\MeetingLocation::query()
                             ->where('name', 'like', "%{$search}%")
                             ->when(
@@ -212,15 +224,82 @@ class MeetingForm
                             ->pluck('name', 'name')
                             ->toArray();
 
+                        $decorated = self::decorateLocationOptions($locations, $get, $record);
+
                         // Jika teks bebas tidak ada dalam daftar, tambahkan sebagai opsi
                         $trimmed = trim($search);
                         if ($trimmed !== '' && ! array_key_exists($trimmed, $locations)) {
                             $icon = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="display:inline;vertical-align:middle;margin-right:5px;opacity:0.7;"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>';
-                            $locations = [$trimmed => $icon.e($trimmed).' <span style="opacity:0.5;font-size:0.8em;">(teks bebas)</span>'] + $locations;
+                            $decorated = [$trimmed => $icon.e($trimmed).' <span style="opacity:0.5;font-size:0.8em;">(teks bebas)</span>'] + $decorated;
                         }
 
-                        return $locations;
+                        return $decorated;
                     })
+                    ->disableOptionWhen(function (string $value, callable $get, $record): bool {
+                        return in_array(
+                            mb_strtolower(trim($value)),
+                            self::bookedLocationNameSet($get, $record),
+                            true
+                        );
+                    })
+                    ->helperText(function (callable $get, $record) {
+                        if (! self::resolveWindowStart($get)) {
+                            return 'Isi tanggal & jam rapat lebih dulu untuk melihat ketersediaan ruangan.';
+                        }
+
+                        $booked = self::bookedLocationNameSet($get, $record);
+
+                        if (empty($booked)) {
+                            return null;
+                        }
+
+                        $selected = $get('location');
+                        if (filled($selected) && in_array(mb_strtolower(trim($selected)), $booked, true)) {
+                            return new \Illuminate\Support\HtmlString(
+                                '<span style="color:#dc2626;font-weight:600;">Ruangan / lokasi rapat sudah dipesan pada rentang waktu tersebut. Silakan pilih ruangan lain atau ubah jadwal.</span>'
+                            );
+                        }
+
+                        return new \Illuminate\Support\HtmlString(
+                            '<span style="color:#b45309;">Ruangan yang terkunci sudah dipesan pada rentang waktu yang dipilih.</span>'
+                        );
+                    })
+                    ->rules([
+                        fn ($record, callable $get) => function (string $attribute, $value, \Closure $fail) use ($record, $get) {
+                            if (blank($value)) {
+                                return;
+                            }
+
+                            $start = self::resolveWindowStart($get);
+                            if (! $start) {
+                                return;
+                            }
+                            $end = self::resolveWindowEnd($get);
+
+                            $locationId = \App\Models\MeetingLocation::query()
+                                ->where('name', $value)
+                                ->value('id');
+
+                            $conflict = \App\Models\Meeting::locationConflict(
+                                $locationId ? (int) $locationId : null,
+                                $value,
+                                $start,
+                                $end,
+                                $record?->getKey(),
+                            );
+
+                            if ($conflict) {
+                                $conflictEnd = $conflict->effectiveEndTime();
+                                $fail(sprintf(
+                                    'Ruangan / lokasi rapat "%s" sudah dipesan pada %s–%s oleh rapat "%s". Silakan pilih ruangan lain atau ubah jadwal.',
+                                    $value,
+                                    $conflict->date_time->format('d M Y H:i'),
+                                    $conflictEnd->format('H:i'),
+                                    $conflict->title,
+                                ));
+                            }
+                        },
+                    ])
                     ->allowHtml()
                     ->live()
                     ->afterStateUpdated(function ($state, callable $set) {
@@ -228,7 +307,7 @@ class MeetingForm
                         $loc = \App\Models\MeetingLocation::where('name', $state)->first();
                         $set('meeting_location_id', $loc?->id);
                     })
-                    ->getOptionLabelUsing(fn ($value) => $value),
+                    ->getOptionLabelUsing(fn ($value) => e($value)),
                 \Filament\Forms\Components\Hidden::make('meeting_location_id'),
                 Select::make('status')
                     ->options([
@@ -436,5 +515,109 @@ class MeetingForm
         }
 
         return $query->orderBy('name');
+    }
+
+    /**
+     * Jam mulai rapat dari state form (atau null bila belum diisi / tidak valid).
+     */
+    protected static function resolveWindowStart(callable $get): ?\Carbon\Carbon
+    {
+        $value = $get('date_time');
+
+        if (blank($value)) {
+            return null;
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value);
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Jam berakhir rapat dari state form (atau null → pakai durasi default).
+     */
+    protected static function resolveWindowEnd(callable $get): ?\Carbon\Carbon
+    {
+        $value = $get('end_time');
+
+        if (blank($value)) {
+            return null;
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value);
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Nama lokasi (huruf kecil) yang sudah dipesan pada rentang waktu di form.
+     * Menggabungkan lokasi via FK maupun nama lokasi teks bebas.
+     *
+     * @return string[]
+     */
+    protected static function bookedLocationNameSet(callable $get, $record): array
+    {
+        $start = self::resolveWindowStart($get);
+
+        if (! $start) {
+            return [];
+        }
+
+        $end = self::resolveWindowEnd($get);
+        $excludeId = $record?->getKey();
+
+        $memoKey = $start->getTimestamp().'|'.($end?->getTimestamp() ?? 'x').'|'.($excludeId ?? 'x');
+
+        if (array_key_exists($memoKey, self::$bookedLocationMemo)) {
+            return self::$bookedLocationMemo[$memoKey];
+        }
+
+        $keys = \App\Models\Meeting::bookedLocationKeys($start, $end, $excludeId ? (int) $excludeId : null);
+
+        $names = $keys['names'];
+
+        if (! empty($keys['ids'])) {
+            $names = array_merge(
+                $names,
+                \App\Models\MeetingLocation::query()
+                    ->whereIn('id', $keys['ids'])
+                    ->pluck('name')
+                    ->map(fn ($n) => mb_strtolower(trim($n)))
+                    ->all()
+            );
+        }
+
+        return self::$bookedLocationMemo[$memoKey] = array_values(array_unique($names));
+    }
+
+    /**
+     * Beri penanda "sudah dipesan" pada opsi lokasi yang bentrok jadwal.
+     *
+     * @param  array<string, string>  $options  [nama => nama]
+     * @return array<string, string>
+     */
+    protected static function decorateLocationOptions(array $options, callable $get, $record): array
+    {
+        $booked = self::bookedLocationNameSet($get, $record);
+
+        $decorated = [];
+
+        foreach ($options as $key => $label) {
+            $isBooked = in_array(mb_strtolower(trim((string) $key)), $booked, true);
+
+            $decorated[$key] = $isBooked
+                ? '<span style="display:inline-flex;align-items:center;gap:6px;opacity:0.55;">'
+                    .'<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
+                    .e($label)
+                    .' <span style="color:#dc2626;font-weight:600;font-size:0.8em;">— sudah dipesan</span>'
+                    .'</span>'
+                : e($label);
+        }
+
+        return $decorated;
     }
 }
