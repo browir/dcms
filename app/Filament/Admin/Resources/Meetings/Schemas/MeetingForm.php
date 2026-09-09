@@ -10,6 +10,7 @@ use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -27,14 +28,29 @@ class MeetingForm
     {
         return $schema->components([
             Section::make('Informasi Rapat')
+                ->description('Judul dan agenda pembahasan rapat.')
+                ->icon('heroicon-o-document-text')
+                ->columns(2)
                 ->schema([
-                    TextInput::make('title')->label('Judul Rapat')->required()->maxLength(255),
+                    TextInput::make('title')
+                        ->label('Judul Rapat')
+                        ->required()
+                        ->maxLength(255)
+                        ->autofocus()
+                        ->prefixIcon('heroicon-m-pencil-square')
+                        ->placeholder('Contoh: Rapat Koordinasi Bulanan')
+                        ->columnSpanFull(),
                     TextInput::make('doc_number')
                         ->label('No. Dokumen')
                         ->maxLength(255)
+                        ->prefixIcon('heroicon-m-hashtag')
                         ->placeholder('Contoh: 003/H.2/SGG/VIII/2025')
                         ->hiddenOn('create'),
-                    Textarea::make('agenda')->label('Agenda')->rows(3)->columnSpanFull(),
+                    Textarea::make('agenda')
+                        ->label('Agenda')
+                        ->rows(3)
+                        ->placeholder('Tuliskan poin-poin agenda yang akan dibahas...')
+                        ->columnSpanFull(),
                     Select::make('mode_notulen')
                         ->hiddenOn('create')
                         ->label('Metode Notulensi')
@@ -168,11 +184,22 @@ class MeetingForm
                 ])
                 ->columnSpanFull(),
 
-            Section::make('Status & Jadwal')->schema([
+            Section::make('Jadwal & Lokasi')
+                ->description('Tentukan waktu dan ruangan rapat. Ketersediaan ruangan dicek otomatis berdasarkan rentang waktu.')
+                ->icon('heroicon-o-calendar-days')
+                ->columns(2)
+                ->schema([
                 DateTimePicker::make('date_time')
                     ->label('Tanggal & Waktu Mulai')
                     ->required()
                     ->live()
+                    ->native(false)
+                    ->seconds(false)
+                    ->displayFormat('d M Y, H:i')
+                    ->minutesStep(5)
+                    ->closeOnDateSelection()
+                    ->prefixIcon('heroicon-m-clock')
+                    ->minDate(fn (string $operation) => $operation === 'create' ? now()->startOfDay() : null)
                     ->hint(fn () => request()->query('date_time')
                         ? '📅 Tanggal diisi dari kalender — silakan lengkapi jam mulai rapat.'
                         : null
@@ -188,11 +215,20 @@ class MeetingForm
                     ->label('Jam Berakhir')
                     ->nullable()
                     ->live()
+                    ->native(false)
+                    ->seconds(false)
+                    ->displayFormat('d M Y, H:i')
+                    ->minutesStep(5)
+                    ->closeOnDateSelection()
+                    ->prefixIcon('heroicon-m-clock')
+                    ->helperText('Otomatis terisi +2 jam dari jam mulai — sesuaikan bila perlu.')
                     ->after('date_time')
                     ->validationMessages(['after' => 'Jam berakhir harus setelah jam mulai.']),
                 Select::make('location')
                     ->label('Lokasi')
                     ->placeholder('Ketik atau pilih lokasi...')
+                    ->prefixIcon('heroicon-m-map-pin')
+                    ->columnSpanFull()
                     ->searchable()
                     ->nullable()
                     ->options(function (callable $get, $record) {
@@ -317,20 +353,29 @@ class MeetingForm
                     ])
                     ->default('scheduled')
                     ->required()
-                    ->label('Status Rapat'),
+                    ->native(false)
+                    ->prefixIcon('heroicon-m-flag')
+                    ->label('Status Rapat')
+                    ->hiddenOn('create'),
                 Select::make('company_id')
                     ->label('Perusahaan')
                     ->relationship('company', 'name')
                     ->default(auth()->user()->company_id)
                     ->required()
+                    ->native(false)
+                    ->prefixIcon('heroicon-m-building-office-2')
                     ->visible(fn () => auth()->user()->hasRole('super_admin'))
                     ->live(),
             ]),
 
-            Section::make('Peserta')->schema([
-                \Filament\Schemas\Components\Grid::make(3)->schema([
+            Section::make('Peserta & Notulis')
+                ->description('Pilih peserta yang diundang. Gunakan filter untuk mempersempit pencarian, lalu tentukan notulis dari peserta terpilih.')
+                ->icon('heroicon-o-user-group')
+                ->schema([
+                Grid::make(['default' => 1, 'sm' => 3])->schema([
                     Select::make('filter_company_id')
                         ->label('Perusahaan')
+                        ->prefixIcon('heroicon-m-building-office')
                         ->options(\App\Models\Company::pluck('name', 'id'))
                         ->default(auth()->user()->company_id)
                         ->live()
@@ -415,6 +460,8 @@ class MeetingForm
                     ->searchable()
                     ->live()
                     ->required()
+                    ->columnSpanFull()
+                    ->prefixIcon('heroicon-m-users')
                     ->label('Pilih Peserta')
                     ->helperText('Filter perusahaan wajib dipilih; departemen dan unit bersifat opsional untuk mempersempit pencarian.')
                     ->rules([
@@ -458,6 +505,8 @@ class MeetingForm
                     ->searchable()
                     ->preload()
                     ->live()
+                    ->columnSpanFull()
+                    ->prefixIcon('heroicon-m-pencil')
                     ->placeholder('Pilih Notulis (Opsional)')
                     ->helperText('Pilih salah satu dari peserta yang telah dipilih sebagai petugas pencatat notulensi'),
             ]),
