@@ -52,6 +52,67 @@ class AppSettings extends Page
         return is_file($path) ? (int) filemtime($path) : 1;
     }
 
+    /**
+     * URL pratinjau logo — berkas kecil (maks. 240px) yang di-cache di disk supaya
+     * halaman tidak perlu mengunduh & men-decode logo asli yang bisa berukuran besar.
+     * Tidak menyentuh database / cache Laravel.
+     */
+    public function previewUrl(): string
+    {
+        $source = public_path('images/logo.png');
+        $preview = public_path('images/logo-preview.png');
+
+        if (! is_file($source)) {
+            return asset('images/logo.png').'?v='.$this->logoVersion();
+        }
+
+        $fresh = is_file($preview) && filemtime($preview) >= filemtime($source);
+
+        if (! $fresh) {
+            $this->generatePreview($source, $preview);
+        }
+
+        return is_file($preview)
+            ? asset('images/logo-preview.png').'?v='.@filemtime($preview)
+            : asset('images/logo.png').'?v='.$this->logoVersion();
+    }
+
+    protected function generatePreview(string $source, string $preview): void
+    {
+        try {
+            $image = @imagecreatefrompng($source);
+
+            if (! $image) {
+                return;
+            }
+
+            imagepalettetotruecolor($image);
+            imagealphablending($image, false);
+            imagesavealpha($image, true);
+
+            $w = imagesx($image);
+            $h = imagesy($image);
+            $max = 240;
+
+            if ($w > $max || $h > $max) {
+                $r = min($max / $w, $max / $h);
+                $nw = (int) round($w * $r);
+                $nh = (int) round($h * $r);
+                $thumb = imagecreatetruecolor($nw, $nh);
+                imagealphablending($thumb, false);
+                imagesavealpha($thumb, true);
+                imagecopyresampled($thumb, $image, 0, 0, 0, 0, $nw, $nh, $w, $h);
+                imagedestroy($image);
+                $image = $thumb;
+            }
+
+            imagepng($image, $preview);
+            imagedestroy($image);
+        } catch (\Throwable $e) {
+            Log::warning('Gagal membuat pratinjau logo: '.$e->getMessage());
+        }
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -72,7 +133,6 @@ class AppSettings extends Page
                 FileUpload::make('logo')
                     ->label('File Logo Baru')
                     ->image()
-                    ->imageEditor()
                     ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/webp'])
                     ->maxSize(4096)
                     ->disk('local')
@@ -161,6 +221,9 @@ class AppSettings extends Page
             imagedestroy($image);
 
             clearstatcache(true, $target);
+
+            // Paksa pratinjau dibuat ulang dari logo baru.
+            @unlink(public_path('images/logo-preview.png'));
 
             // Perbarui pratinjau & favicon di layar tanpa reload.
             $this->dispatch('logo-updated', version: (string) ($this->logoVersion()));
