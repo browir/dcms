@@ -46,7 +46,6 @@ class WebPushTopbarIcon extends Component
             title: 'Uji Coba Web Push DCMS',
             body: 'Halo '.$user->name.'! Notifikasi Web Push Anda telah aktif dan bekerja dengan sempurna.',
             url: '/admin',
-            icon: asset('images/logo.png')
         ));
     }
 

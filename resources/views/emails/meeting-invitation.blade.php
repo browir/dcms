@@ -64,7 +64,7 @@
 
                             {{-- Logo: background putih dipaksa agar tidak ikut dark mode --}}
                             <div class="logo-wrap" style="display: inline-block; background-color: #ffffff; border-radius: 10px; padding: 10px 20px; margin-bottom: 20px;">
-                                <img src="{{ config('app.url') . '/images/logo.png?v=' . (@filemtime(public_path('images/logo.png')) ?: 1) }}"
+                                <img src="{{ \App\Support\Branding::logoUrl() }}"
                                      alt="Logo Syifa Global Group"
                                      style="max-height: 44px; width: auto; display: block;">
                             </div>

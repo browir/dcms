@@ -6,7 +6,7 @@
         
         {{-- Section Branding --}}
         <div class="w-full text-center mb-8">
-            <img src="{{ asset('images/logo.png') }}?v={{ @filemtime(public_path('images/logo.png')) ?: 1 }}" alt="Logo DCMS"
+            <img src="{{ \App\Support\Branding::logoUrl() }}" alt="Logo DCMS"
                 class="h-36 w-auto mx-auto mb-4 object-contain">
 
             <p class="text-sm text-[#64748b] leading-relaxed max-w-sm mx-auto font-medium">

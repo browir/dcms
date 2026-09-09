@@ -105,12 +105,9 @@ class EditMeeting extends EditRecord
     protected function buildNotulensiHtml(Meeting $record): string
     {
         // Logo khusus header PDF notulensi — sengaja terpisah dari logo aplikasi
-        // (logo.png) yang dapat diganti lewat menu Pengaturan Aplikasi.
+        // yang dapat diganti lewat menu Pengaturan Aplikasi.
         $logoBase64 = '';
-        $logoPath = public_path('images/logo-pdf.png');
-        if (! is_file($logoPath)) {
-            $logoPath = public_path('images/logo.png');
-        }
+        $logoPath = \App\Support\Branding::pdfLogoPath();
         if (is_file($logoPath)) {
             try {
                 $logoBase64 = 'data:image/png;base64,'.base64_encode((string) file_get_contents($logoPath));

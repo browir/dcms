@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Pages;
 
+use App\Support\Branding;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
@@ -34,53 +35,50 @@ class AppSettings extends Page
         return Auth::user()?->hasRole('super_admin') ?? false;
     }
 
-    /**
-     * URL logo saat ini dengan cache-buster berdasarkan waktu modifikasi file.
-     */
-    public function currentLogoUrl(): string
-    {
-        return asset('images/logo.png').'?v='.$this->logoVersion();
-    }
-
-    /**
-     * Token cache-buster: waktu modifikasi berkas logo.
-     */
     public function logoVersion(): int
     {
-        $path = public_path('images/logo.png');
+        return Branding::logoVersion();
+    }
 
-        return is_file($path) ? (int) filemtime($path) : 1;
+    public function hasCustomLogo(): bool
+    {
+        return Branding::hasCustomLogo();
     }
 
     /**
-     * URL pratinjau logo — berkas kecil (maks. 240px) yang di-cache di disk supaya
-     * halaman tidak perlu mengunduh & men-decode logo asli yang bisa berukuran besar.
+     * URL pratinjau logo — berkas kecil (maks. 240px) yang di-cache di disk
+     * "public" supaya halaman tidak perlu mengunduh & men-decode logo asli.
      * Tidak menyentuh database / cache Laravel.
      */
     public function previewUrl(): string
     {
-        $source = public_path('images/logo.png');
-        $preview = public_path('images/logo-preview.png');
+        $disk = Storage::disk('public');
+        $source = Branding::logoPath();
 
         if (! is_file($source)) {
-            return asset('images/logo.png').'?v='.$this->logoVersion();
+            return Branding::logoUrl();
         }
 
-        $fresh = is_file($preview) && filemtime($preview) >= filemtime($source);
+        $previewAbs = storage_path('app/public/'.Branding::CUSTOM_LOGO_PREVIEW);
+        $fresh = is_file($previewAbs) && filemtime($previewAbs) >= filemtime($source);
 
         if (! $fresh) {
-            $this->generatePreview($source, $preview);
+            $this->generatePreview($source, $previewAbs);
         }
 
-        return is_file($preview)
-            ? asset('images/logo-preview.png').'?v='.@filemtime($preview)
-            : asset('images/logo.png').'?v='.$this->logoVersion();
+        return is_file($previewAbs)
+            ? asset('storage/'.Branding::CUSTOM_LOGO_PREVIEW).'?v='.@filemtime($previewAbs)
+            : Branding::logoUrl();
     }
 
-    protected function generatePreview(string $source, string $preview): void
+    protected function generatePreview(string $source, string $previewAbs): void
     {
         try {
-            $image = @imagecreatefrompng($source);
+            if (! is_dir(dirname($previewAbs))) {
+                @mkdir(dirname($previewAbs), 0755, true);
+            }
+
+            $image = $this->readImage($source);
 
             if (! $image) {
                 return;
@@ -106,7 +104,7 @@ class AppSettings extends Page
                 $image = $thumb;
             }
 
-            imagepng($image, $preview);
+            imagepng($image, $previewAbs);
             imagedestroy($image);
         } catch (\Throwable $e) {
             Log::warning('Gagal membuat pratinjau logo: '.$e->getMessage());
@@ -115,9 +113,10 @@ class AppSettings extends Page
 
     protected function getHeaderActions(): array
     {
-        return [
+        return array_values(array_filter([
             $this->uploadLogoAction(),
-        ];
+            Branding::hasCustomLogo() ? $this->resetLogoAction() : null,
+        ]));
     }
 
     public function uploadLogoAction(): Action
@@ -127,7 +126,7 @@ class AppSettings extends Page
             ->icon('heroicon-o-arrow-up-tray')
             ->color('primary')
             ->modalHeading('Ganti Logo Aplikasi')
-            ->modalDescription('Logo akan otomatis dipakai di seluruh aplikasi: favicon, halaman login, email undangan, notifikasi, dan ikon PWA. Header PDF notulensi memakai logo terpisah dan tidak ikut berubah.')
+            ->modalDescription('Logo akan dipakai di favicon, halaman login, email undangan, notifikasi, dan ikon PWA. Header PDF notulensi memakai logo terpisah dan tidak ikut berubah. Logo tersimpan di storage sehingga tidak hilang saat deploy.')
             ->modalSubmitActionLabel('Simpan & Ganti Logo')
             ->form([
                 FileUpload::make('logo')
@@ -154,28 +153,45 @@ class AppSettings extends Page
             });
     }
 
+    public function resetLogoAction(): Action
+    {
+        return Action::make('resetLogo')
+            ->label('Kembalikan Logo Bawaan')
+            ->icon('heroicon-o-arrow-uturn-left')
+            ->color('gray')
+            ->requiresConfirmation()
+            ->modalHeading('Kembalikan ke logo bawaan?')
+            ->modalDescription('Logo kustom akan dihapus dan aplikasi kembali memakai logo bawaan.')
+            ->action(function (): void {
+                $disk = Storage::disk('public');
+                $disk->delete([
+                    Branding::CUSTOM_LOGO,
+                    Branding::CUSTOM_LOGO_PREVIOUS,
+                    Branding::CUSTOM_LOGO_PREVIEW,
+                ]);
+
+                $this->dispatch('logo-updated', version: (string) Branding::logoVersion());
+
+                Notification::make()->success()->title('Logo dikembalikan ke bawaan')->send();
+            });
+    }
+
     /**
-     * Proses file yang diunggah menjadi PNG dan timpa public/images/logo.png.
+     * Proses berkas yang diunggah menjadi PNG lalu simpan sebagai logo kustom
+     * di storage/app/public/branding/logo.png (persist saat deploy).
      */
     protected function applyLogo(string $relPath): void
     {
-        $disk = Storage::disk('local');
-        $source = $disk->path($relPath);
+        $localDisk = Storage::disk('local');
+        $publicDisk = Storage::disk('public');
+        $source = $localDisk->path($relPath);
 
         try {
             if (! is_file($source)) {
                 throw new \RuntimeException('Berkas unggahan tidak ditemukan.');
             }
 
-            $info = @getimagesize($source);
-            $mime = $info['mime'] ?? null;
-
-            $image = match ($mime) {
-                'image/png' => @imagecreatefrompng($source),
-                'image/jpeg' => @imagecreatefromjpeg($source),
-                'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($source) : false,
-                default => false,
-            };
+            $image = $this->readImage($source);
 
             if (! $image) {
                 throw new \RuntimeException('Format gambar tidak didukung. Gunakan PNG, JPG, atau WEBP.');
@@ -203,35 +219,35 @@ class AppSettings extends Page
                 $image = $resized;
             }
 
-            $target = public_path('images/logo.png');
+            $targetAbs = storage_path('app/public/'.Branding::CUSTOM_LOGO);
 
-            if (! is_dir(dirname($target))) {
-                @mkdir(dirname($target), 0755, true);
+            if (! is_dir(dirname($targetAbs))) {
+                @mkdir(dirname($targetAbs), 0755, true);
             }
 
-            // Simpan cadangan logo lama.
-            if (is_file($target)) {
-                @copy($target, public_path('images/logo-previous.png'));
+            // Simpan cadangan logo kustom sebelumnya (bila ada).
+            if (is_file($targetAbs)) {
+                @copy($targetAbs, storage_path('app/public/'.Branding::CUSTOM_LOGO_PREVIOUS));
             }
 
-            if (! imagepng($image, $target)) {
-                throw new \RuntimeException('Gagal menulis berkas logo. Periksa izin folder public/images.');
+            if (! imagepng($image, $targetAbs)) {
+                throw new \RuntimeException('Gagal menulis berkas logo. Periksa izin folder storage/app/public/branding.');
             }
 
             imagedestroy($image);
 
-            clearstatcache(true, $target);
+            clearstatcache(true, $targetAbs);
 
             // Paksa pratinjau dibuat ulang dari logo baru.
-            @unlink(public_path('images/logo-preview.png'));
+            $publicDisk->delete(Branding::CUSTOM_LOGO_PREVIEW);
 
             // Perbarui pratinjau & favicon di layar tanpa reload.
-            $this->dispatch('logo-updated', version: (string) ($this->logoVersion()));
+            $this->dispatch('logo-updated', version: (string) Branding::logoVersion());
 
             Notification::make()
                 ->success()
                 ->title('Logo berhasil diperbarui')
-                ->body('Logo baru langsung dipakai di seluruh aplikasi.')
+                ->body('Logo baru langsung dipakai di seluruh aplikasi dan tetap tersimpan setelah deploy.')
                 ->send();
         } catch (\Throwable $e) {
             Log::error('Gagal memperbarui logo aplikasi: '.$e->getMessage(), ['exception' => $e]);
@@ -242,7 +258,22 @@ class AppSettings extends Page
                 ->body($e->getMessage())
                 ->send();
         } finally {
-            $disk->delete($relPath);
+            $localDisk->delete($relPath);
         }
+    }
+
+    /**
+     * @return \GdImage|false
+     */
+    protected function readImage(string $source)
+    {
+        $mime = @getimagesize($source)['mime'] ?? null;
+
+        return match ($mime) {
+            'image/png' => @imagecreatefrompng($source),
+            'image/jpeg' => @imagecreatefromjpeg($source),
+            'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($source) : false,
+            default => false,
+        };
     }
 }
