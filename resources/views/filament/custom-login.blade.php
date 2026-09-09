@@ -6,11 +6,10 @@
         
         {{-- Section Branding --}}
         <div class="w-full text-center mb-8">
-            <img src="{{ asset('images/logo.png') }}?v={{ @filemtime(public_path('images/logo.png')) ?: 1 }}" alt="Syifa Global Group Logo"
-                class="h-20 w-auto mx-auto mb-6 object-contain">
-            
-            <h1 class="text-2xl font-bold text-[#1e293b] mb-2 tracking-tight">DCMS</h1>
-            <p class="text-[13px] text-[#64748b] leading-relaxed max-w-sm mx-auto font-medium">
+            <img src="{{ asset('images/logo.png') }}?v={{ @filemtime(public_path('images/logo.png')) ?: 1 }}" alt="Logo DCMS"
+                class="h-36 w-auto mx-auto mb-4 object-contain">
+
+            <p class="text-sm text-[#64748b] leading-relaxed max-w-sm mx-auto font-medium">
                 Manajemen Rapat dan Dokumen
             </p>
         </div>
