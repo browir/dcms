@@ -39,10 +39,17 @@ class AppSettings extends Page
      */
     public function currentLogoUrl(): string
     {
-        $path = public_path('images/logo.png');
-        $version = is_file($path) ? filemtime($path) : 1;
+        return asset('images/logo.png').'?v='.$this->logoVersion();
+    }
 
-        return asset('images/logo.png').'?v='.$version;
+    /**
+     * Token cache-buster: waktu modifikasi berkas logo.
+     */
+    public function logoVersion(): int
+    {
+        $path = public_path('images/logo.png');
+
+        return is_file($path) ? (int) filemtime($path) : 1;
     }
 
     protected function getHeaderActions(): array
@@ -153,10 +160,15 @@ class AppSettings extends Page
 
             imagedestroy($image);
 
+            clearstatcache(true, $target);
+
+            // Perbarui pratinjau & favicon di layar tanpa reload.
+            $this->dispatch('logo-updated', version: (string) ($this->logoVersion()));
+
             Notification::make()
                 ->success()
                 ->title('Logo berhasil diperbarui')
-                ->body('Logo baru langsung dipakai di seluruh aplikasi. Bila logo lama masih tampil, muat ulang paksa (Ctrl + F5).')
+                ->body('Logo baru langsung dipakai di seluruh aplikasi.')
                 ->send();
         } catch (\Throwable $e) {
             Log::error('Gagal memperbarui logo aplikasi: '.$e->getMessage(), ['exception' => $e]);
