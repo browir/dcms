@@ -21,6 +21,11 @@ class EditMeeting extends EditRecord
         return 'Ubah Rapat';
     }
 
+    public function getSubheading(): ?string
+    {
+        return 'Perbarui detail rapat, catat notulensi, dan lampirkan dokumentasi. Tandai status "Selesai" agar rekap PDF notulensi dibuat otomatis.';
+    }
+
     protected function getSaveFormAction(): \Filament\Actions\Action
     {
         return parent::getSaveFormAction()
@@ -35,7 +40,23 @@ class EditMeeting extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [ViewAction::make(), DeleteAction::make()];
+        return [
+            \Filament\Actions\Action::make('tutorial')
+                ->label('Panduan')
+                ->icon('heroicon-o-information-circle')
+                ->color('info')
+                ->modalHeading('Petunjuk Ubah Rapat')
+                ->modalWidth('4xl')
+                ->modalContent(view('filament.tutorial-modal', ['image' => 'tambah.jpg']))
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Tutup'),
+            ViewAction::make()
+                ->label('Lihat')
+                ->icon('heroicon-o-eye'),
+            DeleteAction::make()
+                ->label('Hapus')
+                ->icon('heroicon-o-trash'),
+        ];
     }
 
     /**
