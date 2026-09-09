@@ -15,6 +15,11 @@ class ViewMeeting extends ViewRecord
         return 'Detail Rapat';
     }
 
+    public function getSubheading(): ?string
+    {
+        return 'Ringkasan lengkap rapat, notulensi, dan dokumentasi.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -27,7 +32,9 @@ class ViewMeeting extends ViewRecord
                 ->modalContent(view('filament.tutorial-modal', ['image' => 'notulen.jpg']))
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Tutup'),
-            EditAction::make(),
+            EditAction::make()
+                ->label('Ubah Rapat')
+                ->icon('heroicon-o-pencil-square'),
         ];
     }
 }

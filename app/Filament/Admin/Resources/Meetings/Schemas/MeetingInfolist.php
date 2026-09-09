@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\Meetings\Schemas;
 
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ViewEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -14,150 +15,152 @@ class MeetingInfolist
         return $schema
             ->components([
 
-                // WRAPPER UTAMA (Sekarang mencakup Informasi Utama, Lokasi, Konteks, dan Sistem)
-                Section::make()
-                    ->extraAttributes([
-                        'class' => 'flex justify-center gap-6 flex-wrap mb-6 bg-transparent',
-                    ])
+                // Hero ringkas: judul, status, jadwal, lokasi, notulis, peserta.
+                ViewEntry::make('hero')
+                    ->view('filament.meetings.meeting-view-hero')
+                    ->columnSpanFull(),
+
+                // Detail lengkap
+                Section::make('Detail Rapat')
+                    ->icon('heroicon-o-clipboard-document-list')
+                    ->description('Informasi jadwal, lokasi, dan konteks rapat.')
+                    ->columns(2)
                     ->schema([
+                        TextEntry::make('date_time')
+                            ->label('Tanggal & Waktu Mulai')
+                            ->icon('heroicon-m-calendar-days')
+                            ->iconColor('primary')
+                            ->dateTime('l, d F Y • H:i'),
 
-                        // 1. Informasi Utama
-                        Section::make('Informasi Utama')
-                            ->icon('heroicon-o-document-text')
-                            ->schema([
-                                TextEntry::make('title')
-                                    ->label('Judul Rapat')
-                                    ->size('2xl')
-                                    ->weight('bold')
-                                    ->columnSpanFull(),
+                        TextEntry::make('end_time')
+                            ->label('Jam Berakhir')
+                            ->icon('heroicon-m-clock')
+                            ->iconColor('primary')
+                            ->dateTime('l, d F Y • H:i')
+                            ->placeholder('Belum ditentukan'),
 
-                                TextEntry::make('status')
-                                    ->label('Status')
-                                    ->badge()
-                                    ->size('md')
-                                    ->formatStateUsing(fn ($state) => match ($state) {
-                                        'scheduled' => 'Terjadwal',
-                                        'completed' => 'Selesai',
-                                        'cancelled' => 'Batal',
-                                        default => ucfirst($state),
-                                    })
-                                    ->color(fn ($state) => match ($state) {
-                                        'draft' => 'gray',
-                                        'scheduled' => 'blue',
-                                        'ongoing' => 'warning',
-                                        'completed' => 'gray',
-                                        'cancelled' => 'danger',
-                                        default => 'gray',
-                                    }),
-                            ])
-                            ->extraAttributes([
-                                'class' => 'bg-purple-50 p-5 rounded-xl shadow-md border-l-4 border-l-purple-400 w-80 flex flex-col gap-4',
-                            ]),
+                        TextEntry::make('location')
+                            ->label('Lokasi / Ruangan')
+                            ->icon('heroicon-m-map-pin')
+                            ->iconColor('danger')
+                            ->placeholder('Belum ditentukan'),
 
-                        // 2. Lokasi & Waktu
-                        Section::make('Lokasi & Waktu')
-                            ->icon('heroicon-o-clock')
-                            ->schema([
-                                TextEntry::make('date_time')
-                                    ->label('Jadwal')
-                                    ->icon('heroicon-o-calendar')
-                                    ->dateTime('d F Y, H:i'),
+                        TextEntry::make('status')
+                            ->label('Status')
+                            ->badge()
+                            ->formatStateUsing(fn ($state) => match ($state) {
+                                'scheduled' => 'Terjadwal',
+                                'completed' => 'Selesai',
+                                'cancelled' => 'Batal',
+                                default => ucfirst((string) $state),
+                            })
+                            ->color(fn ($state) => match ($state) {
+                                'scheduled' => 'info',
+                                'completed' => 'success',
+                                'cancelled' => 'danger',
+                                default => 'gray',
+                            })
+                            ->icon(fn ($state) => match ($state) {
+                                'scheduled' => 'heroicon-m-calendar',
+                                'completed' => 'heroicon-m-check-circle',
+                                'cancelled' => 'heroicon-m-x-circle',
+                                default => 'heroicon-m-question-mark-circle',
+                            }),
 
-                                TextEntry::make('end_time')
-                                    ->label('Berakhir')
-                                    ->icon('heroicon-o-clock')
-                                    ->dateTime('d F Y, H:i')
-                                    ->placeholder('Belum ditentukan'),
+                        TextEntry::make('creator.name')
+                            ->label('Dibuat Oleh')
+                            ->icon('heroicon-m-user-circle')
+                            ->placeholder('—'),
 
-                                TextEntry::make('location')
-                                    ->label('Tempat')
-                                    ->icon('heroicon-o-map-pin')
-                                    ->placeholder('Belum ditentukan'),
+                        TextEntry::make('notulis.name')
+                            ->label('Notulis / Pencatat')
+                            ->icon('heroicon-m-pencil-square')
+                            ->placeholder('Belum ditunjuk'),
 
-                                TextEntry::make('creator.name')
-                                    ->label('Dibuat Oleh')
-                                    ->icon('heroicon-o-user-circle'),
-                            ])
-                            ->extraAttributes([
-                                'class' => 'bg-indigo-50 p-4 rounded-xl shadow-sm w-80 flex flex-col gap-3',
-                            ]),
+                        TextEntry::make('doc_number')
+                            ->label('No. Dokumen')
+                            ->icon('heroicon-m-hashtag')
+                            ->copyable()
+                            ->placeholder('—'),
 
-                        // 3. Konteks Rapat
-                        Section::make('Konteks Rapat')
-                            ->icon('heroicon-o-clipboard')
-                            ->schema([
-                                TextEntry::make('agenda')
-                                    ->label('Agenda Pembahasan')
-                                    ->prose()
-                                    ->columnSpanFull(),
+                        TextEntry::make('company.name')
+                            ->label('Perusahaan')
+                            ->icon('heroicon-m-building-office-2')
+                            ->placeholder('—'),
 
-                                TextEntry::make('participants.name')
-                                    ->label('Peserta Terlibat')
-                                    ->badge()
-                                    ->separator(', ')
-                                    ->columnSpanFull(),
-                            ])
-                            ->extraAttributes([
-                                'class' => 'bg-emerald-50 p-4 rounded-xl shadow-sm w-80 flex flex-col gap-3',
-                            ]),
+                        TextEntry::make('agenda')
+                            ->label('Agenda Pembahasan')
+                            ->prose()
+                            ->placeholder('Tidak ada agenda tertulis.')
+                            ->columnSpanFull(),
 
-                        // 4. Informasi Sistem (Sekarang di dalam Container yang sama)
-                        Section::make('Informasi Sistem')
-                            ->icon('heroicon-o-cog')
-                            ->schema([
-                                TextEntry::make('created_at')
-                                    ->label('Dibuat')
-                                    ->dateTime()
-                                    ->size('xs')
-                                    ->color('gray'),
-
-                                TextEntry::make('updated_at')
-                                    ->label('Terakhir Diperbarui')
-                                    ->dateTime()
-                                    ->size('xs')
-                                    ->color('gray'),
-                            ])
-                            ->extraAttributes([
-                                'class' => 'bg-yellow-50 p-4 rounded-xl shadow-sm w-80 flex flex-col gap-3',
-                            ]),
+                        TextEntry::make('participants.name')
+                            ->label('Peserta Terlibat')
+                            ->badge()
+                            ->color('gray')
+                            ->separator(',')
+                            ->placeholder('Belum ada peserta.')
+                            ->columnSpanFull(),
                     ]),
 
-                // MASTER SECTION UNTUK HASIL RAPAT (Terpisah di bawah)
-                Section::make('Hasil & Dokumentasi Rapat')
-                    ->icon('heroicon-o-document-check')
+                // Notulensi
+                Section::make('Notulensi Rapat')
+                    ->icon('heroicon-o-document-text')
+                    ->description('Catatan hasil rapat dan poin-poin keputusan.')
+                    ->collapsible()
                     ->schema([
+                        TextEntry::make('content')
+                            ->hiddenLabel()
+                            ->html()
+                            ->prose()
+                            ->placeholder('Notulensi belum tersedia. Buka "Ubah" untuk mulai mencatat.')
+                            ->columnSpanFull(),
 
-                        Section::make('Notulensi Rapat')
-                            ->icon('heroicon-o-pencil')
-                            ->description('Catatan hasil rapat dan poin-poin keputusan.')
-                            ->schema([
-                                TextEntry::make('content')
-                                    ->label('Konten')
-                                    ->html()
-                                    ->prose()
-                                    ->placeholder('Notulensi belum tersedia...')
-                                    ->columnSpanFull(),
-                            ])
-                            ->extraAttributes([
-                                'class' => 'bg-pink-50 border-dashed border-2 min-h-[400px] p-5 rounded-xl',
-                            ]),
+                        TextEntry::make('file_path')
+                            ->label('Berkas Notulensi')
+                            ->icon('heroicon-m-paper-clip')
+                            ->formatStateUsing(fn () => 'Notulensi tersimpan sebagai berkas (PDF/Word).')
+                            ->visible(fn ($record) => filled($record?->file_path))
+                            ->columnSpanFull(),
+                    ]),
 
-                        Section::make('Lampiran Dokumentasi')
-                            ->icon('heroicon-o-camera')
-                            ->description('Foto atau dokumen pendukung rapat.')
-                            ->schema([
-                                ImageEntry::make('attachments')
-                                    ->label('')
-                                    ->disk('public')
-                                    ->columnSpanFull(),
-                            ])
-                            ->visible(fn ($record) => ! empty($record->attachments))
-                            ->extraAttributes([
-                                'class' => 'bg-blue-50 border-dashed border-2 p-5 rounded-xl mt-4',
-                            ]),
-                    ])
-                    ->extraAttributes([
-                        'class' => 'bg-white p-6 rounded-2xl shadow-lg border border-gray-100',
+                // Lampiran
+                Section::make('Lampiran Dokumentasi')
+                    ->icon('heroicon-o-photo')
+                    ->description('Foto atau dokumen pendukung rapat.')
+                    ->collapsible()
+                    ->visible(fn ($record) => ! empty($record?->attachments))
+                    ->schema([
+                        ImageEntry::make('attachments')
+                            ->hiddenLabel()
+                            ->disk('public')
+                            ->height(160)
+                            ->square()
+                            ->columnSpanFull(),
+                    ]),
+
+                // Metadata sistem
+                Section::make('Informasi Sistem')
+                    ->icon('heroicon-o-cog-6-tooth')
+                    ->columns(3)
+                    ->collapsed()
+                    ->collapsible()
+                    ->schema([
+                        TextEntry::make('id')
+                            ->label('ID Rapat')
+                            ->badge()
+                            ->color('gray'),
+
+                        TextEntry::make('created_at')
+                            ->label('Dibuat')
+                            ->dateTime('d M Y, H:i')
+                            ->color('gray'),
+
+                        TextEntry::make('updated_at')
+                            ->label('Terakhir Diperbarui')
+                            ->since()
+                            ->dateTimeTooltip()
+                            ->color('gray'),
                     ]),
             ]);
     }
