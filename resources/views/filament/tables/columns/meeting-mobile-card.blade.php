@@ -7,7 +7,7 @@
     $location      = $record->location ?? null;
     $status        = $record->status ?? 'scheduled';
     $creator       = $record->creator?->name ?? null;
-    $statusLabel   = match ($status) { 'scheduled'=>'Terjadwal','completed'=>'Berakhir','cancelled'=>'Batal',default=>ucfirst($status) };
+    $statusLabel   = match ($status) { 'scheduled'=>'Terjadwal','completed'=>'Selesai','cancelled'=>'Batal',default=>ucfirst($status) };
     $statusStyle   = match ($status) { 'scheduled'=>'background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;','completed'=>'background:#f8fafc;color:#475569;border-color:#cbd5e1;','cancelled'=>'background:#fff1f2;color:#be123c;border-color:#fca5a5;',default=>'background:#f8fafc;color:#475569;border-color:#cbd5e1;' };
     $headerBg      = match ($status) { 'scheduled'=>'linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%)','cancelled'=>'linear-gradient(135deg,#fff1f2 0%,#ffe4e6 100%)',default=>'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)' };
     $borderColor   = match ($status) { 'scheduled'=>'#bfdbfe','cancelled'=>'#fca5a5',default=>'#e2e8f0' };

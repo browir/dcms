@@ -26,12 +26,12 @@ class WebPushGenericNotification extends Notification
         string $title,
         string $body,
         string $url = '/admin',
-        string $icon = '/images/logo.png'
+        string $icon = ''
     ) {
         $this->title = $title;
         $this->body = $body;
         $this->url = $url;
-        $this->icon = $icon;
+        $this->icon = $icon !== '' ? $icon : \App\Support\Branding::logoUrl();
     }
 
     /**

@@ -34,7 +34,7 @@ class AdminPanelProvider extends PanelProvider
 
             ->profile(\App\Filament\Pages\Auth\EditProfile::class)
             ->topNavigation()
-            ->favicon(asset('images/logo.png'))
+            ->favicon(\App\Support\Branding::logoUrl())
             ->darkMode(false)
             ->login(Login::class)
             ->registration(Register::class)
@@ -42,20 +42,24 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Blue,
             ])
             ->renderHook(
+                'panels::head.end',
+                fn (): string => view('filament.pwa-head')->render()
+            )
+            ->renderHook(
                 'panels::body.start',
-                fn(): string => \Illuminate\Support\Facades\Blade::render('filament.loading-screen')
+                fn (): string => \Illuminate\Support\Facades\Blade::render('filament.loading-screen')
             )
             ->renderHook(
                 'panels::body.end',
-                fn(): string => view('filament.web-push-scripts')->render()
+                fn (): string => view('filament.web-push-scripts')->render()
             )
             ->renderHook(
                 'panels::body.end',
-                fn(): string => view('filament.mobile-bottom-bar')->render()
+                fn (): string => view('filament.mobile-bottom-bar')->render()
             )
             ->renderHook(
                 'panels::scripts.after',
-                fn(): string => new HtmlString('<script>
+                fn (): string => new HtmlString('<script>
                     (function() {
                         function applyRolesBodyClass() {
                             var path = window.location.pathname;
@@ -73,11 +77,11 @@ class AdminPanelProvider extends PanelProvider
             )
             ->renderHook(
                 'panels::user-menu.before',
-                fn(): string => \Illuminate\Support\Facades\Blade::render('@livewire(\'bookmark-topbar-icon\')')
+                fn (): string => \Illuminate\Support\Facades\Blade::render('@livewire(\'bookmark-topbar-icon\')')
             )
             ->renderHook(
                 'panels::styles.after',
-                fn(): string => new HtmlString('
+                fn (): string => new HtmlString('
                     <style>
                         @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 
@@ -1632,7 +1636,7 @@ class AdminPanelProvider extends PanelProvider
 
             ->renderHook(
                 'panels::user-menu.before',
-                fn(): string => \Illuminate\Support\Facades\Auth::check() ? \Illuminate\Support\Facades\Blade::render('@livewire(\'notification-bell\')') : ''
+                fn (): string => \Illuminate\Support\Facades\Auth::check() ? \Illuminate\Support\Facades\Blade::render('@livewire(\'notification-bell\')') : ''
             )
             ->spa()
             ->globalSearch()

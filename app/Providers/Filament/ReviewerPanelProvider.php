@@ -28,7 +28,7 @@ class ReviewerPanelProvider extends PanelProvider
             ->maxContentWidth(Width::Full)
             ->profile(\App\Filament\Pages\Auth\EditProfile::class)
             ->topNavigation()
-            ->favicon(asset('images/logo.png'))
+            ->favicon(\App\Support\Branding::logoUrl())
             ->login()
             ->colors([
                 'primary' => Color::Emerald,

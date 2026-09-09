@@ -10,7 +10,7 @@
             </div>
             
             <div class="relative z-10 flex flex-col items-center text-center">
-                <img src="{{ asset('images/logo.png') }}" alt="Logo" class="h-12 w-auto mb-4 filter drop-shadow-md">
+                <img src="{{ \App\Support\Branding::logoUrl() }}" alt="Logo" class="h-12 w-auto mb-4 filter drop-shadow-md">
                 <h1 class="text-2xl font-bold text-white mb-1 tracking-tight">Buat Akun</h1>
                 <p class="text-blue-100 text-[11px] uppercase tracking-wider font-medium opacity-90">Sistem Manajemen Dokumen</p>
             </div>
@@ -61,7 +61,7 @@
         <div class="relative w-full max-w-4xl flex flex-col items-center animate-fade-in mx-auto z-10 py-4">
             {{-- Section Branding --}}
             <div class="w-full text-center mb-6">
-                <img src="{{ asset('images/logo.png') }}" alt="Syifa Global Group Logo"
+                <img src="{{ \App\Support\Branding::logoUrl() }}" alt="Syifa Global Group Logo"
                     class="h-14 w-auto mx-auto mb-3 object-contain">
                 <h1 class="text-2xl font-bold text-[#1e293b] mb-1 tracking-tight">DCMS</h1>
                 <p class="text-[13px] text-[#64748b] font-medium uppercase tracking-wider">Buat Akun Baru</p>

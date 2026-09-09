@@ -13,6 +13,29 @@ self.addEventListener('activate', (event) => {
 });
 
 /**
+ * Fetch handler.
+ *
+ * Aplikasi ini butuh data real-time (Livewire), jadi kita TIDAK melakukan
+ * caching agresif. Handler ini sengaja "pass-through" (network only) —
+ * kehadirannya diperlukan agar browser menganggap aplikasi installable (PWA).
+ */
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  event.respondWith(
+    fetch(event.request).catch(() => {
+      // Fallback minimal saat benar-benar offline: kembalikan halaman start.
+      if (event.request.mode === 'navigate') {
+        return caches.match('/admin');
+      }
+      return Response.error();
+    })
+  );
+});
+
+/**
  * 1. Push Event Listener
  */
 self.addEventListener('push', (event) => {

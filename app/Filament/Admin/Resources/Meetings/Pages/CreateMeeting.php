@@ -44,6 +44,11 @@ class CreateMeeting extends CreateRecord
         return 'Tambah Rapat';
     }
 
+    public function getSubheading(): ?string
+    {
+        return 'Lengkapi informasi rapat, jadwal & lokasi, lalu pilih peserta. Undangan email dikirim otomatis setelah rapat dibuat.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [

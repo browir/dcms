@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BrandingController;
 use App\Http\Controllers\NotulenController;
 use App\Http\Controllers\PushSubscriptionController;
 use Filament\Http\Middleware\Authenticate;
@@ -8,6 +9,11 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return redirect('/admin');
 });
+
+// Logo aplikasi — publik (dipakai di favicon & halaman login sebelum auth).
+// Disajikan langsung dari disk, tidak bergantung symlink public/storage.
+Route::get('/branding/logo', [BrandingController::class, 'logo'])->name('branding.logo');
+Route::get('/branding/logo/preview', [BrandingController::class, 'preview'])->name('branding.preview');
 
 Route::get('/api/push-subscriptions/vapid-key', [PushSubscriptionController::class, 'vapidPublicKey'])->name('push.vapid');
 
