@@ -3,11 +3,11 @@
         <x-slot name="heading">Logo Aplikasi</x-slot>
         <x-slot name="description">
             Dipakai di favicon, halaman login &amp; registrasi, email undangan rapat, notifikasi,
-            dan ikon PWA. Klik <strong>Unggah / Ganti Logo</strong> di kanan atas untuk menggantinya —
-            berkas lama (<code>public/images/logo.png</code>) langsung ditimpa.
+            dan ikon PWA. Klik <strong>Unggah / Ganti Logo</strong> di kanan atas untuk menggantinya.
+            Logo kustom disimpan di <code>storage/app/public/branding/</code> sehingga tidak hilang saat deploy.
             <br>
             <span class="text-xs text-gray-400">Header PDF notulensi memakai logo terpisah
-            (<code>logo-pdf.png</code>) dan tidak ikut berubah.</span>
+            (<code>public/images/logo-pdf.png</code>) dan tidak ikut berubah.</span>
         </x-slot>
 
         <div
