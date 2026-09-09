@@ -514,22 +514,48 @@ class MeetingForm
 
                     Select::make('notulis_id')
                         ->label('Notulis / Pencatat')
-                        ->relationship('notulis', 'name')
                         ->options(function ($get) {
-                            $selectedParticipants = $get('participants');
+                            $selectedParticipants = (array) $get('participants');
                             if (empty($selectedParticipants)) {
                                 return [];
                             }
 
-                            return User::whereIn('id', $selectedParticipants)->pluck('name', 'id');
+                            return User::whereIn('id', $selectedParticipants)
+                                ->orderBy('name')
+                                ->pluck('name', 'id');
                         })
+                        ->getSearchResultsUsing(function (string $search, $get) {
+                            $selectedParticipants = (array) $get('participants');
+                            if (empty($selectedParticipants)) {
+                                return [];
+                            }
+
+                            return User::whereIn('id', $selectedParticipants)
+                                ->where('name', 'like', "%{$search}%")
+                                ->orderBy('name')
+                                ->limit(50)
+                                ->pluck('name', 'id');
+                        })
+                        ->getOptionLabelUsing(fn ($value) => User::find($value)?->name)
                         ->searchable()
-                        ->preload()
                         ->live()
                         ->columnSpanFull()
                         ->prefixIcon('heroicon-m-pencil')
                         ->placeholder('Pilih Notulis (Opsional)')
-                        ->helperText('Pilih salah satu dari peserta yang telah dipilih sebagai petugas pencatat notulensi'),
+                        ->helperText('Pilih salah satu dari peserta yang telah dipilih sebagai petugas pencatat notulensi')
+                        ->rules([
+                            fn ($get) => function (string $attribute, $value, \Closure $fail) use ($get) {
+                                if (blank($value)) {
+                                    return;
+                                }
+
+                                $selectedParticipants = array_map('strval', (array) $get('participants'));
+
+                                if (! in_array((string) $value, $selectedParticipants, true)) {
+                                    $fail('Notulis harus salah satu dari peserta rapat yang dipilih.');
+                                }
+                            },
+                        ]),
                 ]),
 
             Hidden::make('created_by')->default(auth()->id()),
