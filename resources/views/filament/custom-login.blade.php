@@ -6,7 +6,7 @@
         
         {{-- Section Branding --}}
         <div class="w-full text-center mb-8">
-            <img src="{{ asset('images/logo.png') }}" alt="Syifa Global Group Logo"
+            <img src="{{ asset('images/logo.png') }}?v={{ @filemtime(public_path('images/logo.png')) ?: 1 }}" alt="Syifa Global Group Logo"
                 class="h-20 w-auto mx-auto mb-6 object-contain">
             
             <h1 class="text-2xl font-bold text-[#1e293b] mb-2 tracking-tight">DCMS</h1>

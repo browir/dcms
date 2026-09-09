@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="DCMS">
 <link rel="apple-touch-icon" href="{{ url('/pwa-icon.svg') }}">
-<link rel="apple-touch-icon" sizes="512x512" href="{{ asset('images/logo.png') }}">
+<link rel="apple-touch-icon" sizes="512x512" href="{{ asset('images/logo.png') }}?v={{ @filemtime(public_path('images/logo.png')) ?: 1 }}">
 
 <script>
     (function () {
