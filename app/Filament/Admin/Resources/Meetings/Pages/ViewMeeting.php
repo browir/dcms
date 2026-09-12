@@ -32,6 +32,13 @@ class ViewMeeting extends ViewRecord
                 ->modalContent(view('filament.tutorial-modal', ['image' => 'notulen.jpg']))
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Tutup'),
+            \Filament\Actions\Action::make('view_notulensi_pdf')
+                ->label('Lihat PDF Notulensi')
+                ->icon('heroicon-o-document-text')
+                ->color('success')
+                ->url(fn ($record) => route('notulen.view', $record->id))
+                ->openUrlInNewTab()
+                ->visible(fn ($record) => filled($record->file_path)),
             EditAction::make()
                 ->label('Ubah Rapat')
                 ->icon('heroicon-o-pencil-square'),

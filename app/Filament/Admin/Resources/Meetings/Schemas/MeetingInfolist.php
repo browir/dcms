@@ -119,7 +119,12 @@ class MeetingInfolist
                         TextEntry::make('file_path')
                             ->label('Berkas Notulensi')
                             ->icon('heroicon-m-paper-clip')
-                            ->formatStateUsing(fn () => 'Notulensi tersimpan sebagai berkas (PDF/Word).')
+                            ->iconColor('success')
+                            ->formatStateUsing(fn () => 'Lihat berkas notulensi (PDF/Word)')
+                            ->url(fn ($record) => route('notulen.view', $record->id))
+                            ->openUrlInNewTab()
+                            ->color('success')
+                            ->weight('semibold')
                             ->visible(fn ($record) => filled($record?->file_path))
                             ->columnSpanFull(),
                     ]),
