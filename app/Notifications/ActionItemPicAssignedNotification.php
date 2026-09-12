@@ -3,16 +3,17 @@
 namespace App\Notifications;
 
 use App\Models\Meeting;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushChannel;
 use NotificationChannels\WebPush\WebPushMessage;
 
-class ActionItemPicAssignedNotification extends Notification implements ShouldQueue
+class ActionItemPicAssignedNotification extends Notification
 {
-    use Queueable;
+    // Sengaja TIDAK implements ShouldQueue: server produksi memakai QUEUE_CONNECTION=database
+    // tapi tidak ada queue worker yang berjalan, jadi notifikasi ber-ShouldQueue hanya
+    // menumpuk di tabel `jobs` dan tidak pernah benar-benar terkirim. Kirim langsung (sync)
+    // saat notify() dipanggil supaya pasti terkirim tanpa bergantung pada worker.
 
     public function __construct(
         public Meeting $meeting

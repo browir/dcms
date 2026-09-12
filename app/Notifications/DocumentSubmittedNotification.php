@@ -3,14 +3,14 @@
 namespace App\Notifications;
 
 use App\Models\Document;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class DocumentSubmittedNotification extends Notification implements ShouldQueue
+class DocumentSubmittedNotification extends Notification
 {
-    use Queueable;
+    // Sengaja TIDAK implements ShouldQueue: server produksi memakai QUEUE_CONNECTION=database
+    // tapi tidak ada queue worker yang berjalan, jadi notifikasi ber-ShouldQueue hanya
+    // menumpuk di tabel `jobs` dan tidak pernah benar-benar terkirim.
 
     public function __construct(
         public Document $document
@@ -18,7 +18,9 @@ class DocumentSubmittedNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail', 'database', \App\Notifications\Channels\N8nWhatsAppChannel::class];
+        // 'database' duluan supaya notifikasi bell tetap masuk meski 'mail' gagal
+        // (Laravel berhenti ke channel berikutnya kalau satu channel melempar exception).
+        return ['database', \App\Notifications\Channels\N8nWhatsAppChannel::class, 'mail'];
     }
 
     /**
