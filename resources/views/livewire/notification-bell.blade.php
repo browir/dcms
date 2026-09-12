@@ -196,13 +196,15 @@
 
         {{-- Header --}}
         <div class="nb-panel-head">
-            <div class="nb-panel-head-left">
-                <span class="nb-panel-head-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M5.25 9a6.75 6.75 0 0 1 13.5 0v.75c0 2.123.8 4.057 2.118 5.52a.75.75 0 0 1-.297 1.206c-1.544.57-3.16.99-4.831 1.243a3.75 3.75 0 1 1-7.48 0 24.585 24.585 0 0 1-4.831-1.244.75.75 0 0 1-.298-1.205A8.217 8.217 0 0 0 5.25 9.75V9Zm4.502 8.9a2.25 2.25 0 1 0 4.496 0 25.057 25.057 0 0 1-4.496 0Z" />
-                    </svg>
-                </span>
-                <span class="nb-panel-title">Notifikasi</span>
+            <div class="nb-panel-head-row nb-panel-head-row1">
+                <div class="nb-panel-head-left">
+                    <span class="nb-panel-head-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M5.25 9a6.75 6.75 0 0 1 13.5 0v.75c0 2.123.8 4.057 2.118 5.52a.75.75 0 0 1-.297 1.206c-1.544.57-3.16.99-4.831 1.243a3.75 3.75 0 1 1-7.48 0 24.585 24.585 0 0 1-4.831-1.244.75.75 0 0 1-.298-1.205A8.217 8.217 0 0 0 5.25 9.75V9Zm4.502 8.9a2.25 2.25 0 1 0 4.496 0 25.057 25.057 0 0 1-4.496 0Z" />
+                        </svg>
+                    </span>
+                    <span class="nb-panel-title">Notifikasi</span>
+                </div>
 
                 @if ($unreadCount > 0)
                 <span class="nb-panel-new-badge">
@@ -212,7 +214,7 @@
                 @endif
             </div>
 
-            <div class="nb-panel-head-right" style="display:flex;align-items:center;gap:6px;margin-left:auto;">
+            <div class="nb-panel-head-row nb-panel-head-row2">
                 @if ($unreadCount > 0)
                 <button
                     type="button"
@@ -607,7 +609,8 @@
             position: absolute;
             top: calc(100% + 10px);
             right: -4px;
-            width: 340px;
+            width: 368px;
+            max-width: calc(100vw - 24px);
             max-height: 440px;
             background: #ffffff;
             border: 1px solid rgba(0, 0, 0, 0.08);
@@ -686,17 +689,33 @@
         /* ── Panel Header ────────────────────────────────── */
         .nb-panel-head {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
+            flex-direction: column;
+            gap: 9px;
             padding: 12px 16px;
             border-bottom: 1px solid #f1f5f9;
             background: #fafcff;
+        }
+
+        .nb-panel-head-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nb-panel-head-row1 {
+            justify-content: space-between;
+        }
+
+        .nb-panel-head-row2 {
+            padding-top: 9px;
+            border-top: 1px dashed #e8edf3;
         }
 
         .nb-panel-head-left {
             display: flex;
             align-items: center;
             gap: 8px;
+            min-width: 0;
         }
 
         .nb-panel-head-icon {
@@ -728,6 +747,8 @@
             background: #f1f5f9;
             color: #475569;
             border: 1px solid #e2e8f0;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .nb-panel-new-badge-dot {
@@ -752,6 +773,8 @@
             border-radius: 6px;
             transition: background 0.2s ease, color 0.2s ease;
             font-family: inherit;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .nb-read-all-btn:hover {
@@ -1039,10 +1062,12 @@
             background: transparent;
             border: none;
             padding: 0;
+            margin-left: auto;
             cursor: pointer;
             user-select: none;
             outline: none;
             transition: opacity 0.2s ease;
+            flex-shrink: 0;
         }
 
         .nb-webpush-toggle:hover {
