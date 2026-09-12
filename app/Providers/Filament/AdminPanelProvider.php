@@ -205,26 +205,30 @@ class AdminPanelProvider extends PanelProvider
                                 max-height: 1.5rem !important;
                             }
 
-                            /* Make header action buttons compact, uniform & 2-column grid on mobile */
-                            .fi-header-actions,
-                            .fi-page-header-actions,
-                            .fi-ac-ctn,
+                            /* Make header action buttons compact, uniform & 2-column grid on mobile.
+                               NOTE: the actual button row lives in .fi-ac (nested INSIDE
+                               .fi-header-actions-ctn) — the outer ctn must stay a plain full-width
+                               block, otherwise a lone .fi-ac grid-item only fills half the row. */
                             .fi-header-actions-ctn,
-                            .fi-header header > div:last-child,
-                            .fi-header header .flex:has(.fi-btn),
-                            header .fi-ac-ctn,
-                            header .flex:has(.fi-btn) {
-                                display: grid !important;
-                                grid-template-columns: repeat(2, 1fr) !important;
-                                gap: 6px !important;
+                            .fi-header header > div:last-child {
+                                display: block !important;
                                 width: 100% !important;
                                 margin-top: 8px !important;
                             }
 
-                            .fi-header-actions .fi-btn,
-                            .fi-page-header-actions .fi-btn,
-                            .fi-ac-ctn .fi-btn,
+                            .fi-header-actions-ctn .fi-ac,
+                            .fi-ac,
+                            .fi-ac-ctn,
+                            header .fi-ac-ctn {
+                                display: grid !important;
+                                grid-template-columns: repeat(2, 1fr) !important;
+                                gap: 6px !important;
+                                width: 100% !important;
+                            }
+
                             .fi-header-actions-ctn .fi-btn,
+                            .fi-ac .fi-btn,
+                            .fi-ac-ctn .fi-btn,
                             header .fi-ac-ctn .fi-btn,
                             header .fi-btn,
                             .fi-header header button,
@@ -248,15 +252,15 @@ class AdminPanelProvider extends PanelProvider
                                 text-overflow: ellipsis !important;
                             }
 
-                            .fi-header-actions .fi-btn *,
-                            .fi-page-header-actions .fi-btn *,
+                            .fi-header-actions-ctn .fi-btn *,
+                            .fi-ac .fi-btn *,
                             .fi-ac-ctn .fi-btn *,
                             header .fi-btn * {
                                 font-size: 11px !important;
                             }
 
-                            .fi-header-actions .fi-btn svg,
-                            .fi-page-header-actions .fi-btn svg,
+                            .fi-header-actions-ctn .fi-btn svg,
+                            .fi-ac .fi-btn svg,
                             .fi-ac-ctn .fi-btn svg,
                             header .fi-btn svg {
                                 width: 13px !important;
