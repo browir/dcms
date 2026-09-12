@@ -128,16 +128,26 @@ class EditMeeting extends EditRecord
 
         $users = \App\Models\User::whereIn('id', $newPicIds)->get();
 
+        // Hanya user yang notify()-nya benar-benar tidak melempar exception yang ditandai
+        // "sudah dinotif". Kalau ditandai begitu saja tanpa syarat, PIC yang gagal terkirim
+        // (mis. exception di tengah proses) tidak akan pernah dicoba ulang lagi di simpan berikutnya.
+        $successfullyNotifiedIds = [];
+
         foreach ($users as $user) {
             try {
                 $user->notify(new \App\Notifications\ActionItemPicAssignedNotification($record));
+                $successfullyNotifiedIds[] = $user->id;
             } catch (\Throwable $e) {
                 Log::error('Gagal mengirim notifikasi PIC action plan ke '.$user->email.': '.$e->getMessage());
             }
         }
 
+        if (empty($successfullyNotifiedIds)) {
+            return;
+        }
+
         $record->updateQuietly([
-            'notified_pic_user_ids' => array_values(array_unique(array_merge($alreadyNotified, $currentPicIds))),
+            'notified_pic_user_ids' => array_values(array_unique(array_merge($alreadyNotified, $successfullyNotifiedIds))),
         ]);
     }
 
