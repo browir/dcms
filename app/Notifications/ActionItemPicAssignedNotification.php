@@ -20,7 +20,12 @@ class ActionItemPicAssignedNotification extends Notification implements ShouldQu
 
     public function via(object $notifiable): array
     {
-        return ['mail', 'database', WebPushChannel::class];
+        // Urutan sengaja: 'database' & webpush duluan, 'mail' terakhir.
+        // Laravel mengirim tiap channel berurutan dan TIDAK melanjutkan ke channel
+        // berikutnya kalau satu channel melempar exception — jadi kalau SMTP
+        // bermasalah dan 'mail' ditaruh di depan, notifikasi bell & web push
+        // ikut gagal terkirim juga meski keduanya sebenarnya tidak bermasalah.
+        return ['database', WebPushChannel::class, 'mail'];
     }
 
     public function toMail(object $notifiable): MailMessage

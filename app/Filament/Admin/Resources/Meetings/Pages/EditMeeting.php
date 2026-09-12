@@ -71,9 +71,11 @@ class EditMeeting extends EditRecord
 
         $mode = $this->data['mode_notulen'] ?? 'template';
         $plainContent = trim(strip_tags((string) $record->content));
+        $hasActionItems = ! empty($record->action_items);
 
-        // Hanya generate PDF bila: status Selesai + mode template + notulensi ada isinya.
-        if ($record->status !== 'completed' || $mode !== 'template' || $plainContent === '') {
+        // Hanya generate PDF bila: status Selesai + mode template + notulensi ada isinya
+        // (baik dari catatan tambahan maupun dari tabel Action Plan & PIC).
+        if ($record->status !== 'completed' || $mode !== 'template' || (! $hasActionItems && $plainContent === '')) {
             return;
         }
 

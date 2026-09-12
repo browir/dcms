@@ -123,50 +123,14 @@ class MeetingForm
                         })
                         ->required(),
 
-                    // TAMPIL JIKA PILIH TEMPLATE
+                    // TAMPIL JIKA PILIH TEMPLATE — catatan tambahan di luar tabel Action Plan & PIC.
+                    // Tidak lagi auto-generate tabel NO/PEMBAHASAN/ACTION PLAN karena sudah
+                    // digantikan oleh Repeater "Action Plan & PIC" di bawah (PIC terstruktur).
                     RichEditor::make('content')
-                        ->label('Content / Notulensi')
+                        ->label('Catatan Tambahan (Opsional)')
+                        ->placeholder('Catatan atau pembahasan lain di luar action plan, jika ada...')
                         ->columnSpanFull()
-                        ->visible(fn (string $operation, $get) => $operation !== 'create' && $get('mode_notulen') === 'template')
-                        ->afterStateHydrated(function ($set, $state, $record) {
-                            // Saat CREATE → state kosong, jangan isi apa pun
-                            if (! $record) {
-                                return;
-                            }
-
-                            // Cek apakah content SUDAH ada isi
-                            $plain = trim(strip_tags($state));
-
-                            if ($plain !== '') {
-                                // Sudah ada isi → jangan ganti, tampilkan apa adanya
-                                return;
-                            }
-
-                            // Content kosong → generate template otomatis
-                            $participantNames = $record->participants->pluck('name')->join(', ');
-
-                            $set(
-                                'content',
-                                "
-            <table width='100%' border='1' style='border-collapse: collapse;'>
-                <thead>
-                    <tr style='background-color: #f2f2f2;'>
-                        <th style='width: 30px;'>NO</th>
-                        <th style='width: 180px;'>PEMBAHASAN</th>
-                        <th>ACTION PLAN</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td style='text-align: center;'>1</td>
-                        <td></td>
-                        <td></td>
-                    </tr>
-                </tbody>
-            </table>
-        "
-                            );
-                        }),
+                        ->visible(fn (string $operation, $get) => $operation !== 'create' && $get('mode_notulen') === 'template'),
 
                     // ACTION PLAN & PIC — terpisah dari rich editor agar PIC bisa dipilih
                     // langsung dari data User (bukan teks bebas) dan bisa dikirimi notifikasi.
