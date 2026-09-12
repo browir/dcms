@@ -6,6 +6,7 @@ use App\Models\User;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -153,13 +154,11 @@ class MeetingForm
                         <th style='width: 30px;'>NO</th>
                         <th style='width: 180px;'>PEMBAHASAN</th>
                         <th>ACTION PLAN</th>
-                        <th style='width: 80px;'>PIC</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
                         <td style='text-align: center;'>1</td>
-                        <td></td>
                         <td></td>
                         <td></td>
                     </tr>
@@ -168,6 +167,68 @@ class MeetingForm
         "
                             );
                         }),
+
+                    // ACTION PLAN & PIC — terpisah dari rich editor agar PIC bisa dipilih
+                    // langsung dari data User (bukan teks bebas) dan bisa dikirimi notifikasi.
+                    Repeater::make('action_items')
+                        ->label('Action Plan & PIC')
+                        ->helperText('Tambahkan action plan hasil rapat beserta PIC (penanggung jawab). PIC yang dipilih akan menerima notifikasi setelah disimpan.')
+                        ->visible(fn (string $operation, $get) => $operation !== 'create' && $get('mode_notulen') === 'template')
+                        ->columnSpanFull()
+                        ->addActionLabel('Tambah Action Plan')
+                        ->reorderableWithButtons()
+                        ->collapsible()
+                        ->itemLabel(fn (array $state): ?string => filled($state['action_plan'] ?? null)
+                            ? \Illuminate\Support\Str::limit($state['action_plan'], 60)
+                            : 'Action Plan Baru')
+                        ->schema([
+                            Textarea::make('pembahasan')
+                                ->label('Pembahasan')
+                                ->rows(2)
+                                ->columnSpanFull(),
+                            Textarea::make('action_plan')
+                                ->label('Action Plan')
+                                ->rows(2)
+                                ->columnSpanFull(),
+                            Select::make('pic_ids')
+                                ->label('PIC (Penanggung Jawab)')
+                                ->helperText('Peserta rapat ditampilkan lebih dulu. Gunakan pencarian untuk memilih user lain di luar peserta.')
+                                ->multiple()
+                                ->searchable()
+                                ->preload()
+                                ->columnSpanFull()
+                                ->prefixIcon('heroicon-m-user')
+                                ->options(function ($get) {
+                                    $participantIds = (array) $get('../../participants');
+
+                                    if (empty($participantIds)) {
+                                        return [];
+                                    }
+
+                                    return User::with(['company', 'department', 'unit'])
+                                        ->whereIn('id', $participantIds)
+                                        ->orderBy('name')
+                                        ->get()
+                                        ->mapWithKeys(fn ($u) => [$u->id => self::picOptionLabel($u)]);
+                                })
+                                ->getSearchResultsUsing(function (string $search, $get) {
+                                    $participantIds = (array) $get('../../participants');
+
+                                    return User::with(['company', 'department', 'unit'])
+                                        ->active()
+                                        ->where('name', 'like', "%{$search}%")
+                                        ->orderBy('name')
+                                        ->limit(50)
+                                        ->get()
+                                        // Peserta rapat diprioritaskan tampil di atas hasil pencarian global lainnya.
+                                        ->sortByDesc(fn ($u) => in_array($u->id, $participantIds, true))
+                                        ->mapWithKeys(fn ($u) => [$u->id => self::picOptionLabel($u)]);
+                                })
+                                ->getOptionLabelsUsing(fn (array $values) => User::with(['company', 'department', 'unit'])
+                                    ->whereIn('id', $values)
+                                    ->get()
+                                    ->mapWithKeys(fn ($u) => [$u->id => self::picOptionLabel($u)])),
+                        ]),
 
                     // TAMPIL JIKA PILIH UPLOAD
                     FileUpload::make('file_path')
@@ -567,6 +628,21 @@ class MeetingForm
             Hidden::make('unit_id')->default(fn () => auth()->user()->unit_id),
 
         ]);
+    }
+
+    /**
+     * Label user untuk opsi PIC — menyertakan perusahaan/departemen/unit agar
+     * nama yang sama di unit bisnis berbeda tidak tertukar.
+     */
+    protected static function picOptionLabel(User $user): string
+    {
+        $parts = array_filter([
+            $user->company?->name,
+            $user->department?->name,
+            $user->unit?->name,
+        ]);
+
+        return $parts ? $user->name.' — '.implode(' / ', $parts) : $user->name;
     }
 
     /**

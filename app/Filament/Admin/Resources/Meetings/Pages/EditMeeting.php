@@ -67,6 +67,8 @@ class EditMeeting extends EditRecord
     {
         $record = $this->record->refresh();
 
+        $this->notifyNewActionItemPics($record);
+
         $mode = $this->data['mode_notulen'] ?? 'template';
         $plainContent = trim(strip_tags((string) $record->content));
 
@@ -97,6 +99,44 @@ class EditMeeting extends EditRecord
                 ->persistent()
                 ->send();
         }
+    }
+
+    /**
+     * Kirim notifikasi ke user yang baru ditunjuk sebagai PIC action plan.
+     *
+     * Satu user bisa menjadi PIC di beberapa action item dalam satu rapat yang sama —
+     * notifikasi tetap cukup dikirim sekali (dideduplikasi lewat `notified_pic_user_ids`,
+     * bukan hanya per-submit, jadi menyimpan ulang rapat tanpa perubahan PIC tidak
+     * mengirim notifikasi berulang).
+     */
+    protected function notifyNewActionItemPics(Meeting $record): void
+    {
+        $currentPicIds = $record->uniqueActionItemPicUserIds();
+
+        if (empty($currentPicIds)) {
+            return;
+        }
+
+        $alreadyNotified = is_array($record->notified_pic_user_ids) ? $record->notified_pic_user_ids : [];
+        $newPicIds = array_diff($currentPicIds, $alreadyNotified);
+
+        if (empty($newPicIds)) {
+            return;
+        }
+
+        $users = \App\Models\User::whereIn('id', $newPicIds)->get();
+
+        foreach ($users as $user) {
+            try {
+                $user->notify(new \App\Notifications\ActionItemPicAssignedNotification($record));
+            } catch (\Throwable $e) {
+                Log::error('Gagal mengirim notifikasi PIC action plan ke '.$user->email.': '.$e->getMessage());
+            }
+        }
+
+        $record->updateQuietly([
+            'notified_pic_user_ids' => array_values(array_unique(array_merge($alreadyNotified, $currentPicIds))),
+        ]);
     }
 
     /**
@@ -131,6 +171,7 @@ class EditMeeting extends EditRecord
         $notulisName = $record->notulis?->name ?? '-';
 
         $contentFromEditor = (string) $record->content;
+        $actionItemsHtml = $this->buildActionItemsHtml($record);
 
         // Lampiran (Foto/Dokumentasi) — dibaca dari disk "public", tiap gambar dibungkus try/catch
         $attachmentsHtml = '';
@@ -276,12 +317,65 @@ class EditMeeting extends EditRecord
     </table>
 
     <div class='content-main'>
-        ".$contentFromEditor.'
+        ".$contentFromEditor.$actionItemsHtml.'
     </div>
 
     '.$attachmentsHtml.'
 </body>
 </html>
 ';
+    }
+
+    /**
+     * Render tabel Action Plan & PIC (disimpan terstruktur di kolom `action_items`)
+     * sebagai HTML untuk disisipkan ke PDF notulensi.
+     */
+    protected function buildActionItemsHtml(Meeting $record): string
+    {
+        $items = is_array($record->action_items) ? $record->action_items : [];
+
+        if (empty($items)) {
+            return '';
+        }
+
+        $picNames = \App\Models\User::with(['company', 'department', 'unit'])
+            ->whereIn('id', $record->uniqueActionItemPicUserIds())
+            ->get()
+            ->mapWithKeys(function ($u) {
+                $parts = array_filter([$u->company?->name, $u->department?->name, $u->unit?->name]);
+                $label = $parts ? $u->name.' — '.implode(' / ', $parts) : $u->name;
+
+                return [$u->id => $label];
+            });
+
+        $rows = '';
+        foreach (array_values($items) as $index => $item) {
+            $pembahasan = e((string) ($item['pembahasan'] ?? ''));
+            $actionPlan = e((string) ($item['action_plan'] ?? ''));
+            $picLabel = collect((array) ($item['pic_ids'] ?? []))
+                ->map(fn ($id) => $picNames->get((int) $id, '-'))
+                ->implode(', ');
+
+            $rows .= "<tr>
+                <td style='text-align:center;'>".($index + 1)."</td>
+                <td>{$pembahasan}</td>
+                <td>{$actionPlan}</td>
+                <td>".e($picLabel ?: '-').'</td>
+            </tr>';
+        }
+
+        return "
+            <table width='100%' border='1' style='border-collapse: collapse; margin-top: 10px;'>
+                <thead>
+                    <tr style='background-color: #f2f2f2;'>
+                        <th style='width: 30px;'>NO</th>
+                        <th style='width: 180px;'>PEMBAHASAN</th>
+                        <th>ACTION PLAN</th>
+                        <th style='width: 100px;'>PIC</th>
+                    </tr>
+                </thead>
+                <tbody>{$rows}</tbody>
+            </table>
+        ";
     }
 }

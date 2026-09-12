@@ -14,13 +14,15 @@ class Meeting extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title', 'doc_number', 'agenda', 'content', 'file_path', 'attachments', 'date_time', 'end_time', 'location', 'meeting_location_id', 'status', 'company_id', 'department_id', 'unit_id', 'created_by', 'notulis_id', 'reminder_sent_at'];
+    protected $fillable = ['title', 'doc_number', 'agenda', 'content', 'action_items', 'notified_pic_user_ids', 'file_path', 'attachments', 'date_time', 'end_time', 'location', 'meeting_location_id', 'status', 'company_id', 'department_id', 'unit_id', 'created_by', 'notulis_id', 'reminder_sent_at'];
 
     protected $casts = [
         'date_time' => 'datetime',
         'end_time' => 'datetime',
         'reminder_sent_at' => 'datetime',
         'attachments' => 'array',
+        'action_items' => 'array',
+        'notified_pic_user_ids' => 'array',
     ];
 
     public function getMeetingDateAttribute()
@@ -66,6 +68,26 @@ class Meeting extends Model
     public function getParticipantNamesAttribute()
     {
         return $this->participants->pluck('name')->implode(', ');
+    }
+
+    /**
+     * ID user unik yang ditugaskan sebagai PIC pada salah satu action item notulensi.
+     * Satu user yang menjadi PIC di beberapa action item tetap hanya muncul sekali,
+     * sehingga notifikasi ke user tsb cukup dikirim sekali per rapat.
+     *
+     * @return int[]
+     */
+    public function uniqueActionItemPicUserIds(): array
+    {
+        $items = is_array($this->action_items) ? $this->action_items : [];
+
+        return collect($items)
+            ->flatMap(fn ($item) => (array) ($item['pic_ids'] ?? []))
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**
