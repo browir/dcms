@@ -177,7 +177,7 @@
                             {{-- ===== END DETAIL CARD ===== --}}
 
                             <p style="font-size: 13px; color: #94a3b8; text-align: center; margin: 0 0 24px 0;" class="txt-hint">
-                                Harap konfirmasi kehadiran Anda melalui portal admin.
+                                Silakan cek detail lengkap rapat melalui portal admin.
                             </p>
 
                             {{-- CTA Button --}}

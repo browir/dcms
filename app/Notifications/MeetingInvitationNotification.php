@@ -49,7 +49,7 @@ class MeetingInvitationNotification extends Notification
             ->line('**Tanggal:** '.($this->meeting->meeting_date ? $this->meeting->meeting_date->format('d F Y, H:i') : '-'))
             ->line('**Lokasi:** '.($this->meeting->location ?? 'Online'))
             ->action('Lihat Detail Rapat', url('/admin/meetings/'.$this->meeting->id))
-            ->line('Silakan konfirmasi kehadiran Anda melalui sistem.')
+            ->line('Silakan cek detail lengkap rapat melalui sistem.')
             ->salutation('Terima kasih');
     }
 
