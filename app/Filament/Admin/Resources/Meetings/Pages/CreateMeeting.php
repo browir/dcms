@@ -79,26 +79,11 @@ class CreateMeeting extends CreateRecord
     protected function afterCreate(): void
     {
         $meeting = $this->record;
-        $creatorId = auth()->id();
 
-        // Kirim notifikasi ke creator sebagai konfirmasi di bell
-        if ($creatorId) {
-            $creator = \App\Models\User::find($creatorId);
-            if ($creator) {
-                try {
-                    $creator->notify(new \App\Notifications\MeetingInvitationNotification($meeting));
-                } catch (\Throwable $e) {
-                    logger()->error('Failed sending notification to creator: '.$e->getMessage());
-                }
-            }
-        }
-
-        // Kirim notifikasi ke setiap peserta (kecuali creator agar tidak dobel)
+        // Creator tidak otomatis diberi notifikasi karena tidak otomatis
+        // menjadi peserta. Jika creator ingin diberi tahu, ia harus
+        // menambahkan dirinya sendiri ke daftar peserta.
         foreach ($meeting->participants as $user) {
-            if ($user->id === $creatorId) {
-                continue; // sudah dikirim di atas
-            }
-
             try {
                 Mail::to($user->email)->send(new MeetingInvitationMail($meeting));
             } catch (\Throwable $e) {
