@@ -236,6 +236,7 @@ class MeetingLocationResource extends Resource
                 EditAction::make()->button()->outlined()->size('xs'),
                 DeleteAction::make()->button()->outlined()->size('xs'),
             ])
+            ->filtersFormMaxHeight('400px')
             ->emptyStateIcon('heroicon-o-map-pin')
             ->emptyStateHeading('Belum ada lokasi rapat')
             ->emptyStateDescription('Tambahkan lokasi rapat yang sering digunakan.')
