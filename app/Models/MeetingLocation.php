@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -77,6 +78,23 @@ class MeetingLocation extends Model
             ->with('creator')
             ->latest('date_time')
             ->first();
+    }
+
+    /**
+     * Ambil rapat (jika ada) yang membuat lokasi ini terpakai pada rentang waktu tertentu.
+     * Menggunakan logika bentrok yang sama dengan validasi form pemesanan rapat.
+     */
+    public function meetingAt(Carbon $start, ?Carbon $end = null): ?Meeting
+    {
+        return \App\Models\Meeting::locationConflict($this->id, $this->name, $start, $end);
+    }
+
+    /**
+     * Cek apakah lokasi ini sedang/akan terpakai pada rentang waktu tertentu.
+     */
+    public function isInUseAt(Carbon $start, ?Carbon $end = null): bool
+    {
+        return $this->meetingAt($start, $end) !== null;
     }
 
     /**
