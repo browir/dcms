@@ -4,6 +4,7 @@
 
         {{-- Card 1: Rapat Hari Ini --}}
         <div class="mts-card card-full-width">
+            <div class="mts-accent-bar"></div>
             <div class="mts-card-body">
                 <div class="mts-card-head">
                     <div>
@@ -22,6 +23,7 @@
 
         {{-- Card 2: Undangan Rapat --}}
         <div class="mts-card">
+            <div class="mts-accent-bar"></div>
             <div class="mts-card-body">
                 <div class="mts-card-head">
                     <div>
@@ -40,6 +42,7 @@
 
         {{-- Card 3: Rapat Mendatang --}}
         <div class="mts-card">
+            <div class="mts-accent-bar"></div>
             <div class="mts-card-body">
                 <div class="mts-card-head">
                     <div>
@@ -59,73 +62,86 @@
     </div>
 </div>
 <style>
-.mts-wrap {
-    width: 100%;
-    box-sizing: border-box;
-}
+/* ─── UNIFIED CARD SYSTEM ──────────────────────────────────── */
+.mts-wrap { width: 100%; box-sizing: border-box; }
+
 .mts-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: 1rem;
     width: 100%;
     box-sizing: border-box;
 }
-.card-full-width {
-    grid-column: span 2;
-}
+
+.card-full-width { grid-column: span 2; }
+
 @media (min-width: 1024px) {
     .mts-grid { grid-template-columns: repeat(3, 1fr); }
     .card-full-width { grid-column: span 1; }
 }
+
 .mts-card {
-    background: #ffffff;
-    border: 1.5px solid rgba(0, 0, 0, 0.055);
-    border-radius: 16px;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.07);
+    border-radius: 1rem;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
     min-width: 0;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.05);
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-                box-shadow 0.25s ease,
-                border-color 0.25s ease,
-                background-color 0.25s ease;
+    transition:
+        transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.28s ease,
+        border-color 0.28s ease;
 }
+
 .mts-card:hover {
     transform: translateY(-4px);
-    background-color: #fafcff;
-    border-color: rgba(59, 130, 246, 0.25);
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.06), 0 8px 24px rgba(30, 64, 175, 0.10);
+    border-color: rgba(13, 148, 136, 0.22);
+    box-shadow: 0 0 0 3px rgba(13,148,136,0.06), 0 8px 24px rgba(13,148,136,0.12);
 }
+
+/* Teal accent bar — same across all cards */
+.mts-accent-bar {
+    height: 3px;
+    background: linear-gradient(90deg, #0d9488, #2dd4bf);
+    flex-shrink: 0;
+}
+
 .mts-card-body {
-    padding: 16px 18px;
+    padding: 1.1rem 1.25rem;
     flex: 1;
     min-width: 0;
 }
+
 .mts-card-head {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 8px;
 }
+
 .mts-num {
     font-size: 28px;
     font-weight: 800;
     line-height: 1;
     letter-spacing: -0.02em;
-    color: #1e293b;
+    color: #0f172a;
     transition: color 0.25s ease;
 }
+
+.mts-card:hover .mts-num { color: #0d9488; }
+
 .mts-label {
     font-size: 10.5px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
     color: #64748b;
-    margin-top: 5px;
-    transition: color 0.25s ease;
+    margin-top: 4px;
 }
+
 .mts-sub {
     font-size: 10px;
     color: #94a3b8;
@@ -133,24 +149,24 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: color 0.25s ease;
 }
+
 .mts-icon {
     flex-shrink: 0;
     width: 34px;
     height: 34px;
-    border-radius: 10px;
+    border-radius: 9px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(59, 130, 246, 0.1);
-    color: #2563eb;
-    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.mts-card:hover .mts-icon {
-    transform: scale(1.15);
+    background: rgba(13, 148, 136, 0.1);
+    color: #0d9488;
+    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+.mts-card:hover .mts-icon { transform: scale(1.15) rotate(6deg); }
+
+/* ═══ MOBILE — DO NOT MODIFY ══════════════════════════════════ */
 @media (max-width: 768px) {
     .mts-card-body { padding: 12px; }
     .mts-num { font-size: 20px; }
@@ -159,5 +175,6 @@
     .mts-icon { width: 24px; height: 24px; border-radius: 6px; }
     .mts-grid { gap: 8px; }
 }
+/* ═══════════════════════════════════════════════════════════════ */
 </style>
 </x-filament-widgets::widget>
