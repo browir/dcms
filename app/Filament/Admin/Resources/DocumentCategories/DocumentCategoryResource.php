@@ -19,7 +19,7 @@ class DocumentCategoryResource extends Resource
 {
     protected static ?string $model = DocumentCategory::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFolder;
+    protected static string|BackedEnum|null $navigationIcon = null;
 
     protected static string|UnitEnum|null $navigationGroup = 'Data Master';
 

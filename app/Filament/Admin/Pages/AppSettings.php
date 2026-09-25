@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 
 class AppSettings extends Page
 {
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-photo';
+    protected static string|\BackedEnum|null $navigationIcon = null;
 
     protected static string|\UnitEnum|null $navigationGroup = 'Pengaturan';
 

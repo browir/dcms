@@ -1,4 +1,4 @@
-<x-filament-widgets::widget>
+﻿<x-filament-widgets::widget>
 <div class="mts-wrap">
     <div class="mts-grid">
 
@@ -98,14 +98,14 @@
 
 .mts-card:hover {
     transform: translateY(-4px);
-    border-color: rgba(13, 148, 136, 0.22);
-    box-shadow: 0 0 0 3px rgba(13,148,136,0.06), 0 8px 24px rgba(13,148,136,0.12);
+    border-color: rgba(37, 99, 235, 0.22);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.06), 0 8px 24px rgba(37,99,235,0.12);
 }
 
 /* Teal accent bar — same across all cards */
 .mts-accent-bar {
     height: 3px;
-    background: linear-gradient(90deg, #0d9488, #2dd4bf);
+    background: linear-gradient(90deg, #2563eb, #3b82f6);
     flex-shrink: 0;
 }
 
@@ -131,7 +131,7 @@
     transition: color 0.25s ease;
 }
 
-.mts-card:hover .mts-num { color: #0d9488; }
+.mts-card:hover .mts-num { color: #2563eb; }
 
 .mts-label {
     font-size: 10.5px;
@@ -159,8 +159,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(13, 148, 136, 0.1);
-    color: #0d9488;
+    background: rgba(37, 99, 235, 0.1);
+    color: #2563eb;
     transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 

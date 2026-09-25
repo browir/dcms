@@ -87,6 +87,21 @@ $isMenuActive = false; // menu button is never "active" like a page
         .fi-page-main-sub-navigation-mobile-menu-render-hook-ctn {
             display: none !important;
         }
+
+        /* ── TOPBAR CONTENT ALIGNMENT (Desktop Only) ────────────────────────────
+           Sejajarkan konten navbar (logo, menu, search, profil) dengan tepi
+           konten dashboard di bawahnya.
+
+           Dari compiled CSS Filament:
+             fi-topbar : padding-inline: calc(var(--spacing) * 4)  ← hanya 1rem
+             fi-main   : padding-inline: calc(var(--spacing) * 8)  ← 2rem di desktop
+
+           Override harus gunakan padding-INLINE (bukan padding-left/right) dan
+           nilai yang identik dengan fi-main@lg agar alignment benar-benar lurus.
+        ── */
+        .fi-topbar {
+            padding-inline: calc(var(--spacing) * 8) !important;  /* identik fi-main@lg */
+        }
     }
 
     @media (max-width: 1023.98px) {

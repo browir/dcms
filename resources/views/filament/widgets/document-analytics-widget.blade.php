@@ -1,17 +1,17 @@
-<x-filament-widgets::widget>
+﻿<x-filament-widgets::widget>
 <div class="dcms-analytics-wrap">
 
     {{-- KPI Row --}}
     <div class="dcms-kpi-row">
 
-        <div class="dcms-kpi-card dcms-kpi--emerald">
+        <div class="dcms-kpi-card">
             <div class="dcms-kpi-header">
                 <div class="dcms-kpi-icon-wrap">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
                 </div>
             </div>
             <div class="dcms-kpi-body">
-                <div class="dcms-kpi-value">{{ $avgApprovalDays !== null ? $avgApprovalDays : '—' }}</div>
+                <div class="dcms-kpi-value">{{ $avgApprovalDays !== null ? $avgApprovalDays : '\u2014' }}</div>
                 <div class="dcms-kpi-label">{{ $avgApprovalDays !== null ? 'Hari Rata-rata Approval' : 'Belum ada data' }}</div>
             </div>
             <div class="dcms-kpi-footer">
@@ -19,7 +19,7 @@
             </div>
         </div>
 
-        <div class="dcms-kpi-card dcms-kpi--blue">
+        <div class="dcms-kpi-card">
             <div class="dcms-kpi-header">
                 <div class="dcms-kpi-icon-wrap">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
@@ -35,7 +35,7 @@
         </div>
 
         @php $thisMonthCount = collect($monthlyTrend)->last()['count'] ?? 0; @endphp
-        <div class="dcms-kpi-card dcms-kpi--indigo">
+        <div class="dcms-kpi-card">
             <div class="dcms-kpi-header">
                 <div class="dcms-kpi-icon-wrap">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 9v7.5"/></svg>
@@ -146,8 +146,8 @@
             <div class="dcms-creator-list">
                 @forelse($topCreators as $i => $creator)
                 @php
-                    $rankColors = ['#f59e0b','#94a3b8','#92400e','#6366f1','#10b981'];
-                    $rankBg = $rankColors[$i] ?? '#94a3b8';
+                    $rankColors = ['#2563eb','#0f766e','#5eead4','#0f172a','#3b82f6'];
+                    $rankBg = $rankColors[$i] ?? '#2563eb';
                 @endphp
                 <div class="dcms-creator-row">
                     <div class="dcms-creator-rank" style="background:{{ $rankBg }};">{{ $i + 1 }}</div>
@@ -182,10 +182,10 @@
 
 .dcms-kpi-card {
     background: #ffffff;
-    border-radius: 1.25rem;
+    border-radius: 1rem;
     padding: 1.5rem;
-    border: 1px solid rgba(226, 232, 240, 0.8);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.07);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.05);
     position: relative;
     overflow: hidden;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -196,8 +196,8 @@
 
 .dcms-kpi-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 28px -6px rgba(15, 23, 42, 0.1), 0 8px 12px -6px rgba(15, 23, 42, 0.05);
-    border-color: rgba(203, 213, 225, 0.9);
+    border-color: rgba(37,99,235,0.22);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.06), 0 8px 24px rgba(37,99,235,0.12);
 }
 
 .dcms-kpi-header {
@@ -213,33 +213,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    background: rgba(37, 99, 235, 0.1);
+    color: #2563eb;
     transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .dcms-kpi-card:hover .dcms-kpi-icon-wrap {
     transform: scale(1.1) rotate(5deg);
 }
-
-.dcms-kpi--emerald .dcms-kpi-icon-wrap {
-    background: linear-gradient(135deg, #10b981 0%, #047857 100%);
-    color: #ffffff;
-    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
-}
-.dcms-kpi--emerald .dcms-kpi-value { color: #059669; }
-
-.dcms-kpi--blue .dcms-kpi-icon-wrap {
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-    color: #ffffff;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-}
-.dcms-kpi--blue .dcms-kpi-value { color: #1d4ed8; }
-
-.dcms-kpi--indigo .dcms-kpi-icon-wrap {
-    background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
-    color: #ffffff;
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-}
-.dcms-kpi--indigo .dcms-kpi-value { color: #4338ca; }
 
 
 .dcms-kpi-body {
@@ -252,7 +233,11 @@
     font-weight: 800;
     line-height: 1.1;
     letter-spacing: -0.03em;
+    color: #0f172a;
+    transition: color 0.25s ease;
 }
+
+.dcms-kpi-card:hover .dcms-kpi-value { color: #2563eb; }
 
 .dcms-kpi-label {
     font-size: 0.95rem;
@@ -280,17 +265,18 @@
 
 .dcms-chart-panel {
     background: #ffffff;
-    border-radius: 1.25rem;
+    border-radius: 1rem;
     padding: 1.5rem;
-    border: 1px solid rgba(226, 232, 240, 0.8);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.07);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.05);
     transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
 }
 
 .dcms-chart-panel:hover {
-    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08);
+    border-color: rgba(37,99,235,0.22);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.06), 0 8px 24px rgba(37,99,235,0.12);
 }
 
 .dcms-panel-title {
@@ -310,8 +296,8 @@
     width: 2rem;
     height: 2rem;
     border-radius: 0.6rem;
-    background: #f1f5f9;
-    color: #64748b;
+    background: rgba(37, 99, 235, 0.08);
+    color: #2563eb;
 }
 
 /* ── Bar Chart ───────────────────────────── */
@@ -343,21 +329,21 @@
 }
 .dcms-bar-col:hover .dcms-bar-count {
     opacity: 1;
-    color: #3b82f6;
+    color: #2563eb;
 }
 .dcms-bar-fill {
     width: 100%;
     max-width: 40px;
     border-radius: 6px 6px 0 0;
-    background: linear-gradient(180deg, #93c5fd 0%, #bfdbfe 100%);
+    background: rgba(37, 99, 235, 0.25);
     min-height: 6px;
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .dcms-bar-col:hover .dcms-bar-fill {
-    background: linear-gradient(180deg, #3b82f6 0%, #60a5fa 100%);
+    background: linear-gradient(180deg, #2563eb 0%, #3b82f6 100%);
     transform: scaleY(1.05);
     transform-origin: bottom;
-    box-shadow: 0 -4px 12px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 -4px 12px rgba(37, 99, 235, 0.3);
 }
 .dcms-bar-label {
     font-size: 0.75rem;
@@ -395,7 +381,7 @@
 }
 .dcms-dept-count { font-size: 0.9rem; font-weight: 800; color: #0f172a; }
 .dcms-dept-bar-wrap { background: #f1f5f9; border-radius: 999px; height: 6px; overflow: hidden; }
-.dcms-dept-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #6366f1, #3b82f6); transition: width 1s ease-out; }
+.dcms-dept-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #2563eb, #3b82f6); transition: width 1s ease-out; }
 
 /* ── Creator List ────────────────────────── */
 .dcms-creator-list { display: flex; flex-direction: column; gap: 0.75rem; }
@@ -420,7 +406,7 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .dcms-creator-badge {
-    background: rgba(99,102,241,0.1); color: #4338ca;
+    background: rgba(37,99,235,0.1); color: #2563eb;
     padding: 0.3rem 0.75rem; border-radius: 999px;
     font-size: 0.75rem; font-weight: 800; flex-shrink: 0;
 }

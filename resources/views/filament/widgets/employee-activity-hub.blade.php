@@ -10,11 +10,162 @@
 
     <div class="eah-shell" x-data="{ tab: 'focus' }">
         <div class="eah-hero eah-animate" style="--eah-delay: 0ms;">
-            {{-- Floating geometric background shapes — clearly animated --}}
-            <span class="eah-geo eah-geo--circle-lg" aria-hidden="true"></span>
-            <span class="eah-geo eah-geo--square-rnd" aria-hidden="true"></span>
-            <span class="eah-geo eah-geo--blob" aria-hidden="true"></span>
-            <span class="eah-geo eah-geo--ring" aria-hidden="true"></span>
+            {{-- Particle network canvas — desktop only, pauses when tab hidden --}}
+            <canvas 
+                class="eah-particle-canvas" 
+                aria-hidden="true"
+                x-data="{
+                    init() {
+                        if (window.matchMedia && window.matchMedia('(max-width: 767px)').matches) return;
+                        const canvas = this.$el;
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) return;
+                        
+                        let W = 0, H = 0, animId = null, particles = [];
+
+                        const CFG = {
+                            particleCount : 65,
+                            speedMin      : 0.15,
+                            speedMax      : 0.35,
+                            dotRadius     : 2.0,
+                            dotOpacity    : 0.85,
+                            lineOpacity   : 0.35,
+                            connectDist   : 140,
+                            mouseDist     : 180, // Interactivity distance for mouse
+                            dotColor      : '255, 255, 255', // Pure white for maximum contrast on blue
+                            lineColor     : '255, 255, 255',
+                        };
+
+                        const mouse = { x: null, y: null };
+
+                        const resize = () => {
+                            const hero = canvas.parentElement;
+                            if (!hero) return;
+                            W = canvas.width = hero.offsetWidth;
+                            H = canvas.height = hero.offsetHeight;
+                        };
+
+                        const mkParticle = () => {
+                            const angle = Math.random() * Math.PI * 2;
+                            const speed = CFG.speedMin + Math.random() * (CFG.speedMax - CFG.speedMin);
+                            return {
+                                x: Math.random() * W,
+                                y: Math.random() * H,
+                                vx: Math.cos(angle) * speed,
+                                vy: Math.sin(angle) * speed,
+                            };
+                        };
+
+                        const initParticles = () => {
+                            particles = [];
+                            for (let i = 0; i < CFG.particleCount; i++) particles.push(mkParticle());
+                        };
+
+                        const draw = () => {
+                            ctx.clearRect(0, 0, W, H);
+                            
+                            // 1. Update and draw particles
+                            for (const p of particles) {
+                                p.x += p.vx; p.y += p.vy;
+                                if (p.x < 0) { p.x = 0; p.vx *= -1; }
+                                else if (p.x > W) { p.x = W; p.vx *= -1; }
+                                
+                                if (p.y < 0) { p.y = 0; p.vy *= -1; }
+                                else if (p.y > H) { p.y = H; p.vy *= -1; }
+                            }
+                            
+                            // 2. Draw connections between particles
+                            const dist2 = CFG.connectDist * CFG.connectDist;
+                            const mouseDist2 = CFG.mouseDist * CFG.mouseDist;
+
+                            // Draw lines between particles
+                            for (let i = 0; i < particles.length; i++) {
+                                for (let j = i + 1; j < particles.length; j++) {
+                                    const dx = particles[i].x - particles[j].x;
+                                    const dy = particles[i].y - particles[j].y;
+                                    const d2 = dx * dx + dy * dy;
+                                    
+                                    if (d2 < dist2) {
+                                        const fade = 1 - Math.sqrt(d2) / CFG.connectDist;
+                                        ctx.beginPath();
+                                        ctx.strokeStyle = 'rgba(' + CFG.lineColor + ', ' + (CFG.lineOpacity * fade).toFixed(3) + ')';
+                                        ctx.lineWidth = 0.8;
+                                        ctx.moveTo(particles[i].x, particles[i].y);
+                                        ctx.lineTo(particles[j].x, particles[j].y);
+                                        ctx.stroke();
+                                    }
+                                }
+
+                                // Interactive: Draw line from particle to mouse if nearby
+                                if (mouse.x !== null && mouse.y !== null) {
+                                    const mdx = particles[i].x - mouse.x;
+                                    const mdy = particles[i].y - mouse.y;
+                                    const md2 = mdx * mdx + mdy * mdy;
+
+                                    if (md2 < mouseDist2) {
+                                        // Mouse connection is slightly stronger/more visible
+                                        const mFade = 1 - Math.sqrt(md2) / CFG.mouseDist;
+                                        ctx.beginPath();
+                                        ctx.strokeStyle = 'rgba(' + CFG.dotColor + ', ' + (CFG.lineOpacity * 1.5 * mFade).toFixed(3) + ')';
+                                        ctx.lineWidth = 1.0;
+                                        ctx.moveTo(particles[i].x, particles[i].y);
+                                        ctx.lineTo(mouse.x, mouse.y);
+                                        ctx.stroke();
+                                    }
+                                }
+                            }
+                            
+                            // 3. Draw dot heads
+                            ctx.fillStyle = 'rgba(' + CFG.dotColor + ', ' + CFG.dotOpacity + ')';
+                            for (const p of particles) {
+                                ctx.beginPath();
+                                ctx.arc(p.x, p.y, CFG.dotRadius, 0, Math.PI * 2);
+                                ctx.fill();
+                            }
+                        };
+
+                        const loop = () => {
+                            draw();
+                            animId = requestAnimationFrame(loop);
+                        };
+
+                        const start = () => { if (!animId) animId = requestAnimationFrame(loop); };
+                        const stop = () => { if (animId) { cancelAnimationFrame(animId); animId = null; } };
+
+                        document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
+
+                        // Setup mouse interaction
+                        const hero = canvas.parentElement;
+                        if (hero) {
+                            hero.addEventListener('mousemove', (e) => {
+                                const rect = hero.getBoundingClientRect();
+                                mouse.x = e.clientX - rect.left;
+                                mouse.y = e.clientY - rect.top;
+                            });
+                            hero.addEventListener('mouseleave', () => {
+                                mouse.x = null;
+                                mouse.y = null;
+                            });
+                        }
+
+                        // Use setTimeout to ensure DOM layout is completely painted before taking measurements
+                        setTimeout(() => {
+                            resize();
+                            initParticles();
+                            start();
+                        }, 50);
+
+                        let resizeTimer = null;
+                        window.addEventListener('resize', () => {
+                            clearTimeout(resizeTimer);
+                            resizeTimer = setTimeout(() => {
+                                if (window.matchMedia('(max-width: 767px)').matches) { stop(); return; }
+                                stop(); resize(); initParticles(); start();
+                            }, 200);
+                        });
+                    }
+                }"
+            ></canvas>
 
             <div class="eah-hero-content">
                 {{-- "Dasbor" label replaces the Filament page header --}}
@@ -34,7 +185,16 @@
             </div>
 
             <div class="eah-next-card">
-                <div class="eah-next-label">Agenda terdekat</div>
+                {{-- Calendar icon badge --}}
+                <div class="eah-next-card-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(147,197,253,0.95)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                </div>
+
+                <div class="eah-next-label">
+                    Agenda terdekat
+                </div>
 
                 @if ($nextMeeting)
                     <a href="{{ $nextMeeting['url'] }}" wire:navigate class="eah-next-link">
@@ -113,25 +273,27 @@
 
         /* ─── HERO ─────────────────────────────────────────────────
            Single hero — replaces the Filament page header bar.
-           Stays dark teal; all other cards are white.
+           Navy/Blue theme with richer gradient + particle network.
         ──────────────────────────────────────────────────────────── */
         .eah-hero {
             display: grid;
-            grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.85fr);
-            gap: 1.25rem;
-            padding: 1.75rem 2rem;
-            border-radius: 1rem;
+            grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.85fr);
+            gap: 1.5rem;
+            padding: 2.25rem 2.5rem;
+            border-radius: 1.15rem;
             background:
-                radial-gradient(ellipse at top right, rgba(110,231,183,0.15) 0%, transparent 55%),
-                radial-gradient(ellipse at bottom left, rgba(16,185,129,0.18) 0%, transparent 55%),
-                linear-gradient(150deg, #134e4a 0%, #0d9488 55%, #065f46 100%);
+                radial-gradient(ellipse at top right, rgba(147,197,253,0.18) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom left, rgba(59,130,246,0.22) 0%, transparent 55%),
+                radial-gradient(circle at 70% 50%, rgba(99,102,241,0.12) 0%, transparent 40%),
+                linear-gradient(150deg, #0c1445 0%, #1d3a8a 40%, #2563eb 75%, #1e40af 100%);
             color: #fff;
             position: relative;
             overflow: hidden;
             box-shadow:
-                0 8px 32px -8px rgba(13,148,136,0.45),
-                0 2px 8px -2px rgba(0,0,0,0.15),
-                inset 0 1px 0 rgba(255,255,255,0.08);
+                0 12px 40px -10px rgba(37,99,235,0.55),
+                0 4px 16px -4px rgba(0,0,0,0.2),
+                inset 0 1px 0 rgba(255,255,255,0.12),
+                inset 0 -1px 0 rgba(0,0,0,0.1);
         }
 
         /* Shimmer sweep */
@@ -139,122 +301,77 @@
             content: "";
             position: absolute;
             inset: 0;
-            background: linear-gradient(110deg, transparent 20%, rgba(255,255,255,0.05) 50%, transparent 80%);
+            background: linear-gradient(110deg, transparent 20%, rgba(255,255,255,0.06) 50%, transparent 80%);
             transform: translateX(-120%);
-            animation: eah-shimmer 8s linear infinite;
+            animation: eah-shimmer 9s linear infinite;
             pointer-events: none;
+            z-index: 0;
         }
 
         @keyframes eah-shimmer {
             to { transform: translateX(120%); }
         }
 
-        /* Text layers sit above geo shapes */
+        /* Text layers sit above particle canvas */
         .eah-hero-content {
             position: relative;
             z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding-right: 0.5rem;
         }
 
-        /* ─── FLOATING GEOMETRIC SHAPES ─────────────────────────────
-           Each shape uses a simple translateY up-down animation
-           so the movement is immediately visible when the page is idle.
+        /* ─── PARTICLE NETWORK CANVAS ─────────────────────────────
+           Placed only inside .eah-hero (hero banner).
+           Mobile: hidden entirely via media query.
         ──────────────────────────────────────────────────────────── */
-        .eah-geo {
+        .eah-particle-canvas {
             position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
             pointer-events: none;
+            opacity: 1;
         }
 
-        /* Large radial circle — top-right */
-        .eah-geo--circle-lg {
-            width: 280px;
-            height: 280px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(94,234,212,0.18) 0%, transparent 65%);
-            top: -70px;
-            right: -50px;
-            z-index: 1;
-            animation: geo-float-a 6s ease-in-out infinite;
-        }
-
-        /* Rounded square — bottom-left */
-        .eah-geo--square-rnd {
-            width: 110px;
-            height: 110px;
-            border-radius: 24px;
-            border: 2px solid rgba(167,243,208,0.18);
-            bottom: -25px;
-            left: 6%;
-            z-index: 1;
-            animation: geo-float-b 7s ease-in-out infinite;
-            animation-delay: -2s;
-        }
-
-        /* Organic blob — center */
-        .eah-geo--blob {
-            width: 160px;
-            height: 160px;
-            border-radius: 60% 40% 70% 30% / 50% 60% 40% 50%;
-            background: rgba(52,211,153,0.09);
-            top: 10px;
-            left: 38%;
-            z-index: 1;
-            animation: geo-float-a 5s ease-in-out infinite;
-            animation-delay: -1s;
-        }
-
-        /* Ring — lower-right */
-        .eah-geo--ring {
-            width: 72px;
-            height: 72px;
-            border-radius: 50%;
-            border: 3px solid rgba(167,243,208,0.14);
-            bottom: 18px;
-            right: 28%;
-            z-index: 1;
-            animation: geo-float-b 8s ease-in-out infinite;
-            animation-delay: -3s;
-        }
-
-        /* ── float animations: clear up-down motion, ease-in-out ── */
-        @keyframes geo-float-a {
-            0%   { transform: translateY(0px); }
-            50%  { transform: translateY(-18px); }
-            100% { transform: translateY(0px); }
-        }
-
-        @keyframes geo-float-b {
-            0%   { transform: translateY(0px) rotate(0deg); }
-            50%  { transform: translateY(-14px) rotate(6deg); }
-            100% { transform: translateY(0px) rotate(0deg); }
+        /* Hide particle canvas on mobile — do NOT remove this rule */
+        @media (max-width: 767px) {
+            .eah-particle-canvas { display: none !important; }
         }
 
         /* ─── HERO TEXT ──────────────────────────────────────────── */
         .eah-page-label {
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             font-weight: 700;
-            letter-spacing: 0.12em;
+            letter-spacing: 0.14em;
             text-transform: uppercase;
-            color: rgba(167,243,208,0.8);
-            margin-bottom: 0.55rem;
+            /* Blue accent — sky blue for breadcrumb label in blue theme */
+            color: rgba(147, 197, 253, 0.9);
+            margin-bottom: 0.65rem;
             display: flex;
             align-items: center;
             gap: 0.4rem;
         }
 
         .eah-title {
-            font-size: 1.75rem;
+            font-size: 2rem;
             font-weight: 800;
-            line-height: 1.15;
+            line-height: 1.1;
             margin: 0;
-            text-shadow: 0 2px 8px rgba(0,0,0,0.18);
+            letter-spacing: -0.02em;
+            text-shadow:
+                0 2px 12px rgba(0,0,0,0.25),
+                0 0 40px rgba(96,165,250,0.2);
         }
 
         .eah-subtitle {
-            max-width: 60ch;
-            margin-top: 0.6rem;
-            color: rgba(255,255,255,0.82);
-            line-height: 1.6;
-            font-size: 0.92rem;
+            max-width: 58ch;
+            margin-top: 0.65rem;
+            color: rgba(255,255,255,0.8);
+            line-height: 1.65;
+            font-size: 0.93rem;
         }
 
         .eah-meta {
@@ -262,54 +379,81 @@
             flex-wrap: wrap;
             gap: 0.55rem;
             align-items: center;
-            margin-top: 1rem;
+            margin-top: 1.25rem;
         }
 
         .eah-chip {
             display: inline-flex;
             align-items: center;
-            padding: 0.35rem 0.8rem;
+            gap: 0.3rem;
+            padding: 0.3rem 0.85rem;
             border-radius: 999px;
-            font-size: 0.75rem;
+            font-size: 0.73rem;
             font-weight: 700;
+            letter-spacing: 0.02em;
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
         }
 
-        .eah-chip--rose    { background: rgba(254,205,211,0.2); color: #fecdd3; border: 1px solid rgba(254,205,211,0.25); }
-        .eah-chip--amber   { background: rgba(253,230,138,0.2); color: #fde68a; border: 1px solid rgba(253,230,138,0.25); }
-        .eah-chip--emerald { background: rgba(167,243,208,0.2); color: #a7f3d0; border: 1px solid rgba(167,243,208,0.25); }
+        /* Blue-themed chips */
+        .eah-chip--rose    { background: rgba(254,205,211,0.18); color: #fecdd3; border: 1px solid rgba(254,205,211,0.28); }
+        .eah-chip--amber   { background: rgba(253,230,138,0.18); color: #fde68a; border: 1px solid rgba(253,230,138,0.28); }
+        /* "Padat" badge — sky blue tone (consistent with blue theme) */
+        .eah-chip--emerald { background: rgba(147,197,253,0.2);  color: #bfdbfe; border: 1px solid rgba(147,197,253,0.3); }
 
         .eah-meta-text {
-            color: rgba(255,255,255,0.75);
+            color: rgba(255,255,255,0.72);
             font-size: 0.86rem;
         }
 
         /* ─── NEXT MEETING CARD (inside hero) ────────────────────── */
         .eah-next-card {
-            border-radius: 0.85rem;
-            padding: 1.1rem 1.2rem;
+            border-radius: 1rem;
+            padding: 1.35rem 1.5rem;
             background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(167,243,208,0.18);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.18);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             display: flex;
             flex-direction: column;
             justify-content: center;
             position: relative;
             z-index: 2;
-            transition: background 0.3s ease;
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.15),
+                0 4px 20px -6px rgba(0,0,0,0.2);
+            transition: background 0.3s ease, transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
         }
 
-        .eah-next-card:hover { background: rgba(255,255,255,0.15); }
+        .eah-next-card:hover {
+            background: rgba(255,255,255,0.16);
+            transform: translateY(-2px);
+        }
+
+        /* Calendar icon at top of next-meeting card */
+        .eah-next-card-icon {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 0.55rem;
+            background: rgba(147,197,253,0.2);
+            border: 1px solid rgba(147,197,253,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.8rem;
+        }
 
         .eah-next-label {
-            font-size: 0.68rem;
+            font-size: 0.67rem;
             font-weight: 700;
-            color: rgba(167,243,208,0.85);
+            /* Sky blue label for next-meeting card in blue theme */
+            color: rgba(147, 197, 253, 0.9);
             margin-bottom: 0.65rem;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.12em;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
         }
 
         .eah-next-link {
@@ -362,8 +506,8 @@
 
         .eah-stat:hover {
             transform: translateY(-4px);
-            border-color: rgba(13,148,136,0.22);
-            box-shadow: 0 0 0 3px rgba(13,148,136,0.06), 0 8px 24px rgba(13,148,136,0.12);
+            border-color: rgba(37,99,235,0.22);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.06), 0 8px 24px rgba(37,99,235,0.12);
         }
 
         /* Top teal accent bar — same teal across all three */
@@ -373,7 +517,7 @@
             left: 0;
             right: 0;
             height: 3px;
-            background: linear-gradient(90deg, #0d9488, #2dd4bf);
+            background: linear-gradient(90deg, #2563eb, #3b82f6);
             border-radius: 0 0 3px 3px;
         }
 
@@ -385,8 +529,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(13,148,136,0.1);
-            color: #0d9488;
+            background: rgba(37,99,235,0.1);
+            color: #2563eb;
             transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
         }
 
@@ -438,7 +582,7 @@
 
         .eah-panel:hover {
             transform: translateY(-3px);
-            box-shadow: 0 8px 24px -8px rgba(13,148,136,0.25);
+            box-shadow: 0 8px 24px -8px rgba(37,99,235,0.25);
         }
 
         .eah-panel-head {
@@ -470,7 +614,7 @@
             padding: 0.28rem;
             border-radius: 999px;
             background: #f0fdfa;
-            border: 1px solid rgba(13,148,136,0.15);
+            border: 1px solid rgba(37,99,235,0.15);
         }
 
         .eah-tab {
@@ -487,8 +631,8 @@
 
         .eah-tab--active {
             background: #fff;
-            color: #0d9488;
-            box-shadow: 0 2px 8px -2px rgba(13,148,136,0.3);
+            color: #2563eb;
+            box-shadow: 0 2px 8px -2px rgba(37,99,235,0.3);
         }
 
         /* ─── LIST ITEMS ─────────────────────────────────────────── */
@@ -520,8 +664,8 @@
         .eah-item:hover,
         .eah-action:hover {
             transform: translateY(-2px);
-            border-color: rgba(13,148,136,0.22);
-            box-shadow: 0 4px 16px -8px rgba(13,148,136,0.3);
+            border-color: rgba(37,99,235,0.22);
+            box-shadow: 0 4px 16px -8px rgba(37,99,235,0.3);
         }
 
         .eah-item-main { min-width: 0; }
@@ -551,8 +695,8 @@
             align-items: center;
             padding: 0.15rem 0.4rem;
             border-radius: 999px;
-            background: rgba(13,148,136,0.1);
-            color: #0d9488;
+            background: rgba(37,99,235,0.1);
+            color: #2563eb;
             font-size: 0.72rem;
             font-weight: 700;
         }
@@ -608,8 +752,8 @@
 
         .eah-action:hover {
             transform: translateY(-3px);
-            border-color: rgba(13,148,136,0.22);
-            box-shadow: 0 6px 20px -6px rgba(13,148,136,0.2);
+            border-color: rgba(37,99,235,0.22);
+            box-shadow: 0 6px 20px -6px rgba(37,99,235,0.2);
         }
 
         .eah-action-icon {
@@ -628,8 +772,8 @@
         /* All action icons → teal (single accent) */
         .eah-action--indigo .eah-action-icon,
         .eah-action--blue   .eah-action-icon {
-            background: rgba(13,148,136,0.12);
-            color: #0d9488;
+            background: rgba(37,99,235,0.12);
+            color: #2563eb;
         }
 
         .eah-action--emerald .eah-action-icon {
@@ -654,7 +798,7 @@
             margin-top: 1rem;
             padding: 0.9rem 1rem;
             border-radius: 0.85rem;
-            background: linear-gradient(135deg, #134e4a, #065f46);
+            background: linear-gradient(135deg, #0f172a, #1e3a8a);
             color: #fff;
         }
 
@@ -799,4 +943,5 @@
         }
         /* ══════════════════════════════════════════════════════════ */
     </style>
+
 </x-filament-widgets::widget>

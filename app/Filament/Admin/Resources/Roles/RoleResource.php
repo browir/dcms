@@ -40,6 +40,20 @@ class RoleResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    protected static string|\BackedEnum|null $navigationIcon = null;
+
+    protected static string|\UnitEnum|null $navigationGroup = 'Peran & Izin';
+
+    public static function getNavigationIcon(): ?string
+    {
+        return null;
+    }
+
+    public static function getActiveNavigationIcon(): ?string
+    {
+        return null;
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema

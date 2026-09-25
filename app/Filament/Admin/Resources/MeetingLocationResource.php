@@ -28,7 +28,7 @@ class MeetingLocationResource extends Resource
 {
     protected static ?string $model = MeetingLocation::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMapPin;
+    protected static string|BackedEnum|null $navigationIcon = null;
 
     protected static string|UnitEnum|null $navigationGroup = 'Rapat';
 

@@ -29,7 +29,7 @@ class DocumentChangeRequestResource extends Resource
 {
     protected static ?string $model = DocumentChangeRequest::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPencilSquare;
+    protected static string|BackedEnum|null $navigationIcon = null;
 
     protected static string|UnitEnum|null $navigationGroup = 'Manajemen Dokumen';
 

@@ -4,14 +4,29 @@
     $suffix = filament()->getGlobalSearchFieldSuffix();
 @endphp
 
-<div class="fi-global-search-ctn">
+<div class="fi-global-search-ctn" x-id="['input']">
     {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::GLOBAL_SEARCH_START) }}
 
+    {{-- Icon-only trigger (Explicit JS State Approach) --}}
+    <button
+        type="button"
+        @click="isSearchOpen = true; $nextTick(() => document.getElementById($id('input')).focus())"
+        class="dcms-search-icon-btn"
+        aria-label="Cari"
+        title="Cari"
+    >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+        </svg>
+    </button>
+
+    {{-- Search field: always in DOM, controlled via CSS :focus-within --}}
     <div
         x-on:focus-first-global-search-result.stop="$el.querySelector('.fi-global-search-result-link')?.focus()"
         class="fi-global-search"
     >
-        <div x-id="['input']" class="fi-global-search-field">
+        <div class="fi-global-search-field">
             <label x-bind:for="$id('input')" class="fi-sr-only">
                 {{ __('filament-panels::global-search.field.label') }}
             </label>
@@ -33,8 +48,9 @@
                     x-bind:id="$id('input')"
                     x-on:keydown.down.prevent.stop="$dispatch('focus-first-global-search-result')"
                     wire:model.live.debounce.{{ $debounce }}="search"
-                    x-mousetrap.global.{{ collect($keyBindings)->map(fn (string $keyBinding): string => str_replace('+', '-', $keyBinding))->implode('.') }}="document.getElementById($id('input'))?.focus()"
+                    x-mousetrap.global.{{ collect($keyBindings)->map(fn (string $keyBinding): string => str_replace('+', '-', $keyBinding))->implode('.') }}="isSearchOpen = true; $nextTick(() => document.getElementById($id('input'))?.focus())"
                     class="fi-input fi-input-has-inline-prefix"
+                    x-on:keydown.escape="isSearchOpen = false; $el.blur()"
                 />
             </x-filament::input.wrapper>
         </div>

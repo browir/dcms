@@ -1,8 +1,6 @@
-<div class="qah-widget">
-    {{-- Header — teal gradient, floating geometric shapes --}}
+﻿<div class="qah-widget">
+    {{-- Header — teal gradient --}}
     <div class="qah-header">
-        <span class="qah-hgeo qah-hgeo--circle" aria-hidden="true"></span>
-        <span class="qah-hgeo qah-hgeo--ring" aria-hidden="true"></span>
 
         <div class="qah-header-icon">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" style="width:20px;height:20px">
@@ -136,7 +134,7 @@
         </div>
         @else
         <div class="qah-alert qah-alert--ok">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#0d9488" style="width:14px;height:14px;flex-shrink:0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#2563eb" style="width:14px;height:14px;flex-shrink:0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
             </svg>
             <span class="qah-alert-ok-text">Semua dokumen aktif &amp; dalam kondisi valid</span>
@@ -159,14 +157,14 @@
 }
 
 .qah-widget:hover {
-    border-color: rgba(13,148,136,0.18);
-    box-shadow: 0 0 0 3px rgba(13,148,136,0.05), 0 8px 24px rgba(13,148,136,0.1);
+    border-color: rgba(37,99,235,0.18);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.05), 0 8px 24px rgba(37,99,235,0.1);
 }
 
 /* ─── HEADER — teal gradient, floating shapes ────────────── */
 .qah-header {
     padding: 1.1rem 1.4rem;
-    background: linear-gradient(150deg, #134e4a 0%, #0d9488 60%, #065f46 100%);
+    background: linear-gradient(150deg, #0f172a 0%, #2563eb 60%, #1e3a8a 100%);
     border-bottom: 1px solid rgba(52,211,153,0.12);
     display: flex;
     align-items: center;
@@ -201,7 +199,7 @@
     animation-delay: -3s;
 }
 
-/* Shared float keyframes (same names as EAH — scoped by specificity) */
+/* Shared float keyframes — kept for header animation compat */
 @keyframes geo-float-a {
     0%   { transform: translateY(0px); }
     50%  { transform: translateY(-14px); }
@@ -273,8 +271,8 @@
 .qah-action:hover {
     transform: translateY(-3px);
     background: #f0fdfa;
-    border-color: rgba(13,148,136,0.2);
-    box-shadow: 0 4px 14px -6px rgba(13,148,136,0.2);
+    border-color: rgba(37,99,235,0.2);
+    box-shadow: 0 4px 14px -6px rgba(37,99,235,0.2);
 }
 
 .qah-action-icon {
@@ -285,8 +283,8 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    background: rgba(13,148,136,0.1);
-    color: #0d9488;
+    background: rgba(37,99,235,0.1);
+    color: #2563eb;
     transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1);
 }
 
@@ -299,7 +297,7 @@
 .qah-badge-pill {
     font-size: 9px;
     font-weight: 800;
-    background: #0d9488;
+    background: #2563eb;
     color: #fff;
     padding: 1px 6px;
     border-radius: 50px;
@@ -327,7 +325,7 @@
 .qah-link-all {
     font-size: 10.5px;
     font-weight: 700;
-    color: #0d9488;
+    color: #2563eb;
     text-decoration: none;
     transition: color 0.2s ease;
 }
@@ -352,7 +350,7 @@
 
 .qah-doc-item:hover {
     background: #f0fdfa;
-    border-color: rgba(13,148,136,0.18);
+    border-color: rgba(37,99,235,0.18);
     transform: translateX(3px);
 }
 
@@ -409,7 +407,7 @@
 
 .qah-alert--ok {
     background: #f0fdfa;
-    border-color: rgba(13,148,136,0.15);
+    border-color: rgba(37,99,235,0.15);
 }
 
 .qah-alert-icon {
@@ -443,5 +441,5 @@
 
 .qah-alert-btn:hover { background: #fef2f2; }
 
-.qah-alert-ok-text { font-size: 11px; font-weight: 600; color: #0d9488; }
+.qah-alert-ok-text { font-size: 11px; font-weight: 600; color: #2563eb; }
 </style>

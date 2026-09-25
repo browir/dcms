@@ -24,14 +24,20 @@
             type="button"
         @endif
         class="fi-topbar-item-btn"
+        data-dcms-label="{{ strip_tags((string) $slot) }}"
+        title="{{ strip_tags((string) $slot) }}"
     >
+        {{-- Icon: hidden by default, slides in when search bar is open --}}
         @if ($icon || $activeIcon)
-            {{ \Filament\Support\generate_icon_html(($active && $activeIcon) ? $activeIcon : $icon, attributes: (new \Illuminate\View\ComponentAttributeBag)->class(['fi-topbar-item-icon'])) }}
+            <span class="dcms-nav-icon-wrap" aria-hidden="true">
+                {{ \Filament\Support\generate_icon_html(($active && $activeIcon) ? $activeIcon : $icon, attributes: (new \Illuminate\View\ComponentAttributeBag)->class(['fi-topbar-item-icon'])) }}
+            </span>
         @endif
 
-        <span class="fi-topbar-item-label">
-            {{ $slot }}
-        </span>
+        {{-- Label: two-element wipe structure.
+             dcms-label-outer  = layout space controller (max-width snaps instantly)
+             fi-topbar-item-label = visual wipe (max-width animates 300ms, overflow:hidden = left→right reveal) --}}
+        <span class="dcms-label-outer"><span class="fi-topbar-item-label">{{ $slot }}</span></span>
 
         @if (filled($badge))
             <x-filament::badge

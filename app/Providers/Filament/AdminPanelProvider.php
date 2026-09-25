@@ -21,6 +21,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Filament\Navigation\NavigationGroup;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -40,6 +41,13 @@ class AdminPanelProvider extends PanelProvider
             ->registration(Register::class)
             ->colors([
                 'primary' => Color::Blue,
+            ])
+            ->navigationGroups([
+                NavigationGroup::make('Pengaturan')->icon('heroicon-o-cog-6-tooth'),
+                NavigationGroup::make('Data Master')->icon('heroicon-o-circle-stack'),
+                NavigationGroup::make('Rapat')->icon('heroicon-o-calendar-days'),
+                NavigationGroup::make('Manajemen Dokumen')->icon('heroicon-o-document-duplicate'),
+                NavigationGroup::make('Peran & Izin')->icon('heroicon-o-shield-check'),
             ])
             ->renderHook(
                 'panels::head.end',
@@ -507,9 +515,24 @@ class AdminPanelProvider extends PanelProvider
                             width: 100% !important;
                         }
 
-                        .fi-main-ctn {
-                            padding-left: 24px !important;
-                            padding-right: 24px !important;
+                        /* ================================================
+                           SINGLE SOURCE OF TRUTH: container layout
+                           --app-container-max-width & --app-container-padding
+                           dipakai IDENTIK oleh .fi-main-ctn (konten dashboard)
+                           DAN .dcms-topbar-inner (konten navbar) di topbar.blade.php
+                        ================================================ */
+                        :root {
+                            --app-container-max-width: 1400px;
+                            --app-container-padding: 32px;
+                        }
+                        @media (min-width: 768px) {
+                            .fi-main-ctn {
+                                max-width: var(--app-container-max-width) !important;
+                                margin-left: auto !important;
+                                margin-right: auto !important;
+                                padding-left: var(--app-container-padding) !important;
+                                padding-right: var(--app-container-padding) !important;
+                            }
                         }
 
                         .fi-page {

@@ -18,6 +18,11 @@ use Spatie\Activitylog\Models\Activity as ActivityModel;
 
 class ActivityResource extends BaseActivityResource
 {
+    public static function getNavigationIcon(): string
+    {
+        return '';
+    }
+
     // Inherit everything from the base resource, override just the table
     public static function table(Table $table): Table
     {

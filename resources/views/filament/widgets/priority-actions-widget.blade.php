@@ -1,4 +1,4 @@
-<x-filament-widgets::widget>
+﻿<x-filament-widgets::widget>
     <div class="pa-shell">
         <div class="pa-grid">
             {{-- Prioritas Hari Ini --}}
@@ -116,8 +116,8 @@
 
         .pa-panel:hover {
             transform: translateY(-3px);
-            border-color: rgba(13,148,136,0.18);
-            box-shadow: 0 0 0 3px rgba(13,148,136,0.05), 0 8px 24px rgba(13,148,136,0.1);
+            border-color: rgba(37,99,235,0.18);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.05), 0 8px 24px rgba(37,99,235,0.1);
         }
 
         .pa-panel-head {
@@ -152,7 +152,7 @@
             border-radius: 999px;
             font-size: 0.72rem;
             font-weight: 800;
-            background: #0d9488;
+            background: #2563eb;
             color: #fff;
             padding: 0 7px;
         }
@@ -175,7 +175,7 @@
 
         .pa-item:hover {
             background: #f0fdfa;
-            border-color: rgba(13,148,136,0.2);
+            border-color: rgba(37,99,235,0.2);
             transform: translateX(3px);
         }
 
@@ -203,13 +203,13 @@
         .pa-item-meta { display: flex; flex-direction: column; gap: 0.28rem; }
 
         .pa-item-code {
-            background: rgba(13,148,136,0.1);
-            color: #0d9488;
+            background: rgba(37,99,235,0.1);
+            color: #2563eb;
             border-radius: 4px;
             padding: 1px 6px;
             font-weight: 700;
             font-size: 0.65rem;
-            border: 1px solid rgba(13,148,136,0.15);
+            border: 1px solid rgba(37,99,235,0.15);
             display: inline-block;
         }
 
@@ -254,7 +254,7 @@
             display: flex;
             justify-content: center;
             margin-bottom: 0.55rem;
-            color: #0d9488;
+            color: #2563eb;
             opacity: 0.6;
         }
 
@@ -280,8 +280,8 @@
         .pa-action:hover {
             transform: translateY(-2px);
             background: #f0fdfa;
-            border-color: rgba(13,148,136,0.2);
-            box-shadow: 0 4px 16px -6px rgba(13,148,136,0.2);
+            border-color: rgba(37,99,235,0.2);
+            box-shadow: 0 4px 16px -6px rgba(37,99,235,0.2);
         }
 
         .pa-action-icon {
@@ -292,8 +292,8 @@
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            background: rgba(13,148,136,0.1);
-            color: #0d9488;
+            background: rgba(37,99,235,0.1);
+            color: #2563eb;
             transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
         }
 
