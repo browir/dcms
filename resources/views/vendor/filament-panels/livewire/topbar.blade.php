@@ -107,7 +107,7 @@
                 position: relative;
             }
 
-            /* ── 2. Search icon trigger button ── */
+            /* ── 2. Search icon trigger button (ABSOLUTE, ALWAYS VISIBLE) ── */
             .dcms-search-icon-btn {
                 display: inline-flex !important;
                 align-items: center;
@@ -118,29 +118,21 @@
                 background: transparent;
                 color: #94a3b8;
                 cursor: pointer;
-                flex-shrink: 0;
-                overflow: hidden;
-                /* CLOSE: collapse immediately */
-                transition:
-                    width   var(--dcms-close-icon-dur) var(--dcms-anim-ease) var(--dcms-close-icon-delay),
-                    opacity var(--dcms-close-icon-dur) var(--dcms-anim-ease) var(--dcms-close-icon-delay),
-                    background 0.18s ease,
-                    color      0.18s ease;
+                position: absolute;
+                left: 0;
+                top: 50%;
+                transform: translateY(-50%);
+                z-index: 10;
+                transition: color 0.18s ease, background 0.18s ease;
             }
             .dcms-search-icon-btn:hover {
                 background: rgba(30, 64, 175, 0.10);
                 color: #1e40af;
             }
             .dcms-search-active .dcms-search-icon-btn {
-                width: 0 !important;
-                opacity: 0 !important;
-                pointer-events: none !important;
-                /* OPEN: collapse with same timing */
-                transition:
-                    width   var(--dcms-open-icon-dur) var(--dcms-anim-ease) var(--dcms-open-text-delay),
-                    opacity var(--dcms-open-icon-dur) var(--dcms-anim-ease) var(--dcms-open-text-delay),
-                    background 0.18s ease,
-                    color      0.18s ease;
+                pointer-events: none;
+                background: transparent !important;
+                color: #64748b; /* Normal prefix icon color */
             }
 
             /* ── 3. Search field ── */
@@ -148,26 +140,48 @@
                 display: block !important;
                 overflow: hidden !important;
                 visibility: visible !important;
-                width: 0;
-                min-width: 0;
-                opacity: 0;
-                pointer-events: none;
-                /* CLOSE: shrink immediately */
+                width: 36px; /* CLOSED state: fits the absolute icon */
+                opacity: 1;
+                pointer-events: auto;
                 transition:
-                    width   var(--dcms-close-search-dur) var(--dcms-anim-ease) var(--dcms-close-search-delay),
-                    opacity var(--dcms-close-search-dur) var(--dcms-anim-ease) var(--dcms-close-search-delay);
+                    width var(--dcms-close-search-dur) var(--dcms-anim-ease) 0ms;
             }
             .dcms-search-active .fi-global-search {
                 width: 260px;
-                opacity: 1;
-                pointer-events: auto;
-                /* OPEN: expand after text collapses */
                 transition:
-                    width   var(--dcms-open-search-dur) var(--dcms-anim-ease) var(--dcms-open-search-delay),
-                    opacity var(--dcms-open-search-dur) var(--dcms-anim-ease) var(--dcms-open-search-delay);
+                    width var(--dcms-open-search-dur) var(--dcms-anim-ease) 0ms;
             }
 
-            /* ── 4. Nav item button: min-width:0 allows children to shrink ── */
+            /* Hide Filament's default prefix icon because we placed .dcms-search-icon-btn exactly on top of it */
+            .fi-global-search [class*="prefix"], .fi-global-search svg {
+                opacity: 0 !important;
+            }
+            .dcms-search-icon-btn svg {
+                opacity: 1 !important; /* Keep our trigger icon visible */
+            }
+
+            /* Make the search wrapper transparent when closed to look like a plain button */
+            .fi-global-search > div > div {
+                transition: background 0.2s, box-shadow 0.2s, border-color 0.2s;
+            }
+            .dcms-topbar-inner:not(.dcms-search-active) .fi-global-search > div > div {
+                background: transparent !important;
+                box-shadow: none !important;
+                border-color: transparent !important;
+                --tw-ring-color: transparent !important;
+            }
+            .dcms-topbar-inner:not(.dcms-search-active) .fi-global-search input {
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            /* ── Prevent Right Side Shifting & Clipping ── */
+            .fi-topbar-end > :not(.fi-global-search-ctn) {
+                flex-shrink: 0 !important;
+                overflow: visible !important;
+            }
+
+            /* ── 4. Nav item button ── */
             .fi-topbar-nav-groups .fi-topbar-item-btn {
                 min-width: 0;
                 overflow: hidden;
@@ -201,14 +215,7 @@
                     opacity   var(--dcms-open-icon-dur) var(--dcms-anim-ease) var(--dcms-open-icon-delay);
             }
 
-            /* ── 6a. Label OUTER — layout space controller ──
-               Controls how much horizontal space the label occupies in the flex row.
-
-               CLOSE: snaps from 0 → var(--dcms-label-w) instantly at t=80ms
-                      (reserves space BEFORE the visual wipe starts)
-               OPEN:  snaps to 0 after wipe finishes
-                      (frees space AFTER text is visually gone)
-            ── */
+            /* ── 6a. Label OUTER — layout space controller ── */
             .fi-topbar-nav-groups .dcms-label-outer {
                 display: inline-block;
                 overflow: hidden;
@@ -216,45 +223,20 @@
                 min-width: 0;
                 vertical-align: middle;
                 max-width: var(--dcms-label-w, 200px);  /* CLOSED: full width */
-                transition: max-width 0ms linear var(--dcms-close-text-delay);
+                /* CLOSE: expand smoothly in sync with search shrinking */
+                transition: max-width var(--dcms-close-search-dur) var(--dcms-anim-ease) 0ms;
             }
             .dcms-search-active .fi-topbar-nav-groups .dcms-label-outer {
                 max-width: 0 !important;
-                transition: max-width 0ms linear calc(var(--dcms-open-text-delay) + var(--dcms-open-text-dur));
+                /* OPEN: shrink smoothly in sync with search expanding */
+                transition: max-width var(--dcms-open-search-dur) var(--dcms-anim-ease) 0ms !important;
             }
 
-            /* ── 6b. Label INNER — visual wipe (clip-path) ──
-
-               WHY clip-path, not max-width on inner:
-               - max-width animation on the inner would fight the outer's
-                 overflow:hidden during the reveal, causing no visible wipe.
-               - clip-path runs on the GPU compositor — does not affect layout,
-                 does not cause reflow, and can be freely animated.
-
-               CLOSE (icon→text reveal):
-                 clip-path: inset(0 100% 0 0)  →  inset(0 0% 0 0)
-                 = right-inset shrinks from 100% to 0% over 300ms
-                 = text is unmasked left-to-right (curtain opens from left)
-
-               OPEN (text→icon collapse):
-                 clip-path: inset(0 0% 0 0)  →  inset(0 100% 0 0)
-                 = right-inset grows from 0% to 100% over 150ms
-                 = text is masked right-to-left (curtain closes to right)
-            ── */
+            /* ── 6b. Label INNER — No extra clip-path needed, max-width on outer acts as wipe ── */
             .fi-topbar-nav-groups .fi-topbar-item-label {
                 display: inline-block;
-                overflow: visible;     /* outer handles clipping, not this element */
+                overflow: visible;
                 white-space: nowrap;
-                /* CLOSED state: fully revealed */
-                clip-path: inset(0 0% 0 0);
-                /* CLOSE anim: wipe reveal left→right */
-                transition: clip-path var(--dcms-close-text-dur) var(--dcms-anim-ease) var(--dcms-close-text-delay);
-            }
-            .dcms-search-active .fi-topbar-nav-groups .fi-topbar-item-label {
-                /* OPEN state: fully hidden (clipped from left) */
-                clip-path: inset(0 100% 0 0) !important;
-                /* OPEN anim: wipe collapse right→left */
-                transition: clip-path var(--dcms-open-text-dur) var(--dcms-anim-ease) var(--dcms-open-text-delay) !important;
             }
 
             /* ── 7. Chevron: always visible ── */
