@@ -88,17 +88,14 @@
             /* ── Safety: prevent nav wrap during any transition phase ── */
             .fi-topbar-nav-groups {
                 flex-wrap: nowrap !important;
-                overflow: hidden;        /* clips during mid-transition overshoot */
             }
             /* The topbar-end (search + icons) must not wrap either */
             .fi-topbar-end {
                 flex-shrink: 0;
                 flex-wrap: nowrap !important;
-                overflow: hidden;
             }
-            /* Whole inner container: never wrap, clip any overshoot */
+            /* Whole inner container: never wrap */
             .dcms-topbar-inner {
-                overflow-x: hidden;     /* safety net — no element ever bleeds out */
                 flex-wrap: nowrap !important;
             }
 
