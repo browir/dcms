@@ -3,13 +3,11 @@
 namespace App\Filament\Admin\Widgets;
 
 use App\Models\Meeting;
-use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Carbon;
 
 class MeetingCardsWidget extends Widget
 {
-    use HasWidgetShield;
 
     protected string $view = 'filament.widgets.meeting-cards-widget';
 
