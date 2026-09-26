@@ -28,21 +28,18 @@ class MeetingInfolist
                     ->schema([
                         TextEntry::make('date_time')
                             ->label('Tanggal & Waktu Mulai')
-                            ->icon('heroicon-m-calendar-days')
-                            ->iconColor('primary')
+                            ->icon('heroicon-o-calendar-days')
                             ->dateTime('l, d F Y • H:i'),
 
                         TextEntry::make('end_time')
                             ->label('Jam Berakhir')
-                            ->icon('heroicon-m-clock')
-                            ->iconColor('primary')
+                            ->icon('heroicon-o-clock')
                             ->dateTime('l, d F Y • H:i')
                             ->placeholder('Belum ditentukan'),
 
                         TextEntry::make('location')
                             ->label('Lokasi / Ruangan')
-                            ->icon('heroicon-m-map-pin')
-                            ->iconColor('danger')
+                            ->icon('heroicon-o-map-pin')
                             ->placeholder('Belum ditentukan'),
 
                         TextEntry::make('status')
@@ -61,31 +58,31 @@ class MeetingInfolist
                                 default => 'gray',
                             })
                             ->icon(fn ($state) => match ($state) {
-                                'scheduled' => 'heroicon-m-calendar',
-                                'completed' => 'heroicon-m-check-circle',
-                                'cancelled' => 'heroicon-m-x-circle',
-                                default => 'heroicon-m-question-mark-circle',
+                                'scheduled' => 'heroicon-o-calendar',
+                                'completed' => 'heroicon-o-check-circle',
+                                'cancelled' => 'heroicon-o-x-circle',
+                                default => 'heroicon-o-question-mark-circle',
                             }),
 
                         TextEntry::make('creator.name')
                             ->label('Dibuat Oleh')
-                            ->icon('heroicon-m-user-circle')
+                            ->icon('heroicon-o-user-circle')
                             ->placeholder('—'),
 
                         TextEntry::make('notulis.name')
                             ->label('Notulis / Pencatat')
-                            ->icon('heroicon-m-pencil-square')
+                            ->icon('heroicon-o-pencil-square')
                             ->placeholder('Belum ditunjuk'),
 
                         TextEntry::make('doc_number')
                             ->label('No. Dokumen')
-                            ->icon('heroicon-m-hashtag')
+                            ->icon('heroicon-o-hashtag')
                             ->copyable()
                             ->placeholder('—'),
 
                         TextEntry::make('company.name')
                             ->label('Perusahaan')
-                            ->icon('heroicon-m-building-office-2')
+                            ->icon('heroicon-o-building-office-2')
                             ->placeholder('—'),
 
                         TextEntry::make('agenda')
@@ -118,8 +115,7 @@ class MeetingInfolist
 
                         TextEntry::make('file_path')
                             ->label('Berkas Notulensi')
-                            ->icon('heroicon-m-paper-clip')
-                            ->iconColor('success')
+                            ->icon('heroicon-o-paper-clip')
                             ->formatStateUsing(fn () => 'Lihat berkas notulensi (PDF/Word)')
                             ->url(fn ($record) => route('notulen.view', $record->id))
                             ->openUrlInNewTab()
