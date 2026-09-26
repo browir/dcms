@@ -10,7 +10,7 @@
     {{-- Icon-only trigger (Explicit JS State Approach) --}}
     <button
         type="button"
-        @click="isSearchOpen = true; $nextTick(() => document.getElementById($id('input')).focus())"
+        @click="$dispatch('dcms-open-search'); $nextTick(() => document.getElementById($id('input')).focus())"
         class="dcms-search-icon-btn"
         aria-label="Cari"
         title="Cari"
@@ -48,9 +48,9 @@
                     x-bind:id="$id('input')"
                     x-on:keydown.down.prevent.stop="$dispatch('focus-first-global-search-result')"
                     wire:model.live.debounce.{{ $debounce }}="search"
-                    x-mousetrap.global.{{ collect($keyBindings)->map(fn (string $keyBinding): string => str_replace('+', '-', $keyBinding))->implode('.') }}="isSearchOpen = true; $nextTick(() => document.getElementById($id('input'))?.focus())"
+                    x-mousetrap.global.{{ collect($keyBindings)->map(fn (string $keyBinding): string => str_replace('+', '-', $keyBinding))->implode('.') }}="$dispatch('dcms-open-search'); $nextTick(() => document.getElementById($id('input'))?.focus())"
                     class="fi-input fi-input-has-inline-prefix"
-                    x-on:keydown.escape="isSearchOpen = false; $el.blur()"
+                    x-on:keydown.escape="$dispatch('dcms-close-search'); $el.blur()"
                 />
             </x-filament::input.wrapper>
         </div>

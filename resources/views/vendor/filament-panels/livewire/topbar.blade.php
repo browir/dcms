@@ -323,6 +323,8 @@
         <div class="dcms-topbar-inner"
             x-data="{ isSearchOpen: false }"
             x-bind:class="{ 'dcms-search-active': isSearchOpen }"
+            @dcms-open-search.window="isSearchOpen = true"
+            @dcms-close-search.window="isSearchOpen = false"
             x-on:keydown.escape.window="isSearchOpen = false"
             x-on:resize.window.debounce.100ms="if (isSearchOpen) { isSearchOpen = false }"
             @click.outside="isSearchOpen = false"
