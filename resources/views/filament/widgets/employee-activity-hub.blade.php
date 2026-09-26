@@ -41,8 +41,13 @@
                         const resize = () => {
                             const hero = canvas.parentElement;
                             if (!hero) return;
-                            W = canvas.width = hero.offsetWidth;
-                            H = canvas.height = hero.offsetHeight;
+                            const rect = hero.getBoundingClientRect();
+                            const dpr = window.devicePixelRatio || 1;
+                            W = rect.width;
+                            H = rect.height;
+                            canvas.width = W * dpr;
+                            canvas.height = H * dpr;
+                            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
                         };
 
                         const mkParticle = () => {
@@ -156,13 +161,18 @@
                         }, 50);
 
                         let resizeTimer = null;
-                        window.addEventListener('resize', () => {
+                        const ro = new ResizeObserver(() => {
                             clearTimeout(resizeTimer);
                             resizeTimer = setTimeout(() => {
                                 if (window.matchMedia('(max-width: 767px)').matches) { stop(); return; }
                                 stop(); resize(); initParticles(); start();
-                            }, 200);
+                            }, 150);
                         });
+                        if (hero) ro.observe(hero);
+
+                        if (typeof this.$cleanup === 'function') {
+                            this.$cleanup(() => ro.disconnect());
+                        }
                     }
                 }"
             ></canvas>
