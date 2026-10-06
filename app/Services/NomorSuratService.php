@@ -156,7 +156,7 @@ class NomorSuratService
             [$perusahaanId, $tahun]
         );
 
-        $urut = (int) DB::selectOne('SELECT LAST_INSERT_ID() AS urut')->urut;
+        $urut = (int) DB::selectOne('SELECT LAST_INSERT_ID() AS urut', [], false)->urut;
 
         if ($urut < 1) {
             throw new RuntimeException(
@@ -200,7 +200,7 @@ class NomorSuratService
             );
         }
 
-        if (empty(trim((string) $unit->kode))) {
+        if (trim((string) $unit->kode) === '') {
             throw new RuntimeException(
                 "Unit [{$unit->id}] \"{$unit->name}\" belum memiliki kode unit. "
                 . 'Isi units.kode terlebih dahulu sebelum membuat surat keluar.'
@@ -216,10 +216,28 @@ class NomorSuratService
             );
         }
 
-        if (empty(trim((string) $company->kode_surat))) {
+        if (trim((string) $company->kode_surat) === '') {
             throw new RuntimeException(
                 "Perusahaan [{$company->id}] \"{$company->name}\" belum memiliki kode_surat. "
                 . 'Jalankan perintah surat:seed-perusahaan atau isi companies.kode_surat secara manual.'
+            );
+        }
+
+        // Cek inkonsistensi company antara unit dan department-nya
+        $unit->loadMissing('department');
+        $dept = $unit->department;
+        if (
+            $dept !== null
+            && $unit->company_id !== null
+            && $dept->company_id !== null
+            && (int) $unit->company_id !== (int) $dept->company_id
+        ) {
+            throw new RuntimeException(
+                "Inkonsistensi data: unit [{$unit->id}] \"{$unit->name}\" "
+                . "memiliki company_id={$unit->company_id} "
+                . "tetapi department [{$dept->id}] \"{$dept->name}\" "
+                . "memiliki company_id={$dept->company_id}. "
+                . 'Periksa dan selaraskan data sebelum membuat surat keluar.'
             );
         }
     }

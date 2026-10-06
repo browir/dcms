@@ -48,7 +48,7 @@ abstract class MySQLTestCase extends TestCase
                 . '  Database wajib  : ' . self::ALLOWED_DATABASE . PHP_EOL
                 . '---------------------------------------------------------------------' . PHP_EOL
                 . 'Test dihentikan untuk melindungi data.' . PHP_EOL
-                . 'Jalankan dengan: php artisan test --configuration=phpunit.mysql.xml' . PHP_EOL
+                . 'Jalankan dengan: vendor\\bin\\phpunit -c phpunit.mysql.xml' . PHP_EOL
                 . '====================================================================='
             );
         }

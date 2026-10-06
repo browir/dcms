@@ -242,6 +242,26 @@ class NomorSuratKonkurensiTest extends MySQLTestCase
 
         $this->assertNotNull($counter);
         $this->assertEquals($totalExpected, $counter->nomor_terakhir, "Counter akhir harus {$totalExpected}");
+
+        // Verifikasi tabel surat
+        $suratCount = DB::table('surat')
+            ->where('unit_id', $this->unitId)
+            ->count();
+        $this->assertEquals(
+            $totalExpected,
+            $suratCount,
+            "Jumlah baris di tabel surat harus {$totalExpected}"
+        );
+
+        $distinctNomor = DB::table('surat')
+            ->where('unit_id', $this->unitId)
+            ->distinct()
+            ->count('nomor');
+        $this->assertEquals(
+            $totalExpected,
+            $distinctNomor,
+            "COUNT(DISTINCT nomor) harus {$totalExpected} — tidak boleh ada nomor kembar di DB"
+        );
     }
 
     // ── Test 2: Rollback atomicity ────────────────────────────────────────────
