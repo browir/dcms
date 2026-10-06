@@ -22,9 +22,16 @@ use RuntimeException;
  * Scope counter: (perusahaan_id, tahun tanggal surat) — bukan per unit atau jenis.
  * Reset hanya saat tahun berganti. Nomor yang terpakai tidak pernah dikembalikan.
  *
+ * Pola counter (atomik, tanpa SELECT FOR UPDATE):
+ *   INSERT INTO nomor_surat_counter (perusahaan_id, tahun, nomor_terakhir)
+ *   VALUES (?, ?, LAST_INSERT_ID(1))
+ *   ON DUPLICATE KEY UPDATE nomor_terakhir = LAST_INSERT_ID(nomor_terakhir + 1)
+ *   --
+ *   SELECT LAST_INSERT_ID() → nilai urut yang baru saja di-assign untuk koneksi ini.
+ *
  * Untuk keperluan test, dua method protected dapat di-override via subclass:
- *   - static::acquireLock()  — mengambil row counter dengan lock eksklusif
- *   - static::persistSurat() — menyimpan surat ke database
+ *   - static::incrementCounter() — increment counter, kembalikan urut
+ *   - static::persistSurat()    — simpan surat ke DB
  * Subclass HANYA boleh dibuat di direktori tests/, bukan di kode produksi.
  */
 class NomorSuratService
@@ -44,6 +51,14 @@ class NomorSuratService
         11 => 'XI',
         12 => 'XII',
     ];
+
+    /**
+     * Jumlah retry yang dilakukan oleh DB::transaction() pada pemanggilan generate() terakhir.
+     * 0 = tidak ada deadlock, 1 = satu kali retry, dst.
+     * Tersedia di level service-process setelah generate() selesai.
+     * Tidak thread-safe lintas proses; setiap proses worker punya nilainya sendiri.
+     */
+    public static int $lastDeadlockRetries = 0;
 
     // ── Fungsi format (murni, tidak ada DB call) ─────────────────────────────
 
@@ -116,27 +131,49 @@ class NomorSuratService
     // ── Method yang dapat di-override oleh subclass di tests/ ────────────────
 
     /**
-     * Mengambil baris counter dengan SELECT ... FOR UPDATE (lock eksklusif).
+     * Increment counter secara atomik dan kembalikan nomor urut yang baru.
      *
-     * Dapat di-override oleh subclass test untuk menghilangkan lock (kontrol negatif).
-     * JANGAN override di kode produksi.
+     * Implementasi default menggunakan:
+     *   INSERT ... ON DUPLICATE KEY UPDATE nomor_terakhir = LAST_INSERT_ID(nomor_terakhir + 1)
+     *   diikuti SELECT LAST_INSERT_ID()
      *
-     * @return object|null Baris counter, atau null jika tidak ditemukan
+     * Pola ini atomik di level MySQL (satu pernyataan, satu row-lock implisit)
+     * tanpa membutuhkan SELECT FOR UPDATE terpisah. LAST_INSERT_ID() bersifat
+     * session-scoped sehingga aman dalam transaksi concurrent.
+     *
+     * Dapat di-override oleh subclass test untuk mensimulasikan race condition
+     * (kontrol negatif). JANGAN override di kode produksi.
+     *
+     * @return positive-int Nomor urut baru
+     * @throws RuntimeException jika LAST_INSERT_ID() mengembalikan 0
      */
-    protected static function acquireLock(int $perusahaanId, int $tahun): ?object
+    protected static function incrementCounter(int $perusahaanId, int $tahun): int
     {
-        return DB::table('nomor_surat_counter')
-            ->where('perusahaan_id', $perusahaanId)
-            ->where('tahun', $tahun)
-            ->lockForUpdate()
-            ->first();
+        DB::statement(
+            'INSERT INTO nomor_surat_counter (perusahaan_id, tahun, nomor_terakhir) '
+            . 'VALUES (?, ?, LAST_INSERT_ID(1)) '
+            . 'ON DUPLICATE KEY UPDATE nomor_terakhir = LAST_INSERT_ID(nomor_terakhir + 1)',
+            [$perusahaanId, $tahun]
+        );
+
+        $urut = (int) DB::selectOne('SELECT LAST_INSERT_ID() AS urut')->urut;
+
+        if ($urut < 1) {
+            throw new RuntimeException(
+                "LAST_INSERT_ID() mengembalikan nilai tidak valid ({$urut}) "
+                . "untuk perusahaan={$perusahaanId} tahun={$tahun}. "
+                . 'Pastikan statement INSERT ON DUPLICATE KEY UPDATE berjalan dalam transaksi aktif.'
+            );
+        }
+
+        return $urut;
     }
 
     /**
      * Menyimpan surat ke database.
      *
      * Dapat di-override oleh subclass test untuk mensimulasikan kegagalan
-     * setelah counter di-increment (test rollback).
+     * setelah counter di-increment (test rollback atomicity).
      * JANGAN override di kode produksi.
      *
      * @param  array $data Data surat yang sudah lengkap (termasuk nomor dan nomor_urut)
@@ -152,7 +189,6 @@ class NomorSuratService
      * Validasi semua prasyarat sebelum counter disentuh.
      * Melempar RuntimeException jika ada yang tidak memenuhi syarat.
      *
-     * @param  Unit $unit Unit yang membuat surat
      * @throws RuntimeException
      */
     private static function validasiUnit(Unit $unit): void
@@ -195,17 +231,14 @@ class NomorSuratService
      *
      * Algoritma:
      *   1. Validasi (unit.kode, unit.company_id, company.kode_surat) SEBELUM transaksi.
-     *   2. Buka transaksi (retry otomatis hingga 5x saat deadlock MySQL 1213).
-     *   3. INSERT IGNORE baris counter jika belum ada (nomor_terakhir = 0).
-     *   4. static::acquireLock() — SELECT FOR UPDATE (dapat di-override).
-     *   5. urut = nomor_terakhir + 1, UPDATE counter.
-     *   6. Format nomor surat.
-     *   7. static::persistSurat() — INSERT surat (dapat di-override).
-     *   8. COMMIT. Rollback otomatis jika ada kegagalan.
+     *   2. Buka transaksi (retry hingga 5x saat deadlock MySQL SQLSTATE 40001).
+     *   3. static::incrementCounter() — INSERT ON DUPLICATE KEY UPDATE + SELECT LAST_INSERT_ID()
+     *   4. Format nomor surat.
+     *   5. static::persistSurat() — INSERT surat.
+     *   6. COMMIT. Rollback otomatis jika ada kegagalan di langkah 3–5.
      *
-     * Catatan transaksi:
-     *   - `attempts: 5` membuat Laravel retry otomatis saat deadlock (error 1213).
-     *   - Validasi di luar transaksi memastikan counter tidak terbuang saat validasi gagal.
+     * Setelah selesai, jumlah retry karena deadlock tersedia di:
+     *   NomorSuratService::$lastDeadlockRetries
      *
      * @param  Unit       $unit    Unit pembuat surat
      * @param  JenisSurat $jenis   Jenis surat dari enum
@@ -244,34 +277,19 @@ class NomorSuratService
             'legacy_id'        => $data['legacy_id']      ?? null,
         ];
 
-        // Langkah 2–8: Satu transaksi atomik, retry 5x saat deadlock
-        return DB::transaction(function () use ($company, $tahun, $bulan, $jenis, $unit, $dataSurat) {
+        // Hitung percobaan transaksi untuk melaporkan retry deadlock
+        $transactionAttempts = 0;
 
-            // Langkah 3: Pastikan baris counter ada
-            DB::statement(
-                'INSERT IGNORE INTO nomor_surat_counter (perusahaan_id, tahun, nomor_terakhir) VALUES (?, ?, 0)',
-                [$company->id, $tahun]
-            );
+        // Langkah 2–6: Satu transaksi atomik, retry hingga 5x saat deadlock
+        $surat = DB::transaction(function () use (
+            $company, $tahun, $bulan, $jenis, $unit, $dataSurat, &$transactionAttempts
+        ) {
+            $transactionAttempts++;
 
-            // Langkah 4: Ambil lock (static:: agar dapat di-override oleh subclass)
-            $counter = static::acquireLock($company->id, $tahun);
+            // Langkah 3: Increment counter secara atomik (static:: untuk late binding)
+            $urut = static::incrementCounter($company->id, $tahun);
 
-            if ($counter === null) {
-                throw new RuntimeException(
-                    "Baris counter tidak ditemukan untuk perusahaan [{$company->id}] tahun {$tahun} "
-                    . 'setelah INSERT IGNORE.'
-                );
-            }
-
-            // Langkah 5: Increment counter
-            $urut = $counter->nomor_terakhir + 1;
-
-            DB::table('nomor_surat_counter')
-                ->where('perusahaan_id', $company->id)
-                ->where('tahun', $tahun)
-                ->update(['nomor_terakhir' => $urut]);
-
-            // Langkah 6: Format nomor
+            // Langkah 4: Format nomor surat
             $nomor = self::formatNomor(
                 $urut,
                 $jenis->value,
@@ -281,13 +299,18 @@ class NomorSuratService
                 $tahun,
             );
 
-            // Langkah 7: Simpan surat (static:: agar dapat di-override)
+            // Langkah 5: Simpan surat (static:: untuk late binding)
             return static::persistSurat([
                 ...$dataSurat,
                 'nomor'      => $nomor,
                 'nomor_urut' => $urut,
             ]);
 
-        }, 5); // 5 attempts: retry otomatis saat deadlock MySQL 1213
+        }, 5); // 5 attempts: retry otomatis saat deadlock SQLSTATE 40001
+
+        // Simpan jumlah retry untuk pelaporan (0 = tidak ada deadlock)
+        self::$lastDeadlockRetries = $transactionAttempts - 1;
+
+        return $surat;
     }
 }

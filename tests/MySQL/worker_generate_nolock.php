@@ -2,6 +2,14 @@
 
 /**
  * Worker TANPA LOCK untuk uji kontrol negatif.
+ * Memakai NomorSuratServiceNoLock (non-atomik: SELECT lalu UPDATE terpisah).
+ * Tidak ada retry — setiap kegagalan langsung dicatat untuk analisis race condition.
+ *
+ * Output keys:
+ *   status     string
+ *   pid        int
+ *   nomor_urut int[]   nomor urut yang berhasil di-INSERT ke tabel surat
+ *   errors     array[] setiap kegagalan dengan type, code, message, nomor_urut_dicoba
  */
 
 $dbName = getenv('DB_DATABASE') ?: '';
@@ -51,13 +59,14 @@ $tgl   = Carbon::create($config['tahun'], 6, 15);
 $count = (int) $config['count'];
 $pid   = getmypid();
 
-$nomorUrut          = [];
-$errors             = [];
-$totalDeadlockRetry = 0;
+$nomorUrut = [];
+$errors    = [];
 
-// Kontrol negatif: TANPA retry untuk deadlock dan unique violation
-// Setiap kegagalan langsung dicatat — itulah yang ingin kita buktikan
 for ($i = 0; $i < $count; $i++) {
+    // Kita perlu tahu nomor urut yang DICOBA agar bisa deteksi kembar
+    // Kita tangkap di level transaksi dengan menjalankan incrementCounter
+    // secara manual terlebih dahulu di luar persistSurat.
+    // Cara termudah: tangkap exception dan parse nomor_urut dari pesan error.
     try {
         $surat = NomorSuratServiceNoLock::generate($unit, $jenis, $tgl, [
             'judul_surat'      => "NoLock pid={$pid} i={$i}",
@@ -75,14 +84,14 @@ for ($i = 0; $i < $count; $i++) {
         $errors[] = [
             'type'      => $type,
             'code'      => $code,
-            'message'   => substr($e->getMessage(), 0, 200),
+            'message'   => substr($e->getMessage(), 0, 250),
             'iteration' => $i,
             'pid'       => $pid,
         ];
     } catch (\Throwable $e) {
         $errors[] = [
             'type'      => get_class($e),
-            'message'   => $e->getMessage(),
+            'message'   => substr($e->getMessage(), 0, 250),
             'iteration' => $i,
             'pid'       => $pid,
         ];
@@ -90,10 +99,9 @@ for ($i = 0; $i < $count; $i++) {
 }
 
 echo json_encode([
-    'status'               => empty($errors) ? 'ok' : 'partial',
-    'pid'                  => $pid,
-    'nomor_urut'           => $nomorUrut,
-    'errors'               => $errors,
-    'total_deadlock_retry'  => $totalDeadlockRetry,
+    'status'     => empty($errors) ? 'ok' : 'partial',
+    'pid'        => $pid,
+    'nomor_urut' => $nomorUrut,
+    'errors'     => $errors,
 ]);
 exit(0);
