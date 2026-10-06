@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\JenisSurat;
-use App\Models\NomorSuratCounter;
 use App\Models\Surat;
 use App\Models\Unit;
 use Carbon\Carbon;
@@ -22,6 +21,11 @@ use RuntimeException;
  *
  * Scope counter: (perusahaan_id, tahun tanggal surat) — bukan per unit atau jenis.
  * Reset hanya saat tahun berganti. Nomor yang terpakai tidak pernah dikembalikan.
+ *
+ * Untuk keperluan test, dua method protected dapat di-override via subclass:
+ *   - static::acquireLock()  — mengambil row counter dengan lock eksklusif
+ *   - static::persistSurat() — menyimpan surat ke database
+ * Subclass HANYA boleh dibuat di direktori tests/, bukan di kode produksi.
  */
 class NomorSuratService
 {
@@ -82,7 +86,6 @@ class NomorSuratService
      * Format: {urut}/{kode_jenis}.{kode_unit}/{kode_perusahaan}/{bulan_romawi}/{tahun}
      *
      * Fungsi ini murni — hanya string manipulation, tidak ada DB call.
-     * Pisahkan dari generate() agar mudah diuji tanpa database.
      *
      * @param  int    $urut           Nomor urut (positif)
      * @param  string $kodeJenis      Kode jenis surat (misal: G, SP, MCU)
@@ -110,7 +113,40 @@ class NomorSuratService
         );
     }
 
-    // ── Validasi input (melempar exception sebelum counter disentuh) ─────────
+    // ── Method yang dapat di-override oleh subclass di tests/ ────────────────
+
+    /**
+     * Mengambil baris counter dengan SELECT ... FOR UPDATE (lock eksklusif).
+     *
+     * Dapat di-override oleh subclass test untuk menghilangkan lock (kontrol negatif).
+     * JANGAN override di kode produksi.
+     *
+     * @return object|null Baris counter, atau null jika tidak ditemukan
+     */
+    protected static function acquireLock(int $perusahaanId, int $tahun): ?object
+    {
+        return DB::table('nomor_surat_counter')
+            ->where('perusahaan_id', $perusahaanId)
+            ->where('tahun', $tahun)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    /**
+     * Menyimpan surat ke database.
+     *
+     * Dapat di-override oleh subclass test untuk mensimulasikan kegagalan
+     * setelah counter di-increment (test rollback).
+     * JANGAN override di kode produksi.
+     *
+     * @param  array $data Data surat yang sudah lengkap (termasuk nomor dan nomor_urut)
+     */
+    protected static function persistSurat(array $data): Surat
+    {
+        return Surat::create($data);
+    }
+
+    // ── Validasi input ────────────────────────────────────────────────────────
 
     /**
      * Validasi semua prasyarat sebelum counter disentuh.
@@ -121,7 +157,6 @@ class NomorSuratService
      */
     private static function validasiUnit(Unit $unit): void
     {
-        // 1. Pastikan unit punya company_id
         if ($unit->company_id === null) {
             throw new RuntimeException(
                 "Unit [{$unit->id}] \"{$unit->name}\" belum memiliki company_id. "
@@ -129,7 +164,6 @@ class NomorSuratService
             );
         }
 
-        // 2. Pastikan unit punya kode
         if (empty(trim((string) $unit->kode))) {
             throw new RuntimeException(
                 "Unit [{$unit->id}] \"{$unit->name}\" belum memiliki kode unit. "
@@ -137,7 +171,6 @@ class NomorSuratService
             );
         }
 
-        // 3. Load relasi company jika belum di-eager-load
         $company = $unit->company;
 
         if ($company === null) {
@@ -147,7 +180,6 @@ class NomorSuratService
             );
         }
 
-        // 4. Pastikan perusahaan punya kode_surat
         if (empty(trim((string) $company->kode_surat))) {
             throw new RuntimeException(
                 "Perusahaan [{$company->id}] \"{$company->name}\" belum memiliki kode_surat. "
@@ -161,25 +193,28 @@ class NomorSuratService
     /**
      * Generate nomor surat keluar dan simpan surat baru dalam satu transaksi atomik.
      *
-     * Algoritma (seluruhnya dalam satu transaksi):
-     *   1. Validasi prasyarat (unit.kode, unit.company_id, company.kode_surat).
-     *      Dilakukan SEBELUM transaksi dibuka agar tidak ada lock yang terbuang.
-     *   2. Buka transaksi.
+     * Algoritma:
+     *   1. Validasi (unit.kode, unit.company_id, company.kode_surat) SEBELUM transaksi.
+     *   2. Buka transaksi (retry otomatis hingga 5x saat deadlock MySQL 1213).
      *   3. INSERT IGNORE baris counter jika belum ada (nomor_terakhir = 0).
-     *   4. SELECT ... FOR UPDATE pada baris counter (lock eksklusif).
-     *   5. urut = nomor_terakhir + 1, UPDATE nomor_terakhir = urut.
+     *   4. static::acquireLock() — SELECT FOR UPDATE (dapat di-override).
+     *   5. urut = nomor_terakhir + 1, UPDATE counter.
      *   6. Format nomor surat.
-     *   7. INSERT surat dengan nomor terformat.
-     *   8. COMMIT. Rollback otomatis jika ada kegagalan di langkah 2–7.
+     *   7. static::persistSurat() — INSERT surat (dapat di-override).
+     *   8. COMMIT. Rollback otomatis jika ada kegagalan.
      *
-     * @param  Unit       $unit      Unit pembuat surat (harus sudah ada company via $unit->company)
-     * @param  JenisSurat $jenis     Jenis surat dari enum
-     * @param  Carbon     $tanggal   Tanggal surat (bulan, tahun, dan counter diambil dari sini)
-     * @param  array      $data      Data surat: judul_surat, perihal?, deskripsi?,
-     *                               dibuat_oleh_id?, dibuat_oleh_nama
-     * @return Surat                 Model surat yang baru dibuat (sudah tersimpan di DB)
+     * Catatan transaksi:
+     *   - `attempts: 5` membuat Laravel retry otomatis saat deadlock (error 1213).
+     *   - Validasi di luar transaksi memastikan counter tidak terbuang saat validasi gagal.
      *
-     * @throws RuntimeException      Jika validasi gagal atau transaksi gagal
+     * @param  Unit       $unit    Unit pembuat surat
+     * @param  JenisSurat $jenis   Jenis surat dari enum
+     * @param  Carbon     $tanggal Tanggal surat
+     * @param  array      $data    judul_surat, dibuat_oleh_nama, perihal?, deskripsi?,
+     *                             dibuat_oleh_id?, status?, legacy_id?
+     * @return Surat               Model surat yang baru tersimpan
+     *
+     * @throws RuntimeException Jika validasi gagal atau semua retry deadlock habis
      */
     public static function generate(
         Unit $unit,
@@ -187,55 +222,48 @@ class NomorSuratService
         Carbon $tanggal,
         array $data,
     ): Surat {
-        // ── Langkah 1: Validasi SEBELUM transaksi (tidak ada counter yang terbuang) ──
-        // Muat relasi company sekali saja agar validasi dan format pakai data yang sama
+        // Langkah 1: Validasi SEBELUM transaksi
         $unit->loadMissing('company');
         self::validasiUnit($unit);
 
-        $company = $unit->company; // sudah divalidasi tidak null
+        $company = $unit->company;
         $tahun   = (int) $tanggal->format('Y');
         $bulan   = (int) $tanggal->format('n');
 
-        // Siapkan data surat (field wajib dan opsional)
         $dataSurat = [
             'tipe_surat'       => 'keluar',
-            'status'           => $data['status']      ?? 'Tersimpan',
+            'status'           => $data['status']        ?? 'Tersimpan',
             'jenis'            => $jenis->value,
             'unit_id'          => $unit->id,
             'tanggal'          => $tanggal->format('Y-m-d'),
             'judul_surat'      => $data['judul_surat'],
-            'perihal'          => $data['perihal']       ?? null,
-            'deskripsi'        => $data['deskripsi']     ?? null,
+            'perihal'          => $data['perihal']        ?? null,
+            'deskripsi'        => $data['deskripsi']      ?? null,
             'dibuat_oleh_id'   => $data['dibuat_oleh_id'] ?? null,
             'dibuat_oleh_nama' => $data['dibuat_oleh_nama'],
-            'legacy_id'        => $data['legacy_id']    ?? null,
+            'legacy_id'        => $data['legacy_id']      ?? null,
         ];
 
-        // ── Langkah 2–8: Satu transaksi atomik ──────────────────────────────
-        return DB::transaction(function () use ($unit, $jenis, $tanggal, $company, $tahun, $bulan, $dataSurat) {
+        // Langkah 2–8: Satu transaksi atomik, retry 5x saat deadlock
+        return DB::transaction(function () use ($company, $tahun, $bulan, $jenis, $unit, $dataSurat) {
 
-            // Langkah 3: Pastikan baris counter ada (INSERT IGNORE — idempotent)
+            // Langkah 3: Pastikan baris counter ada
             DB::statement(
                 'INSERT IGNORE INTO nomor_surat_counter (perusahaan_id, tahun, nomor_terakhir) VALUES (?, ?, 0)',
                 [$company->id, $tahun]
             );
 
-            // Langkah 4: SELECT FOR UPDATE — lock eksklusif baris counter
-            $counter = DB::table('nomor_surat_counter')
-                ->where('perusahaan_id', $company->id)
-                ->where('tahun', $tahun)
-                ->lockForUpdate()
-                ->first();
+            // Langkah 4: Ambil lock (static:: agar dapat di-override oleh subclass)
+            $counter = static::acquireLock($company->id, $tahun);
 
             if ($counter === null) {
-                // Seharusnya tidak terjadi setelah INSERT IGNORE di atas
                 throw new RuntimeException(
                     "Baris counter tidak ditemukan untuk perusahaan [{$company->id}] tahun {$tahun} "
-                    . 'setelah INSERT IGNORE. Periksa hak akses tabel nomor_surat_counter.'
+                    . 'setelah INSERT IGNORE.'
                 );
             }
 
-            // Langkah 5: Hitung urut baru dan update counter
+            // Langkah 5: Increment counter
             $urut = $counter->nomor_terakhir + 1;
 
             DB::table('nomor_surat_counter')
@@ -243,7 +271,7 @@ class NomorSuratService
                 ->where('tahun', $tahun)
                 ->update(['nomor_terakhir' => $urut]);
 
-            // Langkah 6: Format nomor surat
+            // Langkah 6: Format nomor
             $nomor = self::formatNomor(
                 $urut,
                 $jenis->value,
@@ -253,15 +281,13 @@ class NomorSuratService
                 $tahun,
             );
 
-            // Langkah 7: INSERT surat
-            // Kolom 'nomor' punya UNIQUE constraint sebagai pengaman kedua.
-            $surat = Surat::create([
+            // Langkah 7: Simpan surat (static:: agar dapat di-override)
+            return static::persistSurat([
                 ...$dataSurat,
                 'nomor'      => $nomor,
                 'nomor_urut' => $urut,
             ]);
 
-            return $surat;
-        });
+        }, 5); // 5 attempts: retry otomatis saat deadlock MySQL 1213
     }
 }

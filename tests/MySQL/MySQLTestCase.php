@@ -4,7 +4,6 @@ namespace Tests\MySQL;
 
 use Illuminate\Foundation\Testing\TestCase;
 use Illuminate\Support\Facades\DB;
-use PHPUnit\Framework\Attributes\BeforeClass;
 
 /**
  * Base class untuk semua test MySQL (tests/MySQL/).
