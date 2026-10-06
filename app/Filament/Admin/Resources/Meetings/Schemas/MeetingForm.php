@@ -244,7 +244,8 @@ class MeetingForm
                         ->minutesStep(5)
                         ->closeOnDateSelection()
                         ->prefixIcon('heroicon-m-clock')
-                        ->minDate(fn (string $operation) => $operation === 'create' ? now()->startOfDay() : null)
+                        // Izinkan penjadwalan mundur hingga 1 bulan untuk rapat yang terlewat dicatat
+                        ->minDate(fn (string $operation) => $operation === 'create' ? now()->subMonth()->startOfDay() : null)
                         ->hint(fn () => request()->query('date_time')
                             ? '📅 Tanggal diisi dari kalender — silakan lengkapi jam mulai rapat.'
                             : null
