@@ -536,7 +536,8 @@ class AdminPanelProvider extends PanelProvider
                         }
 
                         .fi-page {
-                            animation: fi-page-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                            /* Tanpa "forwards": transform sisa animasi membuat modal (position:fixed) terkurung di dalam elemen ini */
+                            animation: fi-page-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
                         }
                         @keyframes fi-page-in {
                             0%   { opacity: 0; transform: translateY(8px); }
@@ -615,7 +616,7 @@ class AdminPanelProvider extends PanelProvider
                             border: 1px solid rgba(0, 0, 0, 0.06) !important;
                             box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04) !important;
                             overflow: hidden !important;
-                            animation: fi-card-fade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                            animation: fi-card-fade 0.3s cubic-bezier(0.16, 1, 0.3, 1); /* tanpa "forwards", lihat .fi-page */
                         }
 
                         .fi-ta:has(.fi-ta-actions button[aria-expanded="true"]) {
