@@ -106,10 +106,11 @@ class MeetingsTable
                     }),
             ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
+                ViewAction::make()->color('info'),
+                EditAction::make()->color('warning'),
                 Action::make('viewNotulen')
                     ->label('Hasil Notulen')
+                    ->color('success')
                     ->icon('heroicon-o-document')
                     ->visible(fn ($record) => ! empty($record->file_path) &&
                         (auth()->user()->hasRole(['super_admin', 'Sekretaris']) ||

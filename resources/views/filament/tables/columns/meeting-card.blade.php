@@ -107,11 +107,51 @@
             display: flex !important;
             flex-wrap: wrap !important;
             justify-content: flex-end !important;
-            gap: 4px 14px !important;
-            padding: 10px 16px !important;
+            gap: 8px !important;
+            padding: 12px 16px !important;
             margin: 0 !important;
             border-top: 1px solid #eef2f7;
             background: #fafbfd;
+        }
+        /* Tombol aksi: pill berwarna lembut, terisi penuh saat hover.
+           Warna diambil dari --color-* milik Filament (info / warning / success / danger). */
+        .fi-ta-content-grid .fi-ta-record:has(.mcard) .fi-ta-actions :is(.fi-link, .fi-btn) {
+            flex: 1 1 auto;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            gap: 6px !important;
+            height: 34px;
+            padding: 0 14px !important;
+            border-radius: 10px !important;
+            border: 1px solid var(--color-200) !important;
+            background: linear-gradient(180deg, #fff 0%, var(--color-50) 100%) !important;
+            color: var(--color-700) !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            white-space: nowrap;
+            text-decoration: none !important;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, .06), inset 0 1px 0 rgba(255, 255, 255, .8) !important;
+            transition: background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s cubic-bezier(.16, 1, .3, 1) !important;
+        }
+        .fi-ta-content-grid .fi-ta-record:has(.mcard) .fi-ta-actions :is(.fi-link, .fi-btn) * {
+            color: inherit !important;
+            text-decoration: none !important;
+        }
+        .fi-ta-content-grid .fi-ta-record:has(.mcard) .fi-ta-actions :is(.fi-link, .fi-btn) svg {
+            width: 15px !important;
+            height: 15px !important;
+        }
+        .fi-ta-content-grid .fi-ta-record:has(.mcard) .fi-ta-actions :is(.fi-link, .fi-btn):hover {
+            background: linear-gradient(180deg, var(--color-500) 0%, var(--color-600) 100%) !important;
+            border-color: var(--color-600) !important;
+            color: #fff !important;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 14px -4px var(--color-500) !important;
+        }
+        .fi-ta-content-grid .fi-ta-record:has(.mcard) .fi-ta-actions :is(.fi-link, .fi-btn):active {
+            transform: translateY(0);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, .1) !important;
         }
 
         /* ── Kartu ── */
