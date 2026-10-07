@@ -144,9 +144,36 @@
         .mcard-chip[data-status="completed"] { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
         .mcard-chip[data-status="cancelled"] { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
         .mcard-chip-notulen { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+
+        /* ── Desktop: kartu grid; Mobile: pakai meeting-mobile-card ── */
+        @media (min-width: 768px) {
+            .mcard-mobile { display: none !important; }
+        }
+        @media (max-width: 767.98px) {
+            .mcard { display: none !important; }
+
+            /* Kartu mobile sudah punya border, shadow & tombol sendiri */
+            .fi-ta-content-grid .fi-ta-record:has(.mcard),
+            .fi-ta-content-grid .fi-ta-record:has(.mcard):hover {
+                background: transparent !important;
+                box-shadow: none !important;
+                transform: none !important;
+                --tw-ring-shadow: 0 0 #0000 !important;
+            }
+            .fi-ta-content-grid .fi-ta-record:has(.mcard) .fi-ta-actions,
+            .fi-ta-content-grid .fi-ta-record:has(.mcard) .fi-ta-record-checkbox {
+                display: none !important;
+            }
+        }
     </style>
 @endonce
 
+{{-- Mobile: tetap memakai kartu mobile yang sudah ada --}}
+<div class="mcard-mobile">
+    @include('filament.tables.columns.meeting-mobile-card')
+</div>
+
+{{-- Desktop --}}
 <div class="mcard" data-status="{{ $status }}">
     {{-- Header: blok tanggal + judul + waktu --}}
     <div class="mcard-head">
