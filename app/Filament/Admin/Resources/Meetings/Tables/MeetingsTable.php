@@ -2,7 +2,6 @@
 
 namespace App\Filament\Admin\Resources\Meetings\Tables;
 
-use App\Filament\Admin\Resources\Meetings\MeetingResource;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -11,7 +10,6 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
-use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -23,25 +21,62 @@ class MeetingsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with([
-                'creator:id,name',
-                'participants' => fn ($q) => $q->select('users.id', 'users.name'),
-            ]))
             ->columns([
-                // Satu kolom kartu (desktop & mobile) dalam grid
-                Stack::make([
-                    TextColumn::make('date_time')
-                        ->label('Tanggal & Waktu')
-                        ->searchable(['title', 'location'])
-                        ->sortable()
-                        ->view('filament.tables.columns.meeting-card'),
-                ]),
+                // Mobile card
+                TextColumn::make('title')
+                    ->label('Rapat')
+                    ->searchable()
+                    ->sortable()
+                    ->view('filament.tables.columns.meeting-mobile-card')
+                    ->grow(),
+
+                // Desktop columns
+                TextColumn::make('index')
+                    ->label('No.')
+                    ->rowIndex()
+                    ->visibleFrom('md'),
+                TextColumn::make('date_time')->label('Tanggal & Waktu')->dateTime('d M Y H:i')->sortable()->visibleFrom('md'),
+                TextColumn::make('location')
+                    ->label('Lokasi')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: false)
+                    ->visibleFrom('md'),
+                TextColumn::make('status')
+                    ->label('Status')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'scheduled' => 'Terjadwal',
+                        'completed' => 'Selesai',
+                        'cancelled' => 'Batal',
+                        default => ucfirst($state),
+                    })
+                    ->color(fn ($state) => match ($state) {
+                        'scheduled' => 'info',
+                        'completed' => 'gray',
+                        'cancelled' => 'danger',
+                        default => 'gray',
+                    })
+                    ->icon(fn ($state) => match ($state) {
+                        'scheduled' => 'heroicon-o-calendar',
+                        'completed' => 'heroicon-o-check-circle',
+                        'cancelled' => 'heroicon-o-x-circle',
+                        default => null,
+                    })
+                    ->sortable()
+                    ->visibleFrom('md'),
+                TextColumn::make('creator.name')
+                    ->label('Dibuat Oleh')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visibleFrom('md'),
+                TextColumn::make('created_at')
+                    ->label('Dibuat Pada')
+                    ->dateTime('d M Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visibleFrom('md'),
+                TextColumn::make('updated_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true)->visibleFrom('md'),
             ])
-            ->contentGrid([
-                'md' => 2,
-                'xl' => 3,
-            ])
-            ->recordUrl(fn ($record) => MeetingResource::getUrl('view', ['record' => $record]))
             ->defaultSort('date_time', 'desc')
             ->filters([
                 Filter::make('is_invited')
