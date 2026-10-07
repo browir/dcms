@@ -27,7 +27,7 @@
         data-dcms-label="{{ strip_tags((string) $slot) }}"
         title="{{ strip_tags((string) $slot) }}"
     >
-        {{-- Icon: hidden by default, slides in when search bar is open --}}
+        {{-- Icon: always visible; label collapses when search bar is open --}}
         @if ($icon || $activeIcon)
             <span class="dcms-nav-icon-wrap" aria-hidden="true">
                 {{ \Filament\Support\generate_icon_html(($active && $activeIcon) ? $activeIcon : $icon, attributes: (new \Illuminate\View\ComponentAttributeBag)->class(['fi-topbar-item-icon'])) }}

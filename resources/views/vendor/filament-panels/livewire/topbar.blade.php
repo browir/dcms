@@ -188,10 +188,7 @@
             }
 
             /* ── 5. Icon wrapper ──
-               Default (CLOSED): collapsed (max-width:0, invisible)
-               On OPEN:          expanded, visible
-               CLOSE: fade out fast (0ms delay)
-               OPEN:  fade in after text has left (~80ms delay)
+               Always visible (icon + text when closed, icon-only when search is open)
             ── */
             .fi-topbar-nav-groups .dcms-nav-icon-wrap {
                 display: inline-flex;
@@ -199,20 +196,8 @@
                 justify-content: center;
                 overflow: hidden;
                 flex-shrink: 0;
-                max-width: 0;
-                opacity: 0;
-                /* CLOSE: collapse immediately so text can reuse space */
-                transition:
-                    max-width var(--dcms-close-icon-dur) var(--dcms-anim-ease) var(--dcms-close-icon-delay),
-                    opacity   var(--dcms-close-icon-dur) var(--dcms-anim-ease) var(--dcms-close-icon-delay);
-            }
-            .dcms-search-active .fi-topbar-nav-groups .dcms-nav-icon-wrap {
                 max-width: 26px;
                 opacity: 1;
-                /* OPEN: fade in after text has collapsed */
-                transition:
-                    max-width var(--dcms-open-icon-dur) var(--dcms-anim-ease) var(--dcms-open-icon-delay),
-                    opacity   var(--dcms-open-icon-dur) var(--dcms-anim-ease) var(--dcms-open-icon-delay);
             }
 
             /* ── 6a. Label OUTER — layout space controller ── */
