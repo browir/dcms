@@ -8,7 +8,6 @@ use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\Layout\Stack;
@@ -26,6 +25,7 @@ class MeetingsTable
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->with([
                 'creator:id,name',
+                'notulis:id,name',
                 'participants' => fn ($q) => $q->select('users.id', 'users.name'),
             ]))
             ->columns([
@@ -105,7 +105,7 @@ class MeetingsTable
                     }),
             ])
             ->recordActions([
-                ViewAction::make(),
+                // Tidak ada tombol "Lihat": klik kartu langsung membuka detail (recordUrl)
                 EditAction::make(),
                 Action::make('viewNotulen')
                     ->label('Hasil Notulen')

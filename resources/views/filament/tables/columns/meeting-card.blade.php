@@ -1,24 +1,38 @@
 @php
-    $record   = $getRecord();
-    $title    = $record->title ?? '—';
-    $start    = $record->date_time;
-    $end      = $record->end_time;
-    $location = $record->location;
-    $status   = $record->status ?? 'scheduled';
-    $creator  = $record->creator?->name;
+    $record    = $getRecord();
+    $title     = $record->title ?? '—';
+    $docNumber = $record->doc_number;
+    $agenda    = trim(strip_tags((string) $record->agenda));
+    $start     = $record->date_time;
+    $end       = $record->end_time;
+    $location  = $record->location;
+    $status    = $record->status ?? 'scheduled';
+    $creator   = $record->creator?->name;
+    $notulis   = $record->notulis?->name;
 
     $statusLabel = match ($status) { 'scheduled' => 'Terjadwal', 'completed' => 'Selesai', 'cancelled' => 'Batal', default => ucfirst($status) };
 
-    // Penanda waktu relatif (hanya untuk rapat terjadwal)
+    // Durasi rapat, mis. "2 jam", "1 jam 30 mnt", "45 mnt"
+    $duration = null;
+    if ($start && $end && $end->gt($start)) {
+        $minutes  = (int) $start->diffInMinutes($end);
+        $duration = trim((intdiv($minutes, 60) ? intdiv($minutes, 60) . ' jam ' : '') . ($minutes % 60 ? ($minutes % 60) . ' mnt' : ''));
+    }
+
+    // Penanda waktu relatif + progres (hanya untuk rapat terjadwal)
     $relative = null;
+    $progress = null;
     if ($status === 'scheduled' && $start) {
-        $now = now();
+        $now          = now();
         $effectiveEnd = $record->effectiveEndTime();
 
         if ($now->between($start, $effectiveEnd)) {
             $relative = ['Sedang berlangsung', 'live'];
-        } elseif ($start->isToday()) {
-            $relative = ['Hari ini', 'today'];
+            $total    = max(1, $start->diffInMinutes($effectiveEnd));
+            $progress = (int) min(100, max(0, round($start->diffInMinutes($now) / $total * 100)));
+        } elseif ($start->isToday() && $start->isFuture()) {
+            $minutesLeft = (int) ceil($now->diffInMinutes($start));
+            $relative    = [$minutesLeft < 60 ? "Mulai {$minutesLeft} menit lagi" : 'Mulai ' . intdiv($minutesLeft, 60) . ' jam lagi', 'today'];
         } elseif ($start->isTomorrow()) {
             $relative = ['Besok', 'soon'];
         } elseif ($start->isFuture() && ($days = (int) $now->copy()->startOfDay()->diffInDays($start->copy()->startOfDay())) <= 7) {
@@ -29,6 +43,15 @@
     $participants     = $record->participants;
     $participantCount = $participants->count();
     $avatarPalette    = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#059669', '#0891b2'];
+
+    // Peran user yang sedang login pada rapat ini
+    $userId = auth()->id();
+    $myRole = match (true) {
+        $record->created_by === $userId => 'Pembuat',
+        $record->notulis_id === $userId => 'Notulis',
+        $participants->contains('id', $userId) => 'Diundang',
+        default => null,
+    };
 
     $hasNotulen = ! empty($record->file_path);
 @endphp
@@ -152,6 +175,25 @@
         .mcard-chip[data-status="completed"] { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
         .mcard-chip[data-status="cancelled"] { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
         .mcard-chip-notulen { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+        .mcard-chip-role { background: #faf5ff; color: #7e22ce; border-color: #e9d5ff; }
+
+        /* Nomor dokumen, durasi, agenda */
+        .mcard-docno { font-size: 10.5px; font-weight: 700; color: #64748b; letter-spacing: .02em; margin-bottom: 2px; font-variant-numeric: tabular-nums; }
+        .mcard-dur { color: #94a3b8; font-weight: 500; }
+        .mcard-agenda {
+            font-size: 12px; color: #475569; line-height: 1.5; background: #f8fafc; border-left: 3px solid #cbd5e1;
+            border-radius: 0 8px 8px 0; padding: 7px 10px; white-space: pre-line;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .mcard[data-status="scheduled"] .mcard-agenda { border-left-color: #93c5fd; background: #f5f9ff; }
+
+        /* Rapat sedang berlangsung: garis progres + kartu menyala hijau */
+        .mcard-progress { height: 5px; border-radius: 999px; background: #dcfce7; overflow: hidden; margin-top: -4px; }
+        .mcard-progress > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #16a34a, #4ade80); }
+        .mcard[data-live] { --mcard-accent: linear-gradient(90deg, #15803d, #4ade80); }
+        .fi-ta-content-grid .fi-ta-record:has(.mcard[data-live]) {
+            box-shadow: 0 0 0 2px #86efac, 0 8px 24px rgba(22, 163, 74, .16) !important;
+        }
 
         /* ── Desktop: kartu grid; Mobile: pakai meeting-mobile-card ── */
         @media (min-width: 768px) {
@@ -182,7 +224,7 @@
 </div>
 
 {{-- Desktop --}}
-<div class="mcard" data-status="{{ $status }}">
+<div class="mcard" data-status="{{ $status }}" @if ($progress !== null) data-live @endif>
     {{-- Header: blok tanggal + judul + waktu --}}
     <div class="mcard-head">
         <div class="mcard-date">
@@ -192,10 +234,13 @@
         </div>
 
         <div style="flex:1;min-width:0;">
+            @if ($docNumber)
+                <div class="mcard-docno">{{ $docNumber }}</div>
+            @endif
             <div class="mcard-title" title="{{ $title }}">{{ $title }}</div>
             <div class="mcard-time">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span>{{ $start?->format('H:i') ?? '—' }}{{ $end ? ' – ' . $end->format('H:i') : '' }} WIB</span>
+                <span>{{ $start?->format('H:i') ?? '—' }}{{ $end ? ' – ' . $end->format('H:i') : '' }} WIB @if ($duration)<span class="mcard-dur">· {{ $duration }}</span>@endif</span>
                 @if ($relative)
                     <span class="mcard-rel" data-tone="{{ $relative[1] }}"><span class="mcard-rel-dot"></span>{{ $relative[0] }}</span>
                 @endif
@@ -203,7 +248,15 @@
         </div>
     </div>
 
-    {{-- Detail: lokasi & pembuat --}}
+    @if ($progress !== null)
+        <div class="mcard-progress" title="{{ $progress }}% berjalan"><span style="width: {{ $progress }}%"></span></div>
+    @endif
+
+    @if ($agenda !== '')
+        <div class="mcard-agenda" title="{{ $agenda }}">{{ $agenda }}</div>
+    @endif
+
+    {{-- Detail: lokasi, pembuat, notulis --}}
     <div class="mcard-meta">
         <div class="mcard-row">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -213,6 +266,12 @@
             <div class="mcard-row">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                 <span class="mcard-row-text"><span class="mcard-muted">Dibuat oleh</span> {{ $creator }}</span>
+            </div>
+        @endif
+        @if ($notulis)
+            <div class="mcard-row">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                <span class="mcard-row-text"><span class="mcard-muted">Notulis</span> {{ $notulis }}</span>
             </div>
         @endif
     </div>
@@ -238,6 +297,9 @@
         </div>
 
         <div class="mcard-chips">
+            @if ($myRole)
+                <span class="mcard-chip mcard-chip-role">{{ $myRole }}</span>
+            @endif
             @if ($hasNotulen)
                 <span class="mcard-chip mcard-chip-notulen">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
