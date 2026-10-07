@@ -12,9 +12,9 @@ use Illuminate\Contracts\View\View;
 
 class Dashboard extends BaseDashboard
 {
-    protected static ?string $title = 'Dasbor';
+    protected static ?string $title = 'Beranda';
 
-    protected static ?string $navigationLabel = 'Dasbor';
+    protected static ?string $navigationLabel = 'Beranda';
 
     /**
      * Hide the built-in Filament page header bar.

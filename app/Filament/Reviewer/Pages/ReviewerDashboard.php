@@ -9,9 +9,9 @@ class ReviewerDashboard extends BaseDashboard
 {
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedHome;
 
-    protected static ?string $navigationLabel = 'Dashboard';
+    protected static ?string $navigationLabel = 'Beranda';
 
-    protected static ?string $title = 'Dashboard Reviewer';
+    protected static ?string $title = 'Beranda Reviewer';
 
     protected static string $routePath = '/';
 
