@@ -56,9 +56,17 @@
             flex-direction: column;
             justify-content: space-between;
         }
+        /* Seluruh area kartu = link ke detail rapat */
+        .fi-ta-content-grid .fi-ta-record:has(.mcard) .fi-ta-record-content-ctn > div:first-child {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+        }
         .fi-ta-content-grid .fi-ta-record:has(.mcard) .fi-ta-record-content {
             display: block;
+            flex: 1 1 auto;
             padding: 0 !important;
+            cursor: pointer;
         }
         /* Checkbox seleksi: pojok kanan atas kartu */
         .fi-ta-content-grid .fi-ta-record:has(.mcard) {

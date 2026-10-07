@@ -13,6 +13,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -33,7 +34,6 @@ class MeetingsTable
                     TextColumn::make('date_time')
                         ->label('Tanggal & Waktu')
                         ->searchable(['title', 'location'])
-                        ->sortable()
                         ->view('filament.tables.columns.meeting-card'),
                 ]),
             ])
@@ -43,6 +43,7 @@ class MeetingsTable
             ])
             ->recordUrl(fn ($record) => MeetingResource::getUrl('view', ['record' => $record]))
             ->defaultSort('date_time', 'desc')
+            ->filtersLayout(FiltersLayout::Modal)
             ->filters([
                 Filter::make('is_invited')
                     ->label('Rapat Undangan Saya')
