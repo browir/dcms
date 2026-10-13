@@ -3,7 +3,6 @@
 namespace App\Notifications;
 
 use App\Models\Meeting;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class MeetingInvitationNotification extends Notification
@@ -19,9 +18,9 @@ class MeetingInvitationNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        // 'database' duluan supaya notifikasi bell tetap masuk meski 'mail' gagal
-        // (Laravel berhenti ke channel berikutnya kalau satu channel melempar exception).
-        return ['database', \App\Notifications\Channels\N8nWhatsAppChannel::class, 'mail'];
+        // Tanpa 'mail': email undangan sudah dikirim terpisah lewat MeetingInvitationMail
+        // di CreateMeeting::afterCreate(). Kalau 'mail' ditambahkan di sini, peserta dapat email ganda.
+        return ['database', \App\Notifications\Channels\N8nWhatsAppChannel::class];
     }
 
     /**
@@ -37,20 +36,6 @@ class MeetingInvitationNotification extends Notification
                 .'. Lokasi: '.($this->meeting->location ?? 'Online').'.',
             'url' => url('/admin/meetings/'.$this->meeting->id),
         ];
-    }
-
-    public function toMail(object $notifiable): MailMessage
-    {
-        return (new MailMessage)
-            ->subject('Undangan Rapat: '.$this->meeting->title)
-            ->greeting('Halo '.$notifiable->name.'!')
-            ->line('Anda diundang untuk menghadiri rapat:')
-            ->line('**'.$this->meeting->title.'**')
-            ->line('**Tanggal:** '.($this->meeting->meeting_date ? $this->meeting->meeting_date->format('d F Y, H:i') : '-'))
-            ->line('**Lokasi:** '.($this->meeting->location ?? 'Online'))
-            ->action('Lihat Detail Rapat', url('/admin/meetings/'.$this->meeting->id))
-            ->line('Silakan cek detail lengkap rapat melalui sistem.')
-            ->salutation('Terima kasih');
     }
 
     public function toArray(object $notifiable): array
