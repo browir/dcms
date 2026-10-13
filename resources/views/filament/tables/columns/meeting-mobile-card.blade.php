@@ -57,7 +57,7 @@
                 @if($timeFormatted)
                     <div style="font-size:11px;color:#64748b;margin-top:2px;display:flex;align-items:center;gap:4px;">
                         <svg style="width:12px;height:12px;color:#64748b;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span>{{ $timeFormatted }} WIB</span>
+                        <span>{{ $timeFormatted }} WITA</span>
                     </div>
                 @endif
             </div>

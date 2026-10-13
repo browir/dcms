@@ -73,7 +73,7 @@ class PushSubscriptionController extends Controller
         try {
             $user->notify(new \App\Notifications\WebPushGenericNotification(
                 '🔔 Uji Coba Web Push Notification',
-                'Pesan uji coba ini menandakan notifikasi Web Push berjalan sempurna pada jam '.now()->format('H:i:s').' WIB.',
+                'Pesan uji coba ini menandakan notifikasi Web Push berjalan sempurna pada jam '.now()->format('H:i:s').' WITA.',
                 url('/admin')
             ));
 
