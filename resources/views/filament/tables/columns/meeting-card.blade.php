@@ -32,7 +32,13 @@
             $progress = (int) min(100, max(0, round($start->diffInMinutes($now) / $total * 100)));
         } elseif ($start->isToday() && $start->isFuture()) {
             $minutesLeft = (int) ceil($now->diffInMinutes($start));
-            $relative    = [$minutesLeft < 60 ? "Mulai {$minutesLeft} menit lagi" : 'Mulai ' . intdiv($minutesLeft, 60) . ' jam lagi', 'today'];
+            $hoursLeft   = intdiv($minutesLeft, 60);
+            $restMinutes = $minutesLeft % 60;
+            $relative    = [match (true) {
+                $hoursLeft === 0   => "Mulai {$minutesLeft} menit lagi",
+                $restMinutes === 0 => "Mulai {$hoursLeft} jam lagi",
+                default            => "Mulai {$hoursLeft} jam {$restMinutes} menit lagi",
+            }, 'today'];
         } elseif ($start->isTomorrow()) {
             $relative = ['Besok', 'soon'];
         } elseif ($start->isFuture() && ($days = (int) $now->copy()->startOfDay()->diffInDays($start->copy()->startOfDay())) <= 7) {
