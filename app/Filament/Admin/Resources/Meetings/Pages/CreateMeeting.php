@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Meetings\Pages;
 use App\Filament\Admin\Resources\Meetings\MeetingResource;
 use App\Mail\MeetingInvitationMail;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 
@@ -62,6 +63,14 @@ class CreateMeeting extends CreateRecord
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Tutup'),
         ];
+    }
+
+    /**
+     * Overlay loading selama rapat dibuat & email undangan dikirim ke peserta.
+     */
+    public function getFooter(): ?View
+    {
+        return view('filament.meetings.create-loading-overlay');
     }
 
     protected function getCreateFormAction(): \Filament\Actions\Action
