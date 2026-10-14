@@ -31,7 +31,10 @@ class CreateMeeting extends CreateRecord
                 // User still has to fill in the correct start time
                 $date = Carbon::parse($dateParam)->startOfDay()->format('Y-m-d\TH:i');
 
+                // Merge dengan state saat ini agar default field lain
+                // (created_by, company_id, department_id, unit_id) tidak hilang
                 $this->form->fill([
+                    ...$this->form->getRawState(),
                     'date_time' => $date,
                 ]);
             } catch (\Throwable $e) {
@@ -83,6 +86,17 @@ class CreateMeeting extends CreateRecord
     {
         return parent::getCancelFormAction()
             ->label('Batal');
+    }
+
+    /**
+     * Pembuat rapat selalu diambil dari user yang login di sisi server,
+     * jangan bergantung pada field Hidden di form.
+     */
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['created_by'] = auth()->id();
+
+        return $data;
     }
 
     protected function afterCreate(): void
