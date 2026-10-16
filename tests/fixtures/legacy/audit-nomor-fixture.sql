@@ -1,5 +1,6 @@
 -- Fixture dump untuk tests/MySQL/ImportCounterLamaTest.php
 -- Mensimulasikan audit-nomor.sql dari sistem lama.
+-- Format sesuai dump asli: tabel `surat`, kolom `nomor_surat` dan `tipe_surat`.
 --
 -- Pemetaan legacy_id yang ADA di companies:
 --   legacy_id=1  => SGG
@@ -17,24 +18,26 @@
 --   RSUSM-BRB 2026: MAX(1580,1583)= 1583
 
 -- -------------------------------------------------------------------------
--- Tabel 1: counter dari sistem lama
+-- Tabel 1: counter dari sistem lama (termasuk id kolom seperti dump asli)
+-- Kolom: id, id_perusahaan, tahun, nomor_terakhir
 -- -------------------------------------------------------------------------
-INSERT INTO `nomor_surat_counter` (`id_perusahaan`,`tahun`,`nomor_terakhir`) VALUES
-(1,2025,305),
-(1,2026,350),
-(2,2025,1),
-(3,2026,1580),
-(4,2026,10),
-(7,2026,5);
+INSERT INTO `nomor_surat_counter` (`id`,`id_perusahaan`,`tahun`,`nomor_terakhir`) VALUES
+	(1,1,2025,305),
+	(2,1,2026,350),
+	(3,2,2025,1),
+	(4,3,2026,1580),
+	(5,4,2026,10),
+	(6,7,2026,5);
 
 -- -------------------------------------------------------------------------
--- Tabel 2: surat dari sistem lama (keluar dan masuk)
+-- Tabel 2: surat dari sistem lama (format sesuai dump asli)
+-- Kolom: id, nomor_surat, tipe_surat, id_perusahaan (dan kolom lain)
 -- Counter SGG 2025 harus MAX dari nomor surat (307 > 305)
 -- Counter SGG 2026 harus MAX dari nomor surat (351 > 350)
 -- Surat masuk (row id=3) harus diabaikan
 -- Legacy 4 dan 7 harus dilaporkan dilewati
 -- -------------------------------------------------------------------------
-INSERT INTO `nomor_surat` (`id`,`id_perusahaan`,`nomor`,`jenis_surat`) VALUES
+INSERT INTO `surat` (`id`,`id_perusahaan`,`nomor_surat`,`tipe_surat`) VALUES
 (1,1,'306/G.SGG/IX/2025','keluar'),
 (2,1,'307/G.SGG/X/2025','keluar'),
 (3,1,'100/G.SGG/IX/2025','masuk'),

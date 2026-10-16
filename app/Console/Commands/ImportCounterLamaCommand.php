@@ -47,10 +47,12 @@ class ImportCounterLamaCommand extends Command
     private const LEG_COUNTER_YEAR    = 'tahun';
     private const LEG_COUNTER_VALUE   = 'nomor_terakhir';
 
-    private const LEG_SURAT_TABLE   = 'nomor_surat';
+    // Nama tabel surat di dump lama adalah `surat` (bukan nomor_surat).
+    // Kolom nomor: `nomor_surat`. Kolom tipe: `tipe_surat`. Nilai keluar: 'keluar'.
+    private const LEG_SURAT_TABLE   = 'surat';
     private const LEG_SURAT_COMPANY = 'id_perusahaan';
-    private const LEG_SURAT_NOMOR   = 'nomor';
-    private const LEG_SURAT_TYPE    = 'jenis_surat';
+    private const LEG_SURAT_NOMOR   = 'nomor_surat';
+    private const LEG_SURAT_TYPE    = 'tipe_surat';
     private const LEG_SURAT_KELUAR  = 'keluar';
 
     public function handle(): int
