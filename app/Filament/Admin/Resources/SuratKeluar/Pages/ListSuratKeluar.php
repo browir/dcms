@@ -17,6 +17,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Js;
 
 /**
  * Halaman daftar Surat Keluar.
@@ -149,6 +150,22 @@ class ListSuratKeluar extends ListRecords
                     ];
                 })
                 ->action(function (array $data, Action $action): void {
+                    // ── Pertahanan otorisasi (defensive authorization) ────────
+                    // visible() hanya menyembunyikan tombol di UI;
+                    // pemeriksaan ini memblokir eksekusi bahkan jika aksi dipanggil
+                    // langsung (misalnya lewat API Livewire atau tools eksternal).
+                    if (! auth()->user()?->can('Create:SuratKeluar')) {
+                        Notification::make()
+                            ->title('Akses Ditolak')
+                            ->body('Anda tidak memiliki izin untuk membuat nomor surat.')
+                            ->danger()
+                            ->send();
+
+                        $action->halt();
+
+                        return;
+                    }
+
                     // Cek unit_id tersedia (mungkin tidak ada karena tidak ada unit siap)
                     if (empty($data['unit_id'])) {
                         Notification::make()
@@ -189,7 +206,9 @@ class ListSuratKeluar extends ListRecords
                                     ->button()
                                     ->color('gray')
                                     ->alpineClickHandler(
-                                        "window.navigator.clipboard.writeText('{$surat->nomor}')"
+                                        // Js::from() menjamin nomor di-encode JSON dengan benar,
+                                        // aman dari tanda kutip atau karakter khusus lainnya.
+                                        'window.navigator.clipboard.writeText(' . Js::from($surat->nomor) . ')'
                                     ),
                             ])
                             ->send();

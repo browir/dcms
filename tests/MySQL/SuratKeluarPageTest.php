@@ -11,6 +11,7 @@ use App\Services\NomorSuratService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
@@ -576,6 +577,76 @@ class SuratKeluarPageTest extends MySQLTestCase
         $this->assertTrue(
             auth()->user()->can('ViewAny:SuratKeluar'),
             'User dengan permission ViewAny HARUS bisa mengakses resource'
+        );
+    }
+
+    // ── 11. Livewire: aksi buat nomor ditolak saat tidak punya Create permission ─
+
+    /**
+     * Mount ListSuratKeluar via Livewire sebagai user yang punya ViewAny:SuratKeluar
+     * (sehingga halaman bisa dimount) TAPI tidak punya Create:SuratKeluar.
+     *
+     * Ketika aksi "buat-nomor-surat" dipanggil langsung (melewati UI), defensive
+     * authorization check di action handler harus memblokir eksekusi.
+     *
+     * Hasil yang diharapkan:
+     *   - Tidak ada baris di tabel surat
+     *   - Tidak ada counter yang dibuat/diubah di nomor_surat_counter
+     */
+    #[Test]
+    public function aksi_buat_nomor_ditolak_lewat_livewire_saat_tidak_punya_create_permission(): void
+    {
+        $d = $this->buatUnitSiap('LWZ', 'TSLZ', 'TSLZ');
+
+        // Pastikan permission ada di dcms_test
+        $viewPerm = $this->createOrFindPermission('ViewAny:SuratKeluar');
+        $this->createOrFindPermission('Create:SuratKeluar');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        // Buat user: ViewAny ✓ (bisa mount halaman) | Create ✗ (aksi harus ditolak)
+        $userId = DB::table('users')->insertGetId([
+            'name'       => self::PREFIX . 'NOPERM_CREATE',
+            'email'      => 'tspg_lwz_' . uniqid() . '@test.local',
+            'password'   => bcrypt('secret'),
+            'is_active'  => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $this->userIds[] = $userId;
+
+        $user = \App\Models\User::findOrFail($userId);
+        $user->givePermissionTo([$viewPerm]); // ViewAny YES, Create NO
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        // Mount halaman lewat Livewire, lalu isi form dan panggil aksi.
+        // Menggunakan Filament testing macros (terdaftar via Testable::mixin di ActionsServiceProvider):
+        //   - mountAction() : memount aksi tanpa cek visibility (berbeda dari callAction yang cek visibility)
+        //   - fillForm()    : mengisi data form di statePath yang benar (mountedActionSchema0 → mountedActions.0.data)
+        //   - callMountedAction() : mengeksekusi aksi; defensive auth check harus memblokir generate()
+        Livewire::actingAs($user)
+            ->test(ListSuratKeluar::class)
+            ->mountAction('buat-nomor-surat')
+            ->fillForm([
+                'unit_id'     => $d['unit_id'],
+                'jenis_surat' => JenisSurat::G->value,
+                'tanggal'     => Carbon::create(self::TAHUN, 9, 1)->toDateString(),
+                'judul_surat' => 'Test Aksi Tidak Sah - Livewire',
+            ])
+            ->callMountedAction();
+
+        // ── Verifikasi: service TIDAK dipanggil, DB tidak berubah ─────────────
+
+        $this->assertEquals(
+            0,
+            DB::table('surat')->where('unit_id', $d['unit_id'])->count(),
+            'Tidak ada surat yang dibuat — NomorSuratService::generate() tidak boleh dipanggil'
+        );
+
+        $this->assertNull(
+            DB::table('nomor_surat_counter')
+                ->where('perusahaan_id', $d['company_id'])
+                ->value('nomor_terakhir'),
+            'Counter tidak boleh ada — generate() tidak boleh dipanggil saat Create:SuratKeluar tidak dimiliki'
         );
     }
 }
