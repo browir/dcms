@@ -9,8 +9,11 @@ use App\Models\Surat;
 use App\Models\Unit;
 use App\Services\NomorSuratService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Test integrasi UI Surat Keluar terhadap MySQL dcms_test.
@@ -39,6 +42,20 @@ class SuratKeluarPageTest extends MySQLTestCase
     private array $departmentIds = [];
     /** @var array<int> */
     private array $unitIds       = [];
+    /**
+     * ID user test yang dibuat untuk test permission.
+     * Dibersihkan di tearDown agar dcms_test tetap bersih.
+     *
+     * @var array<int>
+     */
+    private array $userIds         = [];
+    /**
+     * ID permission yang BARU dibuat di dcms_test (bukan yang sudah ada).
+     * Dibersihkan di tearDown.
+     *
+     * @var array<int>
+     */
+    private array $newPermissionIds = [];
 
     protected function tearDown(): void
     {
@@ -101,8 +118,27 @@ class SuratKeluarPageTest extends MySQLTestCase
         ];
     }
 
+    /**
+     * Cari permission di dcms_test; buat jika belum ada.
+     * Jika baru dibuat, track ID-nya untuk dibersihkan di tearDown.
+     *
+     * @return Permission
+     */
+    private function createOrFindPermission(string $name): Permission
+    {
+        $exists = Permission::where('name', $name)->where('guard_name', 'web')->exists();
+        $perm   = Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
+
+        if (! $exists) {
+            $this->newPermissionIds[] = $perm->id;
+        }
+
+        return $perm;
+    }
+
     private function cleanup(): void
     {
+        // ── Data unit/surat ─────────────────────────────────────────────────
         if (! empty($this->unitIds)) {
             DB::table('surat')->whereIn('unit_id', $this->unitIds)->delete();
             DB::table('nomor_surat_counter')
@@ -112,6 +148,31 @@ class SuratKeluarPageTest extends MySQLTestCase
         DB::table('units')->where('name', 'LIKE', self::PREFIX . '%')->delete();
         DB::table('departments')->where('name', 'LIKE', self::PREFIX . '%')->delete();
         DB::table('companies')->where('name', 'LIKE', self::PREFIX . '%')->delete();
+
+        // ── User test dan permission (hanya yang dibuat oleh test ini) ──────
+        if (! empty($this->userIds)) {
+            DB::table('model_has_permissions')
+                ->whereIn('model_id', $this->userIds)
+                ->where('model_type', 'App\\Models\\User')
+                ->delete();
+            DB::table('model_has_roles')
+                ->whereIn('model_id', $this->userIds)
+                ->where('model_type', 'App\\Models\\User')
+                ->delete();
+            DB::table('users')->whereIn('id', $this->userIds)->delete();
+        }
+        if (! empty($this->newPermissionIds)) {
+            DB::table('role_has_permissions')
+                ->whereIn('permission_id', $this->newPermissionIds)
+                ->delete();
+            DB::table('model_has_permissions')
+                ->whereIn('permission_id', $this->newPermissionIds)
+                ->delete();
+            DB::table('permissions')->whereIn('id', $this->newPermissionIds)->delete();
+        }
+
+        Auth::logout();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
     // ── 1. Unit tidak siap tidak muncul di pilihan ───────────────────────────
@@ -419,6 +480,102 @@ class SuratKeluarPageTest extends MySQLTestCase
             $d['unit_id'],
             $unitSiapIds,
             'Unit yang memenuhi semua syarat harus muncul di daftar pilihan'
+        );
+    }
+
+    // ── 9. Akses kontrol: user TANPA permission ditolak ──────────────────────
+
+    /**
+     * User yang tidak memiliki permission ViewAny:SuratKeluar harus:
+     *   - canAccess()          → false  (halaman tidak dapat dibuka)
+     *   - can('Create:...')   → false  (tombol modal tidak terlihat)
+     *
+     * Test ini berjalan di dcms_test. Permission dibuat di dcms_test jika belum ada,
+     * dan dibersihkan di tearDown().
+     */
+    #[Test]
+    public function user_tanpa_permission_tidak_bisa_mengakses_halaman(): void
+    {
+        // Pastikan kedua permission ada di dcms_test (idempoten)
+        $this->createOrFindPermission('ViewAny:SuratKeluar');
+        $this->createOrFindPermission('Create:SuratKeluar');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        // Buat user biasa TANPA permission apa pun
+        $userId = DB::table('users')->insertGetId([
+            'name'       => self::PREFIX . 'NOPERM',
+            'email'      => 'tspg_noperm_' . uniqid() . '@test.local',
+            'password'   => bcrypt('secret'),
+            'is_active'  => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $this->userIds[] = $userId;
+
+        $user = \App\Models\User::findOrFail($userId);
+
+        // Login sebagai user TANPA permission
+        $this->actingAs($user);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $this->assertFalse(
+            SuratKeluarResource::canAccess(),
+            'User tanpa ViewAny:SuratKeluar TIDAK boleh mengakses halaman Surat Keluar'
+        );
+        $this->assertFalse(
+            auth()->user()->can('Create:SuratKeluar'),
+            'User tanpa Create:SuratKeluar TIDAK boleh melihat tombol Buat Nomor Surat'
+        );
+        $this->assertFalse(
+            auth()->user()->can('ViewAny:SuratKeluar'),
+            'User tanpa permission ViewAny TIDAK boleh mengakses resource'
+        );
+    }
+
+    // ── 10. Akses kontrol: user DENGAN permission diizinkan ─────────────────
+
+    /**
+     * User yang memiliki permission ViewAny:SuratKeluar dan Create:SuratKeluar harus:
+     *   - canAccess()          → true
+     *   - can('Create:...')   → true
+     */
+    #[Test]
+    public function user_dengan_permission_bisa_mengakses_halaman_dan_tombol(): void
+    {
+        // Pastikan kedua permission ada di dcms_test
+        $viewPerm   = $this->createOrFindPermission('ViewAny:SuratKeluar');
+        $createPerm = $this->createOrFindPermission('Create:SuratKeluar');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        // Buat user dan assign LANGSUNG kedua permission (bukan via role)
+        $userId = DB::table('users')->insertGetId([
+            'name'       => self::PREFIX . 'WITHPERM',
+            'email'      => 'tspg_withperm_' . uniqid() . '@test.local',
+            'password'   => bcrypt('secret'),
+            'is_active'  => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $this->userIds[] = $userId;
+
+        $user = \App\Models\User::findOrFail($userId);
+        $user->givePermissionTo([$viewPerm, $createPerm]);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        // Login sebagai user DENGAN permission
+        $this->actingAs($user);
+
+        $this->assertTrue(
+            SuratKeluarResource::canAccess(),
+            'User dengan ViewAny:SuratKeluar HARUS bisa mengakses halaman Surat Keluar'
+        );
+        $this->assertTrue(
+            auth()->user()->can('Create:SuratKeluar'),
+            'User dengan Create:SuratKeluar HARUS bisa melihat tombol Buat Nomor Surat'
+        );
+        $this->assertTrue(
+            auth()->user()->can('ViewAny:SuratKeluar'),
+            'User dengan permission ViewAny HARUS bisa mengakses resource'
         );
     }
 }
