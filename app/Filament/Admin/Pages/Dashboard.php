@@ -2,13 +2,13 @@
 
 namespace App\Filament\Admin\Pages;
 
+use App\Filament\Admin\Widgets\Dashboard\AgendaRoomsWidget;
+use App\Filament\Admin\Widgets\Dashboard\FollowUpWidget;
+use App\Filament\Admin\Widgets\Dashboard\ModuleOverviewWidget;
+use App\Filament\Admin\Widgets\Dashboard\NumberingDocumentsWidget;
 use App\Filament\Admin\Widgets\EmployeeActivityHubWidget;
-use App\Filament\Admin\Widgets\MeetingCardsWidget;
-use App\Filament\Admin\Widgets\MeetingStatsWidget;
 use App\Filament\Admin\Widgets\MyCalendarWidget;
-use App\Filament\Admin\Widgets\PriorityActionsWidget;
 use Filament\Pages\Dashboard as BaseDashboard;
-use Illuminate\Contracts\View\View;
 
 class Dashboard extends BaseDashboard
 {
@@ -17,22 +17,33 @@ class Dashboard extends BaseDashboard
     protected static ?string $navigationLabel = 'Beranda';
 
     /**
-     * Hide the built-in Filament page header bar.
-     * The greeting widget (EmployeeActivityHubWidget) serves as the single header.
+     * Sembunyikan bar judul bawaan Filament; widget sapaan (EmployeeActivityHubWidget)
+     * sudah berfungsi sebagai header. Judul tab browser tetap memakai $title.
      */
-    public function getHeader(): ?View
+    public function getHeading(): string
     {
-        return null;
+        return '';
     }
 
+    /**
+     * Satu beranda untuk seluruh layanan DCMS: sapaan & agenda terdekat,
+     * ringkasan modul, agenda + ruangan, tindak lanjut (notulensi & dokumen),
+     * penomoran surat + statistik dokumen, lalu kalender rapat.
+     */
     public function getWidgets(): array
     {
         return [
             EmployeeActivityHubWidget::class,
-            MeetingStatsWidget::class,
-            MeetingCardsWidget::class,
+            ModuleOverviewWidget::class,
+            AgendaRoomsWidget::class,
+            FollowUpWidget::class,
+            NumberingDocumentsWidget::class,
             MyCalendarWidget::class,
-            PriorityActionsWidget::class,
         ];
+    }
+
+    public function getColumns(): int|array
+    {
+        return 1;
     }
 }

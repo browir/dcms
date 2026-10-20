@@ -1,60 +1,94 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# DCMS
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Document & Meeting Management System berbasis Laravel 12 + Filament 4.
 
-## About Laravel
+## Kebutuhan
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.2+ (ekstensi: `pdo_mysql`, `intl`, `gd`, `zip`, `mbstring`, `fileinfo`)
+- Composer 2
+- Node.js 20+ dan npm
+- MySQL 8 (fitur full-text search dokumen hanya aktif di MySQL)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Di Windows, semua kebutuhan di atas tersedia lewat [Laragon](https://laragon.org).
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Setup lokal
 
-## Learning Laravel
+```bash
+composer install
+npm install
+cp .env.example .env
+php artisan key:generate
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+Buat database kosong (contoh `dcms`), lalu sesuaikan `DB_*` di `.env`. Isi juga `ADMIN_EMAIL` dan `ADMIN_PASSWORD` untuk akun admin pertama.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+php artisan migrate
+php artisan db:seed --class=CompanyDataPermissionsSeeder
+php artisan shield:generate --all --panel=admin --option=permissions
+php artisan db:seed --class=AdminUserSeeder
+php artisan storage:link
+npm run build
+```
 
-## Laravel Sponsors
+> Pakai `--option=permissions` saat `shield:generate` agar file Policy di `app/Policies` tidak ditimpa.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Menjalankan aplikasi
 
-### Premium Partners
+```bash
+php artisan serve
+```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Buka http://127.0.0.1:8000/admin dan login dengan username atau email admin.
 
-## Contributing
+Undangan rapat, pengingat, dan notifikasi dikirim lewat queue (`QUEUE_CONNECTION=database`), jadi jalankan juga worker:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+php artisan queue:work
+```
 
-## Code of Conduct
+Atau jalankan server, queue, log, dan Vite sekaligus dengan `composer dev`.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Konfigurasi opsional
 
-## Security Vulnerabilities
+| Variabel | Kegunaan |
+| --- | --- |
+| `MAIL_*` | Pengiriman email. Default `log` (email hanya ditulis ke `storage/logs/laravel.log`). |
+| `VAPID_*` | Web push notification. Generate dengan `php artisan webpush:vapid`. |
+| `N8N_WEBHOOK_URL`, `N8N_WEBHOOK_SECRET` | Notifikasi WhatsApp, lihat [docs/notifikasi-whatsapp-n8n.md](docs/notifikasi-whatsapp-n8n.md). |
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Login SSO (Keycloak)
 
-## License
+Karyawan masuk dengan akun SSO Syifa Global Group lewat package [`syifa/keycloak-sso`](https://github.com/ahyaghifari/sgg-sso) — tidak perlu mendaftar. SSO aktif kalau `KEYCLOAK_CLIENT_ID` dan `KEYCLOAK_BASE_URL` terisi; saat aktif, pendaftaran akun mandiri dimatikan dan login lokal tetap tersedia sebagai cadangan administrator.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-# dcms
+1. **Keycloak** — buat client khusus DCMS (Standard Flow + Client Authentication):
+   - *Valid Redirect URIs*: `https://<domain-dcms>/auth/keycloak/callback`
+   - *Valid post logout redirect URIs*: `https://<domain-dcms>/admin/login`
+   - Mapper *Client Roles* dengan **Add to userinfo** aktif. Buat client role `dcms-admin`, `dcms-direktur`, `dcms-kabid` dan assign ke grup jabatan.
+2. **HRIS** — minta token API (panel `/keycloak` → Aplikasi Terhubung) untuk `HRIS_API_TOKEN`.
+3. Isi variabel `KEYCLOAK_*` dan `HRIS_API_*` di `.env` (lihat `.env.example`), lalu:
+   ```bash
+   php artisan migrate
+   php artisan db:seed --class=PegawaiRoleSeeder
+   ```
+4. Isi **Kode HRIS** di Data Master → Departemen dan Unit sesuai kode di HRIS `/publik/unit-organisasi` (departemen HRIS → Departemen, divisi HRIS → Unit).
+
+Setiap login, akun dicocokkan via `keycloak_sub` → NIP → email (akun lama otomatis tersambung); akun baru dibuat dengan nama/email resmi dari HRIS dan role `pegawai`. Departemen/unit disinkronkan dari HRIS, dan role jabatan dari client role Keycloak (`config/keycloak-sso.php` → `dcms.role_map`). Logout dari sesi SSO juga mengakhiri sesi Keycloak.
+
+## Dark mode
+
+Tombol bulan/matahari di navbar mengganti mode terang/gelap (tersimpan di browser). CSS kustom ditulis untuk mode terang; pasangan gelapnya dibuat otomatis ke `public/css/dcms-dark.css`. Setelah mengubah warna di blok `<style>` atau `style=""`, jalankan:
+
+```bash
+php artisan theme:build-dark
+```
+
+Override yang tidak bisa dipetakan otomatis ditulis manual di `resources/views/filament/theme-dark.blade.php`.
+
+## Testing
+
+```bash
+php artisan test
+```
+
+Test memakai SQLite in-memory, jadi tidak menyentuh database lokal.

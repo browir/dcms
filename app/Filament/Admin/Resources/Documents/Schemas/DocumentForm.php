@@ -2,13 +2,16 @@
 
 namespace App\Filament\Admin\Resources\Documents\Schemas;
 
+use App\Enum\JenisSurat;
+use App\Filament\Admin\Resources\LetterNumbers\Schemas\LetterNumberForm;
 use App\Models\Company;
 use App\Models\Department;
 use App\Models\Document;
 use App\Models\DocumentCategory;
-use App\Models\DocumentNumbering;
+use App\Models\LetterNumber;
 use App\Models\Unit;
 use App\Models\User;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -106,25 +109,54 @@ class DocumentForm
                 ->iconColor('primary')
                 ->columnSpanFull()
                 ->schema([
-                    TextInput::make('code_number')
-                        ->label('Nomor Kode')
-                        ->maxLength(255)
-                        ->readOnly()
-                        ->afterStateHydrated(function (Get $get, Set $set, ?string $operation, $state): void {
-                            if ($operation !== 'create') {
-                                return;
-                            }
-
-                            $set('code_number', self::buildCodePreview(
-                                $get('company_id'),
-                                $get('department_id'),
-                                $get('unit_id'),
-                                $get('category_id'),
-                            ));
-                        })
-                        ->dehydrated(false)
+                    Select::make('letter_number_id')
+                        ->label('Nomor Surat')
+                        ->helperText('Dokumen resmi diisi ke nomor surat yang sudah diambil. Belum punya nomor? Klik tombol + untuk mengambil nomor baru.')
+                        ->options(fn (): array => self::letterNumberOptions())
+                        ->searchable()
+                        ->native(false)
+                        ->live()
+                        ->default(fn (): ?int => request()->integer('nomor_surat') ?: null)
+                        ->required()
+                        ->visibleOn('create')
                         ->prefixIcon('heroicon-o-hashtag')
-                        ->helperText('Pratinjau nomor kode dibuat otomatis berdasarkan perusahaan, departemen, unit, dan kategori.'),
+                        ->createOptionForm(LetterNumberForm::components())
+                        ->createOptionUsing(fn (array $data): int => LetterNumberForm::issue($data)->id)
+                        ->createOptionAction(fn (Action $action) => $action
+                            ->modalHeading('Ambil Nomor Surat')
+                            ->modalSubmitActionLabel('Terbitkan Nomor')
+                            ->modalWidth('lg'))
+                        ->afterStateUpdated(function ($state, Set $set, Get $get): void {
+                            foreach (self::letterNumberState($state, $get('title')) as $field => $value) {
+                                $set($field, $value);
+                            }
+                        }),
+
+                    TextInput::make('code_number')
+                        ->label('Nomor Surat')
+                        ->readOnly()
+                        ->dehydrated(false)
+                        ->visibleOn('edit')
+                        ->prefixIcon('heroicon-o-hashtag')
+                        ->helperText('Nomor surat yang sudah terbit tidak berubah.'),
+
+                    Select::make('jenis_surat')
+                        ->label('Jenis Surat')
+                        ->options(JenisSurat::options())
+                        ->placeholder('Mengikuti nomor surat')
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->native(false)
+                        ->prefixIcon('heroicon-o-tag'),
+
+                    DatePicker::make('tanggal_surat')
+                        ->label('Tanggal Surat')
+                        ->placeholder('Mengikuti nomor surat')
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->native(false)
+                        ->displayFormat('d M Y')
+                        ->prefixIcon('heroicon-o-calendar'),
 
                     TextInput::make('title')
                         ->label('Judul Dokumen')
@@ -252,7 +284,12 @@ class DocumentForm
 
                             return optional($user)->company_id ?? null;
                         })
-                        ->disabled(function () {
+                        ->disabled(function (Get $get) {
+                            // Mengikuti unit & perusahaan penerbit nomor surat.
+                            if (filled($get('letter_number_id'))) {
+                                return true;
+                            }
+
                             /** @var User $user */
                             $user = Auth::user();
 
@@ -262,7 +299,6 @@ class DocumentForm
                         ->afterStateUpdated(function (Set $set, Get $get, ?string $operation): void {
                             $set('department_id', null);
                             $set('unit_id', null);
-                            self::syncCodePreview($set, $get, $operation);
                         })
                         ->required(),
 
@@ -289,7 +325,12 @@ class DocumentForm
 
                             return optional($user)->department_id ?? null;
                         })
-                        ->disabled(function () {
+                        ->disabled(function (Get $get) {
+                            // Mengikuti unit & perusahaan penerbit nomor surat.
+                            if (filled($get('letter_number_id'))) {
+                                return true;
+                            }
+
                             /** @var User $user */
                             $user = Auth::user();
 
@@ -298,7 +339,6 @@ class DocumentForm
                         ->dehydrated()
                         ->afterStateUpdated(function (Set $set, Get $get, ?string $operation): void {
                             $set('unit_id', null);
-                            self::syncCodePreview($set, $get, $operation);
                         })
                         ->required(),
 
@@ -325,16 +365,18 @@ class DocumentForm
 
                             return optional($user)->unit_id ?? null;
                         })
-                        ->disabled(function () {
+                        ->disabled(function (Get $get) {
+                            // Mengikuti unit & perusahaan penerbit nomor surat.
+                            if (filled($get('letter_number_id'))) {
+                                return true;
+                            }
+
                             /** @var User $user */
                             $user = Auth::user();
 
                             return ! $user->hasRole(['super_admin', 'direktur', 'kabid']);
                         })
                         ->dehydrated()
-                        ->afterStateUpdated(function (Set $set, Get $get, ?string $operation): void {
-                            self::syncCodePreview($set, $get, $operation);
-                        })
                         ->required(),
 
                     Select::make('category_id')
@@ -345,9 +387,6 @@ class DocumentForm
                         ->native(false)
                         ->live()
                         ->prefixIcon('heroicon-o-tag')
-                        ->afterStateUpdated(function (Set $set, Get $get, ?string $operation): void {
-                            self::syncCodePreview($set, $get, $operation);
-                        })
                         ->required(),
                 ]),
 
@@ -502,7 +541,16 @@ class DocumentForm
         $isPermanent = (bool) $get('is_permanent');
         $expiresAt = $get('expires_at');
 
+        $hasLetterNumber = filled($get('letter_number_id')) || filled($get('code_number'));
+
         $checklist = [
+            [
+                'label' => 'Nomor surat',
+                'completed' => $hasLetterNumber,
+                'description' => $hasLetterNumber
+                    ? 'Dokumen diisi ke nomor surat yang sudah diambil.'
+                    : 'Pilih nomor surat yang sudah diambil, atau ambil nomor baru.',
+            ],
             [
                 'label' => 'Judul dokumen',
                 'completed' => $title !== '',
@@ -627,10 +675,10 @@ class DocumentForm
                 ->pluck('label')
                 ->values()
                 ->all(),
-            'codePreview' => self::buildCodePreview($companyId, $departmentId, $unitId, $categoryId),
-            'codePreviewNote' => filled($companyId) && filled($departmentId) && filled($unitId) && filled($categoryId)
-                ? 'Pratinjau pola nomor dokumen sudah siap. Nomor final akan dibuat otomatis saat dokumen disimpan.'
-                : 'Lengkapi struktur organisasi dan kategori untuk melihat pola nomor dokumen yang lebih akurat.',
+            'codePreview' => LetterNumber::query()->whereKey($get('letter_number_id'))->value('nomor') ?? $get('code_number') ?? '—',
+            'codePreviewNote' => filled($get('letter_number_id')) || filled($get('code_number'))
+                ? 'Dokumen ini diisi ke nomor surat tersebut.'
+                : 'Pilih nomor surat yang sudah diambil, atau ambil nomor baru dengan tombol +.',
             'statusLabel' => match ($status) {
                 'approved' => 'Diterbitkan',
                 'archived' => 'Diarsipkan',
@@ -640,103 +688,43 @@ class DocumentForm
         ];
     }
 
-    private static function buildCodePreview(
-        int|string|null $companyId,
-        int|string|null $departmentId,
-        int|string|null $unitId,
-        int|string|null $categoryId,
-    ): string {
-        $companyCode = self::resolvePreviewSegment(
-            Company::query()->find($companyId),
-            ['code'],
-            'COM',
-        );
-        $departmentCode = self::resolvePreviewSegment(
-            Department::query()->find($departmentId),
-            ['code'],
-            'DEPT',
-        );
-        $unitCode = self::resolvePreviewSegment(
-            Unit::query()->find($unitId),
-            ['code', 'prefix', 'name'],
-            'UNIT',
-        );
-        $categoryCode = self::resolvePreviewSegment(
-            DocumentCategory::query()->find($categoryId),
-            ['prefix', 'name'],
-            'CAT',
-        );
-        $sequence = self::getNextSequencePreview($companyId, $departmentId, $categoryId);
-
-        return implode('-', [
-            $companyCode,
-            $departmentCode,
-            $unitCode,
-            $categoryCode,
-            $sequence,
-        ]);
-    }
-
-    private static function getNextSequencePreview(
-        int|string|null $companyId,
-        int|string|null $departmentId,
-        int|string|null $categoryId,
-    ): string {
-        if (! filled($companyId) || ! filled($departmentId) || ! filled($categoryId)) {
-            return '001';
-        }
-
-        $lastNumber = (int) (DocumentNumbering::query()
-            ->where('company_id', $companyId)
-            ->where('department_id', $departmentId)
-            ->where('category_id', $categoryId)
-            ->where('year', now()->year)
-            ->value('last_number') ?? 0);
-
-        return str_pad((string) ($lastNumber + 1), 3, '0', STR_PAD_LEFT);
-    }
-
-    private static function resolvePreviewSegment(mixed $record, array $fields, string $fallback): string
+    /** Nomor surat yang belum diisi dokumen; nomor yang diambil user sendiri tampil lebih dulu. */
+    private static function letterNumberOptions(): array
     {
-        if (! $record) {
-            return $fallback;
-        }
-
-        foreach ($fields as $field) {
-            $value = data_get($record, $field);
-
-            if (blank($value)) {
-                continue;
-            }
-
-            if ($field === 'name') {
-                $words = preg_split('/\s+/', trim((string) $value)) ?: [];
-                $initials = collect($words)
-                    ->filter()
-                    ->map(fn (string $word): string => strtoupper(substr($word, 0, 1)))
-                    ->implode('');
-
-                return substr($initials !== '' ? $initials : strtoupper((string) $value), 0, 6);
-            }
-
-            return strtoupper((string) $value);
-        }
-
-        return $fallback;
+        return LetterNumber::query()
+            ->access()
+            ->available()
+            ->orderByRaw('created_by = ? desc', [Auth::id()])
+            ->orderByDesc('tanggal_surat')
+            ->orderByDesc('nomor_urut')
+            ->limit(300)
+            ->get()
+            ->mapWithKeys(fn (LetterNumber $letter) => [$letter->id => $letter->option_label])
+            ->all();
     }
 
-    private static function syncCodePreview(Set $set, Get $get, ?string $operation): void
+    /**
+     * Nilai field form yang mengikuti nomor surat terpilih: jenis, tanggal, organisasi
+     * penerbit, dan judul (bila judul dokumen masih kosong).
+     *
+     * @return array<string, mixed>
+     */
+    public static function letterNumberState(mixed $letterNumberId, ?string $currentTitle = null): array
     {
-        if ($operation !== 'create') {
-            return;
+        $letter = filled($letterNumberId) ? LetterNumber::query()->find($letterNumberId) : null;
+
+        if (! $letter) {
+            return ['jenis_surat' => null, 'tanggal_surat' => null];
         }
 
-        $set('code_number', self::buildCodePreview(
-            $get('company_id'),
-            $get('department_id'),
-            $get('unit_id'),
-            $get('category_id'),
-        ));
+        return [
+            'jenis_surat' => $letter->jenis_surat->value,
+            'tanggal_surat' => $letter->tanggal_surat->toDateString(),
+            'company_id' => $letter->company_id,
+            'department_id' => $letter->department_id,
+            'unit_id' => $letter->unit_id,
+            'title' => filled($currentTitle) ? $currentTitle : $letter->judul_surat,
+        ];
     }
 
     private static function getStatusHint(string $status): string

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages\Auth;
 
+use App\Support\Sso\Sso;
 use Filament\Auth\Pages\Login as BaseLogin;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
@@ -48,6 +49,18 @@ class Login extends BaseLogin
             ->autocomplete('current-password')
             ->required()
             ->extraInputAttributes(['tabindex' => 2]);
+    }
+
+    /** Tombol "Masuk dengan SSO" tampil kalau Keycloak sudah dikonfigurasi. */
+    public function ssoEnabled(): bool
+    {
+        return Sso::enabled();
+    }
+
+    /** Pesan gagal dari callback SSO (package mengirimnya lewat error bag key 'keycloak'). */
+    public function ssoError(): ?string
+    {
+        return session('errors')?->first('keycloak') ?: null;
     }
 
     protected function getCredentialsFromFormData(array $data): array

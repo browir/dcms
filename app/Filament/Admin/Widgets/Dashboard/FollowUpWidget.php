@@ -1,0 +1,125 @@
+<?php
+
+namespace App\Filament\Admin\Widgets\Dashboard;
+
+use App\Filament\Admin\Resources\Documents\DocumentResource;
+use App\Filament\Admin\Widgets\Dashboard\Concerns\DashboardQueries;
+use App\Models\Document;
+use App\Models\LetterNumber;
+use App\Models\Meeting;
+use Filament\Widgets\Widget;
+use Illuminate\Support\Facades\Auth;
+
+/**
+ * Pekerjaan yang perlu ditindaklanjuti: notulensi rapat yang belum dibuat
+ * dan dokumen resmi yang menunggu tindakan / akan kedaluwarsa.
+ */
+class FollowUpWidget extends Widget
+{
+    use DashboardQueries;
+
+    protected string $view = 'filament.widgets.dashboard.follow-up';
+
+    protected int|string|array $columnSpan = 'full';
+
+    protected static ?int $sort = 30;
+
+    protected static bool $isDiscovered = false;
+
+    public static function canView(): bool
+    {
+        return Auth::check();
+    }
+
+    protected function getViewData(): array
+    {
+        $user = $this->currentUser();
+
+        $pendingMinutesQuery = $this->meetingsWithoutMinutes();
+        $pendingMinutesCount = (clone $pendingMinutesQuery)->count();
+        $pendingMinutes = $pendingMinutesQuery
+            ->with('notulis:id,name')
+            ->orderByDesc('date_time')
+            ->limit(5)
+            ->get()
+            ->map(fn (Meeting $meeting) => [
+                'title' => $meeting->title,
+                'meta' => $meeting->date_time->locale('id')->isoFormat('D MMM YYYY')
+                    .' · Notulis: '.($meeting->notulis?->name ?? 'belum ditentukan'),
+                'age' => $meeting->date_time->locale('id')->diffForHumans(),
+                'mine' => $meeting->notulis_id === $user->id,
+                'url' => $user->can('update', $meeting)
+                    ? route('filament.admin.resources.meetings.edit', $meeting)
+                    : route('filament.admin.resources.meetings.view', $meeting),
+            ]);
+
+        $recentMinutes = $this->meetingsWithMinutes()
+            ->orderByDesc('date_time')
+            ->limit(3)
+            ->get()
+            ->map(fn (Meeting $meeting) => [
+                'title' => $meeting->title,
+                'meta' => $meeting->date_time->locale('id')->isoFormat('D MMM YYYY')
+                    .($meeting->doc_number ? ' · '.$meeting->doc_number : ''),
+                'actions' => count($meeting->action_items ?? []),
+                'url' => route('filament.admin.resources.meetings.view', $meeting),
+            ]);
+
+        $documentsQuery = $this->documentsNeedingAction();
+        $documentsCount = (clone $documentsQuery)->count();
+        $documents = $documentsQuery
+            ->limit(5)
+            ->get()
+            ->map(fn (Document $document) => [
+                'title' => $document->title,
+                'meta' => ($document->code_number ?: 'Tanpa nomor').' · '.($document->category?->name ?? 'Tanpa kategori'),
+                'status' => $document->status,
+                'statusLabel' => match ($document->status) {
+                    Document::STATUS_DRAFT => 'Draft',
+                    Document::STATUS_REJECTED => 'Perlu revisi',
+                    Document::STATUS_PENDING_KABID => 'Menunggu Kabid',
+                    Document::STATUS_PENDING_DIREKTUR => 'Menunggu Direktur',
+                    default => ucfirst($document->status),
+                },
+                'url' => route('filament.admin.resources.documents.view', $document),
+            ]);
+
+        $expiring = Document::query()->access()
+            ->where('status', Document::STATUS_APPROVED)
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', now()->addDays(30))
+            ->orderBy('expires_at')
+            ->limit(4)
+            ->get()
+            ->map(fn (Document $document) => [
+                'title' => $document->title,
+                'expired' => $document->expires_at->isPast(),
+                'when' => $document->expires_at->isPast()
+                    ? 'Kedaluwarsa '.$document->expires_at->locale('id')->diffForHumans()
+                    : 'Berakhir '.$document->expires_at->locale('id')->isoFormat('D MMM YYYY'),
+                'url' => route('filament.admin.resources.documents.view', $document),
+            ]);
+
+        // Nomor surat yang diambil user ini tapi dokumen resminya belum diisi.
+        $unfilledNumbers = LetterNumber::query()->access()->available()
+            ->where('created_by', $user->id)
+            ->orderBy('tanggal_surat')
+            ->limit(4)
+            ->get()
+            ->map(fn (LetterNumber $letter) => [
+                'number' => $letter->nomor,
+                'title' => $letter->judul_surat,
+                'url' => DocumentResource::getUrl('create', ['nomor_surat' => $letter->id]),
+            ]);
+
+        return [
+            'unfilledNumbers' => $unfilledNumbers,
+            'pendingMinutes' => $pendingMinutes,
+            'pendingMinutesCount' => $pendingMinutesCount,
+            'recentMinutes' => $recentMinutes,
+            'documents' => $documents,
+            'documentsCount' => $documentsCount,
+            'expiring' => $expiring,
+        ];
+    }
+}

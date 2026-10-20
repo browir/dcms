@@ -13,9 +13,9 @@ class ComplianceHub extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = null;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Manajemen Dokumen';
+    protected static string|UnitEnum|null $navigationGroup = 'Dokumen';
 
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 3;
 
     protected static ?string $navigationLabel = 'Compliance Hub';
 

@@ -7,6 +7,14 @@ use Filament\Http\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
+    // Login SSO yang gagal dikembalikan package ke "/" dengan pesan error —
+    // teruskan langsung ke halaman login supaya pesannya tidak hilang di redirect berikutnya.
+    if (session()->has('errors')) {
+        session()->reflash();
+
+        return redirect()->route('filament.admin.auth.login');
+    }
+
     return redirect('/admin');
 });
 

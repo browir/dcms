@@ -18,6 +18,11 @@ class UserForm
             TextInput::make('name')->required(),
             TextInput::make('email')->label('Alamat Email')->email()->required(),
             TextInput::make('username')->required()->maxLength(255),
+            TextInput::make('nip')
+                ->label('NIP')
+                ->helperText('Dipakai untuk mencocokkan akun ini dengan akun SSO karyawan.')
+                ->maxLength(50)
+                ->unique(ignoreRecord: true),
             TextInput::make('password')
                 ->password()
                 ->dehydrateStateUsing(fn($state) => filled($state) ? bcrypt($state) : null)

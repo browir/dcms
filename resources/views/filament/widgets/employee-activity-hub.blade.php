@@ -220,42 +220,6 @@
             </div>
         </div>
 
-        {{-- Stat Cards — uniform white, single teal accent --}}
-        <div class="eah-stats">
-            <div class="eah-stat eah-animate" style="--eah-delay: 70ms;">
-                <div class="eah-stat-bar"></div>
-                <div class="eah-stat-icon">
-                    <x-filament::icon icon="heroicon-o-calendar-days" class="eah-icon" />
-                </div>
-                <div class="eah-stat-content">
-                    <div class="eah-stat-value">{{ $todayMeetingsCount }}</div>
-                    <div class="eah-stat-label">Agenda hari ini</div>
-                </div>
-            </div>
-
-            <div class="eah-stat eah-animate" style="--eah-delay: 140ms;">
-                <div class="eah-stat-bar"></div>
-                <div class="eah-stat-icon">
-                    <x-filament::icon icon="heroicon-o-clipboard-document-list" class="eah-icon" />
-                </div>
-                <div class="eah-stat-content">
-                    <div class="eah-stat-value">{{ $documentsNeedActionCount }}</div>
-                    <div class="eah-stat-label">Perlu tindakan</div>
-                </div>
-            </div>
-
-            <div class="eah-stat eah-animate" style="--eah-delay: 210ms;">
-                <div class="eah-stat-bar"></div>
-                <div class="eah-stat-icon">
-                    <x-filament::icon icon="heroicon-o-bell" class="eah-icon" />
-                </div>
-                <div class="eah-stat-content">
-                    <div class="eah-stat-value">{{ $unreadNotificationsCount }}</div>
-                    <div class="eah-stat-label">Notifikasi belum dibaca</div>
-                </div>
-            </div>
-        </div>
-
     </div>
 
     <style>

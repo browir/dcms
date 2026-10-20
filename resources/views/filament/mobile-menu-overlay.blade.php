@@ -29,7 +29,7 @@ $menuGroups = [
     [
         'label' => 'Dokumen',
         'items' => array_filter([
-            ['label' => 'Dasbor Dokumen', 'url' => url("/{$panelPath}/dasbor-manajemen-dokumen"), 'icon' => 'dashboard',  'color' => '#f59e0b'],
+            ['label' => 'Nomor Surat',    'url' => url("/{$panelPath}/nomor-surat"),              'icon' => 'my_doc',     'color' => '#d97706'],
             ['label' => 'Bookmark',       'url' => url("/{$panelPath}/bookmarks"),                'icon' => 'bookmark',   'color' => '#db2777'],
             ['label' => 'Pengingat',      'url' => url("/{$panelPath}/reminders"),                'icon' => 'bell',       'color' => '#ea580c'],
             ['label' => 'Perubahan',      'url' => url("/{$panelPath}/document-change-requests"), 'icon' => 'change',     'color' => '#0f766e'],
@@ -37,24 +37,24 @@ $menuGroups = [
             $isAdmin ? ['label' => 'Recycle Bin', 'url' => url("/{$panelPath}/recycle-bin"),      'icon' => 'recycle',    'color' => '#ef4444'] : null,
         ]),
     ],
+    // Sama dengan navbar desktop: Data Master = data referensi, Pengaturan = akun, akses & sistem.
     [
-        'label' => 'Rapat',
-        'items' => [
-            ['label' => 'Semua Rapat',   'url' => url("/{$panelPath}/meetings"),            'icon' => 'meetings',  'color' => '#2563eb'],
-        ],
+        'label' => 'Data Master',
+        'items' => array_filter([
+            $isSuperAdmin ? ['label' => 'Perusahaan',   'url' => url("/{$panelPath}/companies"),           'icon' => 'company',   'color' => '#059669'] : null,
+            $isAdmin     ? ['label' => 'Departemen',    'url' => url("/{$panelPath}/departments"),         'icon' => 'dept',      'color' => '#7c3aed'] : null,
+            $isAdmin     ? ['label' => 'Unit',          'url' => url("/{$panelPath}/units"),               'icon' => 'unit',      'color' => '#f59e0b'] : null,
+            $isAdmin     ? ['label' => 'Kategori',      'url' => url("/{$panelPath}/document-categories"), 'icon' => 'category',  'color' => '#0891b2'] : null,
+            ['label' => 'Ruangan Rapat', 'url' => url("/{$panelPath}/meeting-locations"),                  'icon' => 'location',  'color' => '#dc2626'],
+        ]),
     ],
     [
         'label' => 'Pengaturan',
         'items' => array_filter([
             $isAdmin     ? ['label' => 'Pengguna',      'url' => url("/{$panelPath}/users"),              'icon' => 'users',     'color' => '#1d4ed8'] : null,
-            $isAdmin     ? ['label' => 'Departemen',    'url' => url("/{$panelPath}/departments"),         'icon' => 'dept',      'color' => '#7c3aed'] : null,
-            $isAdmin     ? ['label' => 'Unit',          'url' => url("/{$panelPath}/units"),               'icon' => 'unit',      'color' => '#f59e0b'] : null,
-            $isSuperAdmin ? ['label' => 'Perusahaan',   'url' => url("/{$panelPath}/companies"),           'icon' => 'company',   'color' => '#059669'] : null,
-            $isAdmin     ? ['label' => 'Lokasi Rapat',  'url' => url("/{$panelPath}/meeting-locations"),   'icon' => 'location',  'color' => '#dc2626'] : null,
-            $isSuperAdmin ? ['label' => 'Peran',        'url' => url("/{$panelPath}/shield/roles"),        'icon' => 'role',      'color' => '#9333ea'] : null,
-            $isAdmin     ? ['label' => 'Kategori',      'url' => url("/{$panelPath}/document-categories"), 'icon' => 'category',  'color' => '#0891b2'] : null,
-            $isSuperAdmin ? ['label' => 'Activity Log', 'url' => url("/{$panelPath}/activity-logs"),       'icon' => 'activity_log', 'color' => '#475569'] : null,
-            $isSuperAdmin ? ['label' => 'Audit Trail',  'url' => url("/{$panelPath}/audit-trail"),         'icon' => 'audit',     'color' => '#64748b'] : null,
+            $isSuperAdmin ? ['label' => 'Peran & Akses', 'url' => url("/{$panelPath}/shield/roles"),      'icon' => 'role',      'color' => '#9333ea'] : null,
+            $isAdmin     ? ['label' => 'Audit Trail',   'url' => url("/{$panelPath}/audit-trail"),        'icon' => 'audit',     'color' => '#64748b'] : null,
+            $isSuperAdmin ? ['label' => 'Logo Aplikasi', 'url' => url("/{$panelPath}/app-settings"),      'icon' => 'dashboard', 'color' => '#475569'] : null,
         ]),
     ],
 ];

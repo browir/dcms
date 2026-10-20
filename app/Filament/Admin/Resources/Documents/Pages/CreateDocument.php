@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Documents\Pages;
 
 use App\Filament\Admin\Resources\Documents\DocumentResource;
+use App\Filament\Admin\Resources\Documents\Schemas\DocumentForm;
 use App\Models\Document;
 use Filament\Resources\Pages\CreateRecord;
 
@@ -24,6 +25,20 @@ class CreateDocument extends CreateRecord
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Tutup'),
         ];
+    }
+
+    /**
+     * Dibuka dari tombol "Isi Dokumen" (?nomor_surat=ID): nomor sudah terpilih lewat default,
+     * jadi isi juga jenis, tanggal, organisasi, dan judul yang mengikuti nomor itu.
+     */
+    protected function afterFill(): void
+    {
+        if (filled($this->data['letter_number_id'] ?? null)) {
+            $this->data = [
+                ...$this->data,
+                ...DocumentForm::letterNumberState($this->data['letter_number_id'], $this->data['title'] ?? null),
+            ];
+        }
     }
 
     protected function mutateFormDataBeforeCreate(array $data): array

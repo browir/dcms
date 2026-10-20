@@ -13,7 +13,7 @@ class Department extends Model implements Auditable
 {
     use \OwenIt\Auditing\Auditable;
 
-    protected $fillable = ['name', 'code', 'company_id', 'is_active'];
+    protected $fillable = ['name', 'code', 'keycloak_code', 'company_id', 'is_active'];
 
     public function company(): BelongsTo
     {

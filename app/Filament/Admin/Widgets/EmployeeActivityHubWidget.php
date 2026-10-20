@@ -33,12 +33,7 @@ class EmployeeActivityHubWidget extends Widget
             ->where('status', '!=', 'cancelled')
             ->orderBy('date_time');
 
-        $todayMeetingsCount = (clone $todayMeetingsQuery)->count();
-        $todayMeetings = (clone $todayMeetingsQuery)
-            ->limit(4)
-            ->get()
-            ->map(fn (Meeting $meeting) => $this->transformMeeting($meeting))
-            ->all();
+        $todayMeetingsCount = $todayMeetingsQuery->count();
 
         $upcomingMeetingsQuery = Meeting::query()
             ->access()
@@ -50,13 +45,7 @@ class EmployeeActivityHubWidget extends Widget
             ? $this->transformMeeting($meeting)
             : null;
 
-        $documentsNeedActionQuery = $this->getDocumentsNeedActionQuery($user);
-        $documentsNeedActionCount = (clone $documentsNeedActionQuery)->count();
-        $documentsNeedAction = (clone $documentsNeedActionQuery)
-            ->limit(4)
-            ->get()
-            ->map(fn (Document $document) => $this->transformDocument($document))
-            ->all();
+        $documentsNeedActionCount = $this->getDocumentsNeedActionQuery($user)->count();
 
         $unreadNotificationsCount = (int) $user->unreadNotifications()->count();
 
@@ -71,12 +60,9 @@ class EmployeeActivityHubWidget extends Widget
             'subtitle' => $subtitle,
             'organizationPath' => $user->organization_path ?: 'Pegawai aktif',
             'nextMeeting' => $nextMeeting,
-            'todayMeetings' => $todayMeetings,
             'todayMeetingsCount' => $todayMeetingsCount,
-            'documentsNeedAction' => $documentsNeedAction,
             'documentsNeedActionCount' => $documentsNeedActionCount,
             'unreadNotificationsCount' => $unreadNotificationsCount,
-            'quickActions' => $this->buildQuickActions($user, $documentsNeedActionCount, $todayMeetingsCount),
         ];
     }
 
@@ -139,62 +125,16 @@ class EmployeeActivityHubWidget extends Widget
             'time' => $dateTime->format('H:i'),
             'location' => $meeting->location ?: 'Lokasi belum diisi',
             'badge' => match ($meeting->status) {
-                'pending' => 'Menunggu',
-                'ongoing' => 'Berlangsung',
+                'scheduled' => 'Terjadwal',
                 'completed' => 'Selesai',
+                'cancelled' => 'Batal',
                 default => ucfirst((string) $meeting->status),
             },
             'badgeColor' => match ($meeting->status) {
-                'pending' => 'warning',
-                'ongoing' => 'info',
+                'scheduled' => 'info',
                 'completed' => 'gray',
                 default => 'gray',
             },
-        ];
-    }
-
-    private function transformDocument(Document $document): array
-    {
-        return [
-            'title' => $document->title,
-            'code' => $document->code_number ?: 'Tanpa nomor',
-            'url' => '/admin/documents/'.$document->id,
-            'meta' => $document->category?->name ?: 'Dokumen internal',
-            'badge' => match ($document->status) {
-                Document::STATUS_DRAFT => 'Perlu dilengkapi',
-                Document::STATUS_REJECTED => 'Perlu revisi',
-                Document::STATUS_PENDING_KABID => 'Menunggu Kabid',
-                Document::STATUS_PENDING_DIREKTUR => 'Menunggu Direktur',
-                default => ucfirst($document->status),
-            },
-            'badgeColor' => match ($document->status) {
-                Document::STATUS_DRAFT => 'slate',
-                Document::STATUS_REJECTED => 'rose',
-                Document::STATUS_PENDING_KABID => 'amber',
-                Document::STATUS_PENDING_DIREKTUR => 'sky',
-                default => 'gray',
-            },
-            'updatedAt' => optional($document->updated_at)->diffForHumans() ?: 'Baru saja',
-        ];
-    }
-
-    private function buildQuickActions(User $user, int $documentsNeedActionCount, int $todayMeetingsCount): array
-    {
-        return [
-            [
-                'label' => 'Buat Reminder',
-                'description' => 'Pusat pengirim notifikasi pengingat pegawai & reviewer',
-                'url' => route('filament.admin.pages.reminders'),
-                'icon' => 'heroicon-o-bell-alert',
-                'accent' => 'blue',
-            ],
-            [
-                'label' => 'Compliance Hub',
-                'description' => 'Lihat & konfirmasi dokumen wajib baca Anda',
-                'url' => route('filament.admin.pages.compliance-hub'),
-                'icon' => 'heroicon-o-shield-check',
-                'accent' => 'blue',
-            ],
         ];
     }
 

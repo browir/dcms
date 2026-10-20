@@ -26,6 +26,8 @@ class UnitResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Data Master';
 
+    protected static ?int $navigationSort = 3;
+
     protected static ?string $modelLabel = 'Unit';
 
     protected static ?string $pluralModelLabel = 'Unit';
@@ -34,7 +36,16 @@ class UnitResource extends Resource
     {
         return $schema->components([
             TextInput::make('name')->label('Nama')->required(),
-            TextInput::make('prefix')->label('Kode')->required(),
+            TextInput::make('prefix')
+                ->label('Kode')
+                ->helperText('Dipakai di nomor surat: 001/A.<kode>/SGG/VII/2025.')
+                ->maxLength(20)
+                ->required(),
+            TextInput::make('keycloak_code')
+                ->label('Kode HRIS')
+                ->helperText('Kode unit organisasi dari HRIS (/publik/unit-organisasi). Dipakai login SSO untuk menempatkan karyawan.')
+                ->maxLength(255)
+                ->unique(ignoreRecord: true),
             Select::make('company_id')
                 ->label('Perusahaan')
                 ->options(\App\Models\Company::where('is_active', true)->pluck('name', 'id'))
@@ -63,6 +74,7 @@ class UnitResource extends Resource
         return $schema->components([
             TextEntry::make('name')->label('Nama'),
             TextEntry::make('prefix')->label('Kode'),
+            TextEntry::make('keycloak_code')->label('Kode HRIS')->placeholder('-'),
             TextEntry::make('department.name')->label('Departemen'),
             IconEntry::make('is_active')->boolean(),
             TextEntry::make('created_at')->dateTime()->placeholder('-'),

@@ -23,6 +23,15 @@ class ActivityResource extends BaseActivityResource
         return '';
     }
 
+    /**
+     * Menu navbar memakai halaman Audit Trail (data activity_log yang sama, juga bisa
+     * dibuka Kabid/Direktur). Resource ini tetap ada untuk halaman detail log.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     // Inherit everything from the base resource, override just the table
     public static function table(Table $table): Table
     {

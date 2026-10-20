@@ -16,7 +16,7 @@ class AppSettings extends Page
 
     protected static string|\UnitEnum|null $navigationGroup = 'Pengaturan';
 
-    protected static ?int $navigationSort = 90;
+    protected static ?int $navigationSort = 4;
 
     protected static ?string $navigationLabel = 'Logo Aplikasi';
 

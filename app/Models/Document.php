@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Enum\JenisSurat;
 use App\Notifications\DocumentApprovedByKabidNotification;
 use App\Notifications\DocumentCreatedNotification;
 use App\Notifications\DocumentFinalDecisionNotification;
 use App\Notifications\DocumentSubmittedNotification;
+use App\Services\LetterNumberService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use OwenIt\Auditing\Contracts\Auditable;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -53,6 +56,7 @@ class Document extends Model implements Auditable
     protected $fillable = [
         'title',
         'code_number',
+        'letter_number_id',
         'description',
         'file_path',
         'file_name',
@@ -64,6 +68,8 @@ class Document extends Model implements Auditable
         'department_id',
         'unit_id',
         'category_id',
+        'jenis_surat',
+        'tanggal_surat',
         'user_id',
         'updated_by',
         'status',
@@ -84,6 +90,8 @@ class Document extends Model implements Auditable
         'kabid_reviewed_at' => 'datetime',
         'direktur_reviewed_at' => 'datetime',
         'expires_at' => 'date',
+        'tanggal_surat' => 'date',
+        'jenis_surat' => JenisSurat::class,
         'review_reminder_sent_at' => 'date',
         'is_mandatory_read' => 'boolean',
         'is_public' => 'boolean',
@@ -99,9 +107,10 @@ class Document extends Model implements Auditable
                 $document->user_id = Auth::id();
             }
 
-            // Auto-generate code_number jika belum ada
-            if (! $document->code_number) {
-                $document->code_number = $document->generateCodeNumber();
+            // Setiap dokumen memakai nomor surat dari register. code_number yang diisi
+            // langsung hanya untuk impor dokumen lama yang sudah bernomor.
+            if (! $document->code_number || $document->letter_number_id) {
+                $document->attachLetterNumber();
             }
 
             // Auto-set version jika belum ada
@@ -151,55 +160,57 @@ class Document extends Model implements Auditable
     }
 
     /**
-     * Generate code number: COMPANY-DEPARTMENT-UNIT-CATEGORY-001
+     * Hubungkan dokumen baru ke nomor surat di register, lalu salin nomor, jenis, tanggal,
+     * dan organisasi penerbitnya. Nomor yang dipilih harus belum dipakai dokumen lain; tanpa
+     * nomor, dokumen yang membawa jenis_surat langsung diterbitkan nomor baru.
+     * Dipanggil dari event `creating`, di dalam transaksi save() (lihat save()).
      */
-    public function generateCodeNumber(): string
+    public function attachLetterNumber(): void
     {
-        $year = date('Y');
+        if ($this->letter_number_id) {
+            $letter = LetterNumber::query()->lockForUpdate()->findOrFail($this->letter_number_id);
 
-        // Cari document numbering berdasarkan kombinasi
-        $documentNumbering = DocumentNumbering::where([
-            'category_id' => $this->category_id,
-            'company_id' => $this->company_id,
-            'department_id' => $this->department_id,
-            'year' => $year,
-        ])->first();
-
-        // Jika tidak ditemukan, buat baru
-        if (! $documentNumbering) {
-            $documentNumbering = DocumentNumbering::create([
-                'category_id' => $this->category_id,
-                'company_id' => $this->company_id,
-                'department_id' => $this->department_id,
-                'year' => $year,
-                'last_number' => 0,
+            if ($letter->isUsed()) {
+                throw ValidationException::withMessages([
+                    'letter_number_id' => "Nomor surat {$letter->nomor} sudah dipakai dokumen lain.",
+                ]);
+            }
+        } elseif ($this->jenis_surat && $this->unit) {
+            $letter = app(LetterNumberService::class)->issue(
+                $this->unit,
+                $this->jenis_surat,
+                $this->tanggal_surat ?? today(),
+                $this->title,
+                by: $this->user,
+            );
+            $this->letter_number_id = $letter->id;
+        } else {
+            throw ValidationException::withMessages([
+                'letter_number_id' => 'Dokumen wajib memakai nomor surat. Ambil nomor surat terlebih dahulu.',
             ]);
         }
 
-        // Increment last_number dengan transaction untuk menghindari race condition
-        DB::transaction(function () use ($documentNumbering) {
-            $documentNumbering->lockForUpdate();
-            $documentNumbering->increment('last_number');
-        });
+        $this->code_number = $letter->nomor;
+        $this->jenis_surat = $letter->jenis_surat;
+        $this->tanggal_surat = $letter->tanggal_surat;
+        $this->company_id = $letter->company_id;
+        $this->department_id = $letter->department_id ?? $this->department_id;
+        $this->unit_id = $letter->unit_id;
+    }
 
-        // Refresh untuk mendapatkan last_number terbaru
-        $documentNumbering->refresh();
-
-        // Generate kode perusahaan, departemen, dan kategori
-        $companyCode = $this->company?->code ?: 'COM';
-        $departmentCode = $this->department?->code ?: 'DEPT';
-        $categoryCode = $this->category?->prefix ?: 'CAT';
-        $unitCode = $this->resolveUnitCode();
-
-        // Format nomor dokumen
-        $sequence = str_pad($documentNumbering->last_number, 3, '0', STR_PAD_LEFT);
-
-        // Pilih format berdasarkan ada/tidaknya unit
-        if (! empty($unitCode)) {
-            return "{$companyCode}-{$departmentCode}-{$unitCode}-{$categoryCode}-{$sequence}";
-        } else {
-            return "{$companyCode}-{$departmentCode}-{$categoryCode}-{$sequence}";
+    /**
+     * INSERT dokumen baru dibungkus transaksi supaya kunci counter nomor surat (diambil di
+     * event `creating`) bertahan sampai commit, dan nomor tidak terpakai kalau insert gagal.
+     * Di dalam transaksi lain (mis. halaman Filament) ini menjadi savepoint, jadi counter
+     * tetap ikut dibatalkan walau transaksi luarnya menangkap error dan lanjut.
+     */
+    public function save(array $options = []): bool
+    {
+        if ($this->exists) {
+            return parent::save($options);
         }
+
+        return DB::transaction(fn () => parent::save($options));
     }
 
     /**
@@ -299,36 +310,6 @@ class Document extends Model implements Auditable
         </html>";
     }
 
-    private function resolveUnitCode(): string
-    {
-        $unit = $this->unit;
-
-        if (! $unit) {
-            return '';
-        }
-
-        if (filled($unit->code)) {
-            return strtoupper((string) $unit->code);
-        }
-
-        if (filled($unit->prefix)) {
-            return strtoupper((string) $unit->prefix);
-        }
-
-        if (filled($unit->name)) {
-            return substr(
-                collect(preg_split('/\s+/', trim((string) $unit->name)) ?: [])
-                    ->filter()
-                    ->map(fn (string $word): string => strtoupper(substr($word, 0, 1)))
-                    ->implode(''),
-                0,
-                6,
-            );
-        }
-
-        return '';
-    }
-
     // ========== RELATIONSHIPS ==========
 
     public function bookmarks(): HasMany
@@ -421,6 +402,11 @@ class Document extends Model implements Auditable
     public function allowedUnits(): BelongsToMany
     {
         return $this->belongsToMany(Unit::class, 'document_unit_access', 'document_id', 'unit_id')->withTimestamps();
+    }
+
+    public function letterNumber(): BelongsTo
+    {
+        return $this->belongsTo(LetterNumber::class);
     }
 
     public function category(): BelongsTo
@@ -769,6 +755,7 @@ class Document extends Model implements Auditable
             ->logOnly([
                 'title',
                 'code_number',
+        'letter_number_id',
                 'status',
                 'document_type',
                 'version',

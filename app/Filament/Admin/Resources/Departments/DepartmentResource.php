@@ -27,6 +27,8 @@ class DepartmentResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Data Master';
 
+    protected static ?int $navigationSort = 2;
+
     protected static ?string $modelLabel = 'Departemen';
 
     protected static ?string $pluralModelLabel = 'Departemen';
@@ -36,6 +38,11 @@ class DepartmentResource extends Resource
         return $schema->components([
             TextInput::make('name')->label('Nama')->required(),
             TextInput::make('code')->label('Kode')->required(),
+            TextInput::make('keycloak_code')
+                ->label('Kode HRIS')
+                ->helperText('Kode unit organisasi dari HRIS (/publik/unit-organisasi). Dipakai login SSO untuk menempatkan karyawan.')
+                ->maxLength(255)
+                ->unique(ignoreRecord: true),
             Select::make('company_id')
                 ->label('Perusahaan')
                 ->relationship('company', 'name')
@@ -52,6 +59,7 @@ class DepartmentResource extends Resource
         return $schema->components([
             TextEntry::make('name')->label('Nama'),
             TextEntry::make('code')->label('Kode'),
+            TextEntry::make('keycloak_code')->label('Kode HRIS')->placeholder('-'),
             TextColumn::make('company.name')->label('Perusahaan')->searchable(),
             IconEntry::make('is_active')->boolean(),
             TextEntry::make('created_at')->dateTime()->placeholder('-'),

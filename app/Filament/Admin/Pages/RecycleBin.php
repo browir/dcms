@@ -15,9 +15,9 @@ class RecycleBin extends Page implements HasTable
 
     protected static string|\BackedEnum|null $navigationIcon = null;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Manajemen Dokumen';
+    protected static string|\UnitEnum|null $navigationGroup = 'Dokumen';
 
-    protected static ?int $navigationSort = 11;
+    protected static ?int $navigationSort = 5;
 
     protected static ?string $title = 'Recycle Bin';
 

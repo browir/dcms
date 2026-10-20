@@ -19,9 +19,9 @@ class AuditTrail extends Page implements HasTable
 
     protected static string|\BackedEnum|null $navigationIcon = null;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Manajemen Dokumen';
+    protected static string|\UnitEnum|null $navigationGroup = 'Pengaturan';
 
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 3;
 
     protected static ?string $title = 'Audit Trail';
 

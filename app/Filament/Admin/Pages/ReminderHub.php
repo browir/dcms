@@ -23,11 +23,11 @@ class ReminderHub extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = null;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Manajemen Dokumen';
+    protected static string|UnitEnum|null $navigationGroup = 'Dokumen';
 
-    protected static ?int $navigationSort = 12;
+    protected static ?int $navigationSort = 4;
 
-    protected static ?string $navigationLabel = 'Pusat Pengingat (Reminders)';
+    protected static ?string $navigationLabel = 'Pusat Pengingat';
 
     protected static ?string $title = 'Pusat Pengingat (Reminder Hub)';
 

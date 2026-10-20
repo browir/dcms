@@ -30,6 +30,11 @@ class CompaniesTable
                     ->label('Kode')
                     ->searchable()
                     ->visibleFrom('md'),
+                TextColumn::make('kode_surat')
+                    ->label('Kode Surat')
+                    ->placeholder('= Kode')
+                    ->searchable()
+                    ->visibleFrom('md'),
                 IconColumn::make('is_active')
                     ->label('Aktif')
                     ->boolean()

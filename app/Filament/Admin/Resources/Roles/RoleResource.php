@@ -42,7 +42,7 @@ class RoleResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = null;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Peran & Izin';
+    protected static string|\UnitEnum|null $navigationGroup = 'Pengaturan';
 
     public static function getNavigationIcon(): ?string
     {

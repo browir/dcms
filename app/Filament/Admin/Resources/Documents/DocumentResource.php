@@ -26,7 +26,7 @@ class DocumentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = null;
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $modelLabel = 'Dokumen';
 
@@ -58,7 +58,7 @@ class DocumentResource extends Resource
         return ['title', 'code_number', 'description', 'content'];
     }
 
-    protected static string|UnitEnum|null $navigationGroup = 'Manajemen Dokumen';
+    protected static string|UnitEnum|null $navigationGroup = 'Dokumen';
 
     public static function getNavigationBadge(): ?string
     {

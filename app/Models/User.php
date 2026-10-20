@@ -22,6 +22,7 @@ class User extends Authenticatable implements Auditable, FilamentUser
         'email',
         'phone',
         'username',
+        'nip',
         'password',
         'company_id',
         'department_id',

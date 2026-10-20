@@ -15,8 +15,31 @@
         </div>
 
         {{-- Card Utama --}}
-        <div class="w-full bg-white rounded-xl shadow-[0_15px_60px_-10px_rgba(0,0,0,0.08)] border border-[#e2e8f0] p-10 md:p-12 mb-8 z-10 relative">
+        <div class="w-full bg-white rounded-xl shadow-[0_15px_60px_-10px_rgba(0,0,0,0.08)] border border-[#e2e8f0] p-10 md:p-12 mb-8 z-10 relative"
+            x-data="{ localLogin: {{ $this->ssoEnabled() ? 'false' : 'true' }} }">
+
+            @if ($ssoError = $this->ssoError())
+                <div role="alert" class="dcms-sso-alert mb-5">{{ $ssoError }}</div>
+            @endif
+
+            @if ($this->ssoEnabled())
+                {{-- Login utama: akun SSO karyawan (Keycloak) --}}
+                <a href="{{ route('keycloak-sso.redirect') }}" class="dcms-sso-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z" />
+                    </svg>
+                    Masuk dengan Akun SSO
+                </a>
+                <p class="dcms-sso-hint">Gunakan akun karyawan Syifa Global Group (sama dengan HRIS). Tidak perlu mendaftar.</p>
+
+                <button type="button" class="dcms-sso-toggle" x-on:click="localLogin = ! localLogin" x-bind:aria-expanded="localLogin">
+                    <span x-text="localLogin ? 'Sembunyikan login akun lokal' : 'Masuk dengan akun lokal (administrator)'"></span>
+                </button>
+            @endif
+
             <form
+                x-show="localLogin"
+                @if ($this->ssoEnabled()) x-cloak x-collapse @endif
                 wire:submit.prevent="authenticate"
                 x-ref="loginForm"
                 x-on:keydown.enter="if (! ['BUTTON', 'A', 'TEXTAREA'].includes($event.target.tagName) && $event.target.type !== 'checkbox') { $event.preventDefault(); $refs.loginForm.requestSubmit() }"
@@ -35,11 +58,13 @@
             </form>
 
             <div class="mt-8 text-center border-t border-gray-100 pt-6">
-                <p class="text-[13px] text-[#64748b] mb-4">
-                    Belum punya akun?
-                    <a href="{{ filament()->getRegistrationUrl() }}"
-                        class="text-[#2563eb] font-bold hover:underline">Buat Akun</a>
-                </p>
+                @if (filament()->hasRegistration())
+                    <p class="text-[13px] text-[#64748b] mb-4">
+                        Belum punya akun?
+                        <a href="{{ filament()->getRegistrationUrl() }}"
+                            class="text-[#2563eb] font-bold hover:underline">Buat Akun</a>
+                    </p>
+                @endif
 
                 {{-- Tombol Panduan dengan Heroicon Info --}}
                 <button @click="showTutorial = true" 
@@ -206,6 +231,29 @@
     </script>
 
     <style>
+        /* ── Login SSO Keycloak ── */
+        .dcms-sso-btn {
+            display: flex; align-items: center; justify-content: center; gap: .625rem;
+            width: 100%; padding: 1rem; border-radius: .5rem;
+            background: #0B2545; color: #fff; font-weight: 700; font-size: 1rem; letter-spacing: .02em;
+            transition: background-color .2s, transform .1s;
+        }
+        .dcms-sso-btn:hover { background: #133B6B; }
+        .dcms-sso-btn:active { transform: scale(.98); }
+        .dcms-sso-btn:focus-visible { outline: 4px solid #bfdbfe; outline-offset: 2px; }
+        .dcms-sso-btn svg { width: 1.25rem; height: 1.25rem; }
+        .dcms-sso-hint { margin-top: .75rem; font-size: 12px; line-height: 1.5; color: #64748b; text-align: center; }
+        .dcms-sso-toggle {
+            display: block; width: 100%; margin: 1.25rem 0 0; padding-top: 1.25rem; border-top: 1px solid #f1f5f9;
+            font-size: 12px; font-weight: 600; color: #64748b; text-align: center;
+        }
+        .dcms-sso-toggle:hover { color: #2563eb; }
+        .dcms-sso-toggle + form { margin-top: 1.25rem; }
+        .dcms-sso-alert {
+            padding: .75rem 1rem; border-radius: .5rem; border: 1px solid #fecaca;
+            background: #fef2f2; color: #b91c1c; font-size: 13px; font-weight: 500;
+        }
+
         @keyframes fade-in {
             from { opacity: 0; transform: translateY(15px) }
             to { opacity: 1; transform: translateY(0) }

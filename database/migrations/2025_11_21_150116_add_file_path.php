@@ -8,6 +8,13 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Kolom content dipakai Meeting tapi belum pernah dibuat oleh migrasi mana pun
+        if (! Schema::hasColumn('meetings', 'content')) {
+            Schema::table('meetings', function (Blueprint $table) {
+                $table->text('content')->nullable()->after('agenda');
+            });
+        }
+
         Schema::table('meetings', function (Blueprint $table) {
             $table->string('file_path')->nullable()->after('content');
         });

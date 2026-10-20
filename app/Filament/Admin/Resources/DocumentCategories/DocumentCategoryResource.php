@@ -23,6 +23,8 @@ class DocumentCategoryResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Data Master';
 
+    protected static ?int $navigationSort = 4;
+
     protected static ?string $modelLabel = 'Kategori Dokumen';
 
     protected static ?string $pluralModelLabel = 'Kategori Dokumen';

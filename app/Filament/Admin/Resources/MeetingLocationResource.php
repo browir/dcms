@@ -30,11 +30,11 @@ class MeetingLocationResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = null;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Rapat';
+    protected static string|UnitEnum|null $navigationGroup = 'Data Master';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 5;
 
-    protected static ?string $navigationLabel = 'Lokasi Rapat';
+    protected static ?string $navigationLabel = 'Ruangan Rapat';
 
     protected static ?string $modelLabel = 'Lokasi Rapat';
 

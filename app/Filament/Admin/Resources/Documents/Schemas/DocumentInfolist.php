@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Documents\Schemas;
 
+use App\Enum\JenisSurat;
 use App\Models\Document;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
@@ -110,6 +111,21 @@ class DocumentInfolist
                             ->copyable()
                             ->copyMessage('Nomor kode disalin!')
                             ->copyMessageDuration(1500),
+
+                        TextEntry::make('jenis_surat')
+                            ->label('Jenis Surat')
+                            ->icon('heroicon-o-tag')
+                            ->iconColor('primary')
+                            ->formatStateUsing(fn (?JenisSurat $state): ?string => $state ? "{$state->value} — {$state->label()}" : null)
+                            ->placeholder('—')
+                            ->visible(fn ($record): bool => filled($record?->jenis_surat)),
+
+                        TextEntry::make('tanggal_surat')
+                            ->label('Tanggal Surat')
+                            ->icon('heroicon-o-calendar')
+                            ->iconColor('primary')
+                            ->date('d M Y')
+                            ->visible(fn ($record): bool => filled($record?->tanggal_surat)),
 
                         TextEntry::make('version')
                             ->label('Versi')

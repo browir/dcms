@@ -18,7 +18,7 @@ class MyCalendarWidget extends CalendarWidget
 {
     protected \Illuminate\Support\HtmlString|string|bool|null $heading = 'Kalender Rapat';
 
-    protected static ?int $sort = 4;
+    protected static ?int $sort = 50;
 
     protected int|string|array $columnSpan = 'full';
 
@@ -29,12 +29,15 @@ class MyCalendarWidget extends CalendarWidget
     // protected bool $eventDragEnabled = true;
     protected bool $dateClickEnabled = true;
 
+    protected ?string $locale = 'id';
+
     public function getOptions(): array
     {
         return array_merge(parent::getOptions(), [
             'buttonText' => [
                 'today' => 'Hari Ini',
             ],
+            'eventTimeFormat' => ['hour' => '2-digit', 'minute' => '2-digit', 'hour12' => false],
         ]);
     }
 

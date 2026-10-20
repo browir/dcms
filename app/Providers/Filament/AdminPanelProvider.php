@@ -5,7 +5,9 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Auth\Register;
 use App\Filament\Plugins\ActivityLogPlugin;
+use App\Support\Sso\Sso;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
+use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -36,22 +38,31 @@ class AdminPanelProvider extends PanelProvider
             ->profile(\App\Filament\Pages\Auth\EditProfile::class)
             ->topNavigation()
             ->favicon(\App\Support\Branding::logoUrl())
-            ->darkMode(false)
+            ->darkMode(true)
+            ->defaultThemeMode(ThemeMode::Light)
             ->login(Login::class)
-            ->registration(Register::class)
+            // Saat SSO Keycloak aktif semua karyawan masuk lewat SSO — pendaftaran akun mandiri dimatikan.
+            ->registration(Sso::enabled() ? null : Register::class)
             ->colors([
                 'primary' => Color::Blue,
+                'gray' => Color::Slate,
             ])
             ->navigationGroups([
-                NavigationGroup::make('Pengaturan')->icon('heroicon-o-cog-6-tooth'),
+                NavigationGroup::make('Dokumen')->icon('heroicon-o-document-duplicate'),
                 NavigationGroup::make('Data Master')->icon('heroicon-o-circle-stack'),
-                NavigationGroup::make('Rapat')->icon('heroicon-o-calendar-days'),
-                NavigationGroup::make('Manajemen Dokumen')->icon('heroicon-o-document-duplicate'),
-                NavigationGroup::make('Peran & Izin')->icon('heroicon-o-shield-check'),
+                NavigationGroup::make('Pengaturan')->icon('heroicon-o-cog-6-tooth'),
             ])
             ->renderHook(
                 'panels::head.end',
                 fn (): string => view('filament.pwa-head')->render()
+            )
+            ->renderHook(
+                'panels::head.end',
+                fn (): string => view('filament.widgets.dashboard.styles')->render()
+            )
+            ->renderHook(
+                'panels::head.end',
+                fn (): string => view('filament.theme-dark')->render()
             )
             ->renderHook(
                 'panels::body.start',
@@ -82,6 +93,10 @@ class AdminPanelProvider extends PanelProvider
                         document.addEventListener("livewire:navigate", applyRolesBodyClass);
                     })();
                 </script>')
+            )
+            ->renderHook(
+                'panels::user-menu.before',
+                fn (): string => view('filament.theme-toggle')->render()
             )
             ->renderHook(
                 'panels::user-menu.before',
@@ -1689,7 +1704,12 @@ class AdminPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
             ->plugins([
-                FilamentShieldPlugin::make()->navigationGroup('Peran & Izin')->navigationSort(5),
+                FilamentShieldPlugin::make()
+                    ->navigationGroup('Pengaturan')
+                    ->navigationLabel('Peran & Hak Akses')
+                    ->modelLabel('Peran')
+                    ->pluralModelLabel('Peran & Hak Akses')
+                    ->navigationSort(2),
                 ActivityLogPlugin::make(),
             ])
             ->authMiddleware([Authenticate::class]);

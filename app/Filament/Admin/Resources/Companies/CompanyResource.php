@@ -22,6 +22,8 @@ class CompanyResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Data Master';
 
+    protected static ?int $navigationSort = 1;
+
     protected static ?string $modelLabel = 'Perusahaan';
 
     protected static ?string $pluralModelLabel = 'Perusahaan';
@@ -33,11 +35,18 @@ class CompanyResource extends Resource
         return $schema
             ->components([
                 TextInput::make('name')
+                    ->label('Nama Perusahaan')
                     ->required()
                     ->maxLength(255),
                 TextInput::make('code')
+                    ->label('Kode')
                     ->required()
                     ->maxLength(50),
+                TextInput::make('kode_surat')
+                    ->label('Kode Surat')
+                    ->helperText('Kode penerbit di nomor surat, mis. SGG atau RSUSM-BRB. Kosongkan untuk memakai Kode.')
+                    ->maxLength(20)
+                    ->unique(ignoreRecord: true),
                 Toggle::make('is_active')
                     ->required(),
             ]);
@@ -48,7 +57,8 @@ class CompanyResource extends Resource
         return $schema
             ->components([
                 TextEntry::make('name'),
-                TextEntry::make('code'),
+                TextEntry::make('code')->label('Kode'),
+                TextEntry::make('kode_surat')->label('Kode Surat')->placeholder('Sama dengan Kode'),
                 TextEntry::make('is_active')
                     ->formatStateUsing(fn (bool $state): string => $state ? 'Aktif' : 'Tidak Aktif'),
             ]);
