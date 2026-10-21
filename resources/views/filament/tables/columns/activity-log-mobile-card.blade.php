@@ -22,7 +22,7 @@
         'notifications' => 'background:#ede9fe;color:#5b21b6;',
         default         => 'background:#e2e8f0;color:#334155;',
     };
-    $timeFormatted = $record->created_at ? $record->created_at->format('d M Y, H:i') : '—';
+    $timeFormatted = $record->created_at ? $record->created_at->translatedFormat('d M Y, H:i') : '—';
     $timeAgo       = $record->created_at ? $record->created_at->diffForHumans() : '';
 @endphp
 

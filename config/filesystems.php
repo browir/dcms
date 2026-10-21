@@ -63,10 +63,11 @@ return [
             'report' => false,
         ],
         'documents' => [
+            // Privat: file hanya bisa diambil lewat route documents.serve (cek login & hak akses).
             'driver' => 'local',
-            'root' => storage_path('app/public/documents'),
-            'url' => env('APP_URL', 'http://localhost').'/storage/documents',
-            'visibility' => 'public',
+            'root' => storage_path('app/private/documents'),
+            'visibility' => 'private',
+            'throw' => false,
         ],
     ],
 

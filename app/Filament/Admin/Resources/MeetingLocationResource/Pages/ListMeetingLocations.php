@@ -12,16 +12,16 @@ class ListMeetingLocations extends ListRecords
 
     public function getTitle(): string
     {
-        return 'Lokasi Rapat';
+        return 'Ruangan Rapat';
     }
 
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-                ->label('+ Tambah Lokasi')
-                ->icon('heroicon-o-map-pin')
-                ->modalHeading('Tambah Lokasi Rapat')
+                ->label('Tambah Ruangan')
+                ->icon('heroicon-m-plus')
+                ->modalHeading('Tambah Ruangan Rapat')
                 ->createAnother(false),
         ];
     }

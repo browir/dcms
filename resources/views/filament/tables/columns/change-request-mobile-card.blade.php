@@ -3,7 +3,7 @@
     $docTitle    = $record->document?->title ?? '—';
     $userName    = $record->user?->name ?? '—';
     $status      = $record->status ?? 'pending';
-    $createdAt   = $record->created_at?->format('d M Y') ?? '—';
+    $createdAt   = $record->created_at?->translatedFormat('d M Y') ?? '—';
     $createdAgo  = $record->created_at?->diffForHumans() ?? '';
     $proposed    = $record->proposed_change ?? null;
     $statusLabel = match($status) { 'pending'=>'Menunggu','approved'=>'Disetujui','rejected'=>'Ditolak',default=>ucfirst($status) };

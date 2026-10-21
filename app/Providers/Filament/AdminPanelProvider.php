@@ -2,9 +2,12 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Admin\Pages\Dashboard;
+use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Auth\Register;
 use App\Filament\Plugins\ActivityLogPlugin;
+use App\Support\Branding;
 use App\Support\Sso\Sso;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Enums\ThemeMode;
@@ -12,6 +15,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -21,9 +25,10 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Filament\Navigation\NavigationGroup;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -35,9 +40,9 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->maxContentWidth(Width::Full)
 
-            ->profile(\App\Filament\Pages\Auth\EditProfile::class)
+            ->profile(EditProfile::class)
             ->topNavigation()
-            ->favicon(\App\Support\Branding::logoUrl())
+            ->favicon(Branding::logoUrl())
             ->darkMode(true)
             ->defaultThemeMode(ThemeMode::Light)
             ->login(Login::class)
@@ -62,11 +67,15 @@ class AdminPanelProvider extends PanelProvider
             )
             ->renderHook(
                 'panels::head.end',
+                fn (): string => view('filament.theme-modern')->render()
+            )
+            ->renderHook(
+                'panels::head.end',
                 fn (): string => view('filament.theme-dark')->render()
             )
             ->renderHook(
                 'panels::body.start',
-                fn (): string => \Illuminate\Support\Facades\Blade::render('filament.loading-screen')
+                fn (): string => Blade::render('filament.loading-screen')
             )
             ->renderHook(
                 'panels::body.end',
@@ -100,7 +109,7 @@ class AdminPanelProvider extends PanelProvider
             )
             ->renderHook(
                 'panels::user-menu.before',
-                fn (): string => \Illuminate\Support\Facades\Blade::render('@livewire(\'bookmark-topbar-icon\')')
+                fn (): string => Blade::render('@livewire(\'bookmark-topbar-icon\')')
             )
             ->renderHook(
                 'panels::styles.after',
@@ -1679,14 +1688,14 @@ class AdminPanelProvider extends PanelProvider
 
             ->renderHook(
                 'panels::user-menu.before',
-                fn (): string => \Illuminate\Support\Facades\Auth::check() ? \Illuminate\Support\Facades\Blade::render('@livewire(\'notification-bell\')') : ''
+                fn (): string => Auth::check() ? Blade::render('@livewire(\'notification-bell\')') : ''
             )
             ->spa()
             ->globalSearch()
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\Filament\Admin\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\Filament\Admin\Pages')
             ->pages([
-                \App\Filament\Admin\Pages\Dashboard::class,
+                Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\Filament\Admin\Widgets')
             ->widgets([

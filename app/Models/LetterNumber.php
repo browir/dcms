@@ -63,22 +63,34 @@ class LetterNumber extends Model
         return $this->hasOne(Document::class)->withTrashed();
     }
 
-    public function isUsed(): bool
+    /** Kegiatan unit yang memakai nomor ini sebagai surat pemberitahuan. */
+    public function agenda(): HasOne
     {
-        return $this->relationLoaded('document')
-            ? $this->document !== null
-            : $this->document()->exists();
+        return $this->hasOne(Agenda::class);
     }
 
-    /** Nomor yang belum diisi dokumen (dokumen di Recycle Bin tetap dihitung memakai nomor). */
+    /** Nomor sudah dipakai dokumen resmi atau surat pemberitahuan kegiatan. */
+    public function isUsed(): bool
+    {
+        $document = $this->relationLoaded('document') ? $this->document !== null : $this->document()->exists();
+        $agenda = $this->relationLoaded('agenda') ? $this->agenda !== null : $this->agenda()->exists();
+
+        return $document || $agenda;
+    }
+
+    /** Nomor yang belum dipakai (dokumen di Recycle Bin tetap dihitung memakai nomor). */
     public function scopeAvailable(Builder $query): Builder
     {
-        return $query->whereNotIn('id', DB::table('documents')->whereNotNull('letter_number_id')->select('letter_number_id'));
+        return $query
+            ->whereNotIn('id', DB::table('documents')->whereNotNull('letter_number_id')->select('letter_number_id'))
+            ->whereNotIn('id', DB::table('agendas')->whereNotNull('letter_number_id')->select('letter_number_id'));
     }
 
     public function scopeUsed(Builder $query): Builder
     {
-        return $query->whereIn('id', DB::table('documents')->whereNotNull('letter_number_id')->select('letter_number_id'));
+        return $query->where(fn (Builder $q) => $q
+            ->whereIn('id', DB::table('documents')->whereNotNull('letter_number_id')->select('letter_number_id'))
+            ->orWhereIn('id', DB::table('agendas')->whereNotNull('letter_number_id')->select('letter_number_id')));
     }
 
     /** Nomor yang boleh dilihat user: semua perusahaan untuk admin global, selain itu perusahaannya sendiri. */

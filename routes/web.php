@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\AgendaNoticeController;
 use App\Http\Controllers\BrandingController;
+use App\Http\Controllers\DocumentFileController;
 use App\Http\Controllers\NotulenController;
 use App\Http\Controllers\PushSubscriptionController;
 use Filament\Http\Middleware\Authenticate;
@@ -31,27 +33,23 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::delete('/api/push-subscriptions', [PushSubscriptionController::class, 'destroy'])->name('push.destroy');
 });
 
+// File dokumen untuk API integrasi — link bertanda tangan & berbatas waktu (tanpa login).
+Route::get('/dokumen/file/{path}', [DocumentFileController::class, 'signed'])
+    ->where('path', '.*')
+    ->middleware('signed')
+    ->name('documents.serve.signed');
+
+// Surat pemberitahuan kegiatan — link bertanda tangan untuk n8n / grup WhatsApp (tanpa login).
+Route::get('/kegiatan/{agenda}/surat/unduh', [AgendaNoticeController::class, 'signed'])
+    ->middleware('signed')
+    ->name('kegiatan.surat.signed');
+
 Route::middleware([Authenticate::class])->group(function () {
     Route::get('/notulen/view/{id}', [NotulenController::class, 'view'])->name('notulen.view');
+    Route::get('/kegiatan/{agenda}/surat', [AgendaNoticeController::class, 'show'])->name('kegiatan.surat');
 
-    // Serve uploaded document files directly from storage disk (not relying on symlink)
-    Route::get('/storage/documents/{path}', function (string $path) {
-        $disk = \Illuminate\Support\Facades\Storage::disk('documents');
-        if (! $disk->exists($path)) {
-            abort(404);
-        }
-        $mimeType = $disk->mimeType($path) ?: 'application/octet-stream';
-
-        return response($disk->get($path), 200)->header('Content-Type', $mimeType);
-    })->where('path', '.*')->name('documents.serve');
-});
-
-Route::get('/test-session', function () {
-    session(['test' => 'ok']);
-
-    return session('test');
-});
-
-Route::get('/test-livewire', function () {
-    return 'ok';
+    // File dokumen resmi (disk privat) — dicek login + hak akses dokumen
+    Route::get('/storage/documents/{path}', [DocumentFileController::class, 'show'])
+        ->where('path', '.*')
+        ->name('documents.serve');
 });

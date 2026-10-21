@@ -6,7 +6,7 @@
     $department= $record->department?->name ?? null;
     $unit      = $record->unit?->name ?? null;
     $isActive  = $record->is_active ?? false;
-    $createdAt = $record->created_at?->format('d M Y') ?? '—';
+    $createdAt = $record->created_at?->translatedFormat('d M Y') ?? '—';
     $roles     = $record->roles->pluck('name');
     $avatarInitials = collect(explode(' ', $name))->map(fn($w) => strtoupper(mb_substr($w,0,1)))->take(2)->implode('');
     $avatarPalette = ['#5B8DF6','#3DB88A','#E07AAC','#9B79D4','#E8885A','#3AAFC4','#6879C8','#D46E82'];

@@ -18,7 +18,7 @@
     $module        = $record->subject_type ? class_basename($record->subject_type) : 'Umum';
     // Shorten long CamelCase module names: e.g. "MandatoryDocumentReminderNotification" → "Mandatory Doc..."
     $moduleShort   = strlen($module) > 14 ? substr(preg_replace('/([A-Z])/', ' $1', $module), 0, 12) . '…' : $module;
-    $timeFormatted = $record->created_at ? $record->created_at->format('d M Y, H:i:s') : '—';
+    $timeFormatted = $record->created_at ? $record->created_at->translatedFormat('d M Y, H:i:s') : '—';
     $timeAgo       = $record->created_at ? $record->created_at->diffForHumans() : '';
     // Shorten description for mobile display
     $descShort     = mb_strlen($record->description ?? '') > 60

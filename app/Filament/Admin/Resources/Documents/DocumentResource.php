@@ -13,10 +13,11 @@ use App\Models\Document;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Cache;
 use Tapp\FilamentAuditing\RelationManagers\AuditsRelationManager;
 use UnitEnum;
 
@@ -36,7 +37,7 @@ class DocumentResource extends Resource
 
     protected static int $globalSearchResultsLimit = 10;
 
-    public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
+    public static function getGlobalSearchResultDetails(Model $record): array
     {
         return [
             'Nomor Kode' => $record->code_number ?? '—',
@@ -62,7 +63,7 @@ class DocumentResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $pending = \Illuminate\Support\Facades\Cache::remember(
+        $pending = Cache::remember(
             'nav_badge_documents_pending',
             30,
             fn () => Document::query()

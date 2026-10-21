@@ -12,7 +12,7 @@ class Company extends Model implements Auditable
 {
     use \OwenIt\Auditing\Auditable;
 
-    protected $fillable = ['name', 'code', 'kode_surat', 'is_active'];
+    protected $fillable = ['name', 'code', 'kode_surat', 'whatsapp_group', 'is_active'];
 
     public function departments(): HasMany
     {

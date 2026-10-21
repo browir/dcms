@@ -3,7 +3,7 @@
     $name      = $record->name ?? '—';
     $code      = $record->code ?? null;
     $isActive  = isset($record->is_active) ? (bool) $record->is_active : null;
-    $createdAt = $record->created_at?->format('d M Y') ?? '—';
+    $createdAt = $record->created_at?->translatedFormat('d M Y') ?? '—';
     $initials  = collect(explode(' ', $name))->map(fn($w) => strtoupper(mb_substr($w,0,1)))->take(2)->implode('');
     $palette   = ['#5B8DF6','#3DB88A','#E07AAC','#9B79D4','#E8885A','#3AAFC4','#6879C8','#D46E82'];
     $avatarBg  = $palette[abs(crc32($name)) % count($palette)];

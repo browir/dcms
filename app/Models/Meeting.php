@@ -179,22 +179,30 @@ class Meeting extends Model
     }
 
     /**
-     * Rapat lain yang benar-benar bertumpang tindih dengan [$start, $end]
-     * pada lokasi tertentu (via FK meeting_location_id atau nama lokasi teks bebas).
+     * Pemakaian ruangan lain (rapat ATAU kegiatan unit) yang bertumpang tindih dengan
+     * [$start, $end] pada lokasi tertentu (via FK meeting_location_id atau nama lokasi
+     * teks bebas). Dipakai form rapat maupun form kegiatan — ruangan dibagi keduanya.
      */
     public static function locationConflict(
         ?int $locationId,
         ?string $locationName,
         Carbon $start,
         ?Carbon $end,
-        ?int $excludeMeetingId = null
-    ): ?self {
+        ?int $excludeMeetingId = null,
+        ?int $excludeAgendaId = null,
+    ): self|Agenda|null {
         $locationName = filled($locationName) ? trim($locationName) : null;
 
         if (! $locationId && ! $locationName) {
             return null;
         }
 
+        return static::meetingLocationConflict($locationId, $locationName, $start, $end, $excludeMeetingId)
+            ?? Agenda::locationConflict($locationId, $locationName, $start, $end, $excludeAgendaId);
+    }
+
+    private static function meetingLocationConflict(?int $locationId, ?string $locationName, Carbon $start, ?Carbon $end, ?int $excludeMeetingId): ?self
+    {
         return static::query()
             ->inTimeWindow($start, $end, $excludeMeetingId)
             ->where(function ($q) use ($locationId, $locationName) {
@@ -210,21 +218,55 @@ class Meeting extends Model
      * Kumpulan "kunci lokasi" (id FK + nama teks bebas, huruf kecil) yang sudah
      * dipesan pada rentang [$start, $end]. Dipakai form untuk mengunci opsi.
      *
+     * Mencakup rapat dan kegiatan unit yang memakai ruangan.
+     *
      * @return array{ids: int[], names: string[], meetings: Collection}
      */
-    public static function bookedLocationKeys(Carbon $start, ?Carbon $end, ?int $excludeMeetingId = null): array
+    public static function bookedLocationKeys(Carbon $start, ?Carbon $end, ?int $excludeMeetingId = null, ?int $excludeAgendaId = null): array
     {
         $meetings = static::query()
             ->inTimeWindow($start, $end, $excludeMeetingId)
             ->get()
             ->filter(fn (self $m) => $m->effectiveEndTime()->gt($start))
-            ->values();
+            ->values()
+            ->toBase()
+            ->concat(Agenda::bookedIn($start, $end, $excludeAgendaId));
 
         return [
             'ids' => $meetings->pluck('meeting_location_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all(),
             'names' => $meetings->pluck('location')->filter()->map(fn ($n) => mb_strtolower(trim($n)))->unique()->values()->all(),
             'meetings' => $meetings,
         ];
+    }
+
+    /** Rapat yang sudah selesai, tidak dibatalkan, tapi belum ada notulen / berkas / action plan. */
+    public function scopeMissingMinutes(Builder $query): Builder
+    {
+        return $query
+            ->where('status', '!=', 'cancelled')
+            ->where(fn (Builder $q) => $q
+                ->where('status', 'completed')
+                ->orWhere(fn (Builder $e) => $e->whereNotNull('end_time')->where('end_time', '<', now()))
+                ->orWhere(fn (Builder $e) => $e->whereNull('end_time')
+                    ->where('date_time', '<', now()->subHours(self::DEFAULT_DURATION_HOURS))))
+            ->where(fn (Builder $q) => $q->whereNull('content')->orWhere('content', '')->orWhere('content', '<p></p>'))
+            ->whereNull('file_path')
+            ->where(fn (Builder $q) => $q->whereNull('action_items')->orWhereJsonLength('action_items', 0));
+    }
+
+    /** Rapat di mana user ini peserta, pembuat, atau notulis. */
+    public function scopeInvolving(Builder $query, int $userId): Builder
+    {
+        return $query->where(fn (Builder $q) => $q
+            ->whereHas('participants', fn (Builder $p) => $p->where('users.id', $userId))
+            ->orWhere('created_by', $userId)
+            ->orWhere('notulis_id', $userId));
+    }
+
+    /** Label pemesan ruangan untuk pesan bentrok jadwal. */
+    public function bookingLabel(): string
+    {
+        return "rapat \"{$this->title}\"";
     }
 
     /**

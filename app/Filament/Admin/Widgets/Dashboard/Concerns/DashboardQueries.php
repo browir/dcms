@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Widgets\Dashboard\Concerns;
 
+use App\Models\Agenda;
 use App\Models\Document;
 use App\Models\Meeting;
 use App\Models\MeetingLocation;
@@ -38,16 +39,7 @@ trait DashboardQueries
     /** Rapat yang sudah selesai, tidak dibatalkan, tapi belum ada notulen/berkas hasil rapat. */
     protected function meetingsWithoutMinutes(): Builder
     {
-        return $this->meetings()
-            ->where('status', '!=', 'cancelled')
-            ->where(fn (Builder $q) => $q
-                ->where('status', 'completed')
-                ->orWhere(fn (Builder $e) => $e->whereNotNull('end_time')->where('end_time', '<', now()))
-                ->orWhere(fn (Builder $e) => $e->whereNull('end_time')
-                    ->where('date_time', '<', now()->subHours(Meeting::DEFAULT_DURATION_HOURS))))
-            ->where(fn (Builder $q) => $q->whereNull('content')->orWhere('content', '')->orWhere('content', '<p></p>'))
-            ->whereNull('file_path')
-            ->where(fn (Builder $q) => $q->whereNull('action_items')->orWhereJsonLength('action_items', 0));
+        return $this->meetings()->missingMinutes();
     }
 
     protected function meetingsWithMinutes(): Builder
@@ -63,27 +55,7 @@ trait DashboardQueries
     /** Dokumen yang menunggu tindakan user ini, sesuai perannya dalam alur review. */
     protected function documentsNeedingAction(): Builder
     {
-        $user = $this->currentUser();
-        $query = Document::query()->access()->with('category')->latest('updated_at');
-
-        if ($user->hasRole('super_admin')) {
-            return $query->whereIn('status', [Document::STATUS_PENDING_KABID, Document::STATUS_PENDING_DIREKTUR]);
-        }
-
-        if ($user->hasRole('kabid')) {
-            return $query->where('department_id', $user->department_id)->where('status', Document::STATUS_PENDING_KABID);
-        }
-
-        if ($user->hasRole('direktur')) {
-            return $query->where('company_id', $user->company_id)->where('status', Document::STATUS_PENDING_DIREKTUR);
-        }
-
-        return $query->where('user_id', $user->id)->whereIn('status', [
-            Document::STATUS_DRAFT,
-            Document::STATUS_REJECTED,
-            Document::STATUS_PENDING_KABID,
-            Document::STATUS_PENDING_DIREKTUR,
-        ]);
+        return Document::query()->access()->needsActionBy($this->currentUser())->with('category')->latest('updated_at');
     }
 
     /** @return Collection<int, MeetingLocation> */
@@ -100,38 +72,48 @@ trait DashboardQueries
     }
 
     /**
-     * Status setiap ruangan untuk hari ini: sedang dipakai oleh rapat apa, dan rapat berikutnya.
+     * Status setiap ruangan untuk hari ini: dipakai rapat/kegiatan apa sekarang, dan berikutnya.
      *
-     * @return Collection<int, array{location: MeetingLocation, current: ?Meeting, next: ?Meeting, today: Collection<int, Meeting>, todayCount: int}>
+     * @return Collection<int, array{location: MeetingLocation, current: Meeting|Agenda|null, next: Meeting|Agenda|null, today: Collection<int, Meeting|Agenda>, todayCount: int}>
      */
     protected function roomStatuses(): Collection
     {
         $locations = $this->locations();
 
         // Sengaja tanpa scope access(): status ruangan berlaku untuk semua orang,
-        // walau detail rapatnya sendiri mungkin tidak boleh dibuka.
-        $todayMeetings = Meeting::query()
+        // walau detail rapat/kegiatannya sendiri mungkin tidak boleh dibuka.
+        $window = [today()->subDay(), today()->endOfDay()];
+        $bookings = Meeting::query()
             ->withoutGlobalScope('latest')
             ->where('status', 'scheduled')
-            ->whereBetween('date_time', [today()->subDay(), today()->endOfDay()])
-            ->orderBy('date_time')
+            ->whereBetween('date_time', $window)
             ->get()
-            ->filter(fn (Meeting $m) => $m->effectiveEndTime()->gte(today()));
+            ->toBase()
+            ->concat(Agenda::query()->where('status', 'scheduled')->where('date_time', '<=', $window[1])->where('end_time', '>=', today())->get())
+            ->filter(fn (Meeting|Agenda $m) => $m->effectiveEndTime()->gte(today()))
+            ->sortBy('date_time')
+            ->values();
 
         $now = now();
 
-        return $locations->map(function (MeetingLocation $location) use ($todayMeetings, $now) {
-            $meetings = $todayMeetings->filter(fn (Meeting $m) => $m->meeting_location_id === $location->id
+        return $locations->map(function (MeetingLocation $location) use ($bookings, $now) {
+            $meetings = $bookings->filter(fn (Meeting|Agenda $m) => $m->meeting_location_id === $location->id
                 || ($m->location && mb_strtolower(trim($m->location)) === mb_strtolower(trim($location->name))));
 
             return [
                 'location' => $location,
-                'current' => $meetings->first(fn (Meeting $m) => $m->date_time->lte($now) && $m->effectiveEndTime()->gt($now)),
-                'next' => $meetings->first(fn (Meeting $m) => $m->date_time->gt($now)),
+                'current' => $meetings->first(fn (Meeting|Agenda $m) => $m->date_time->lte($now) && $m->effectiveEndTime()->gt($now)),
+                'next' => $meetings->first(fn (Meeting|Agenda $m) => $m->date_time->gt($now)),
                 'today' => $meetings->values(),
-                'todayCount' => $meetings->filter(fn (Meeting $m) => $m->date_time->isToday())->count(),
+                'todayCount' => $meetings->filter(fn (Meeting|Agenda $m) => $m->date_time->isToday() || ($m->date_time->lte(today()) && $m->effectiveEndTime()->gte(today())))->count(),
             ];
         });
+    }
+
+    /** Kegiatan unit yang boleh dilihat user (scope akses jangkauan pengumuman). */
+    protected function agendas(): Builder
+    {
+        return Agenda::query()->access();
     }
 
     protected function meetingIsOngoing(Meeting $meeting): bool

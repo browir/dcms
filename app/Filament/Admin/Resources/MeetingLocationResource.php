@@ -2,8 +2,11 @@
 
 namespace App\Filament\Admin\Resources;
 
+use App\Filament\Admin\Resources\MeetingLocationResource\Pages\ListMeetingLocations;
+use App\Models\Agenda;
 use App\Models\Meeting;
 use App\Models\MeetingLocation;
+use App\Models\User;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\DeleteAction;
@@ -14,9 +17,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Table;
@@ -36,13 +37,13 @@ class MeetingLocationResource extends Resource
 
     protected static ?string $navigationLabel = 'Ruangan Rapat';
 
-    protected static ?string $modelLabel = 'Lokasi Rapat';
+    protected static ?string $modelLabel = 'Ruangan Rapat';
 
-    protected static ?string $pluralModelLabel = 'Lokasi Rapat';
+    protected static ?string $pluralModelLabel = 'Ruangan Rapat';
 
     public static function canAccess(): bool
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = auth()->user();
 
         return $user?->hasAnyRole(['super_admin', 'kabid', 'direktur']) ?? false;
@@ -52,7 +53,7 @@ class MeetingLocationResource extends Resource
     {
         return $schema->components([
             TextInput::make('name')
-                ->label('Nama Lokasi')
+                ->label('Nama Ruangan')
                 ->required()
                 ->maxLength(255)
                 ->placeholder('Contoh: Ruang Meeting A, Aula Lantai 2'),
@@ -99,7 +100,7 @@ class MeetingLocationResource extends Resource
                     ->width('100px')
                     ->visibleFrom('md'),
 
-                \Filament\Tables\Columns\TextColumn::make('status_ruangan')
+                TextColumn::make('status_ruangan')
                     ->label('Status')
                     ->badge()
                     ->state(function (MeetingLocation $record, $livewire): string {
@@ -120,7 +121,7 @@ class MeetingLocationResource extends Resource
                     })
                     ->visibleFrom('md'),
 
-                \Filament\Tables\Columns\TextColumn::make('jam_mulai')
+                TextColumn::make('jam_mulai')
                     ->label('Mulai')
                     ->icon('heroicon-o-play-circle')
                     ->iconColor('info')
@@ -133,7 +134,7 @@ class MeetingLocationResource extends Resource
                     ->alignCenter()
                     ->visibleFrom('md'),
 
-                \Filament\Tables\Columns\TextColumn::make('jam_berakhir')
+                TextColumn::make('jam_berakhir')
                     ->label('Berakhir')
                     ->icon('heroicon-o-stop-circle')
                     ->iconColor('info')
@@ -161,11 +162,11 @@ class MeetingLocationResource extends Resource
                     ->visibleFrom('md'),
             ])
             ->filters([
-                \Filament\Tables\Filters\Filter::make('available')
+                Filter::make('available')
                     ->label('Tersedia Sekarang')
                     ->query(fn ($query) => $query->available()),
 
-                \Filament\Tables\Filters\Filter::make('occupied')
+                Filter::make('occupied')
                     ->label('Sedang Dipakai Sekarang')
                     ->query(fn ($query) => $query->occupied()),
 
@@ -188,7 +189,7 @@ class MeetingLocationResource extends Resource
 
                         Select::make('status')
                             ->label('Tampilkan')
-                            ->placeholder('Semua Lokasi')
+                            ->placeholder('Semua Ruangan')
                             ->options([
                                 'available' => 'Hanya yang Tersedia',
                                 'occupied' => 'Hanya yang Terpakai',
@@ -237,7 +238,6 @@ class MeetingLocationResource extends Resource
                 EditAction::make()->button()->outlined()->size('xs'),
                 DeleteAction::make()->button()->outlined()->size('xs'),
             ])
-            ->filtersLayout(FiltersLayout::Modal)
             ->emptyStateIcon('heroicon-o-map-pin')
             ->emptyStateHeading('Belum ada lokasi rapat')
             ->emptyStateDescription('Tambahkan lokasi rapat yang sering digunakan.')
@@ -281,7 +281,7 @@ class MeetingLocationResource extends Resource
      * Rapat yang relevan untuk baris lokasi ini: pada jendela waktu yang dipantau (jika filter
      * 'monitor' diisi), atau rapat yang sedang berlangsung "sekarang" (perilaku default/live).
      */
-    protected static function resolveMeetingForRow(MeetingLocation $record, $livewire): ?Meeting
+    protected static function resolveMeetingForRow(MeetingLocation $record, $livewire): Meeting|Agenda|null
     {
         $window = static::resolveMonitorWindow($livewire);
 
@@ -293,7 +293,7 @@ class MeetingLocationResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Admin\Resources\MeetingLocationResource\Pages\ListMeetingLocations::route('/'),
+            'index' => ListMeetingLocations::route('/'),
         ];
     }
 }

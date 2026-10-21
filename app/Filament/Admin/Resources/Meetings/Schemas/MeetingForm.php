@@ -2,7 +2,13 @@
 
 namespace App\Filament\Admin\Resources\Meetings\Schemas;
 
+use App\Models\Company;
+use App\Models\Department;
+use App\Models\Meeting;
+use App\Models\MeetingLocation;
+use App\Models\Unit;
 use App\Models\User;
+use Carbon\Carbon;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -14,6 +20,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 class MeetingForm
 {
@@ -143,7 +152,7 @@ class MeetingForm
                         ->reorderableWithButtons()
                         ->collapsible()
                         ->itemLabel(fn (array $state): ?string => filled($state['action_plan'] ?? null)
-                            ? \Illuminate\Support\Str::limit($state['action_plan'], 60)
+                            ? Str::limit($state['action_plan'], 60)
                             : 'Action Plan Baru')
                         ->schema([
                             Textarea::make('pembahasan')
@@ -254,7 +263,7 @@ class MeetingForm
                         ->afterStateUpdated(function ($state, callable $set, callable $get) {
                             // Auto-isi end_time +2 jam jika belum diisi
                             if (! $get('end_time') && $state) {
-                                $set('end_time', \Carbon\Carbon::parse($state)->addHours(2)->format('Y-m-d\TH:i'));
+                                $set('end_time', Carbon::parse($state)->addHours(2)->format('Y-m-d\TH:i'));
                             }
                         }),
                     DateTimePicker::make('end_time')
@@ -278,7 +287,7 @@ class MeetingForm
                         ->searchable()
                         ->nullable()
                         ->options(function (callable $get, $record) {
-                            $locations = \App\Models\MeetingLocation::query()
+                            $locations = MeetingLocation::query()
                                 ->when(
                                     auth()->user()?->company_id && ! auth()->user()?->hasRole('super_admin'),
                                     fn ($q) => $q->where(function ($q) {
@@ -293,7 +302,7 @@ class MeetingForm
                             return self::decorateLocationOptions($locations, $get, $record);
                         })
                         ->getSearchResultsUsing(function (string $search, callable $get, $record): array {
-                            $locations = \App\Models\MeetingLocation::query()
+                            $locations = MeetingLocation::query()
                                 ->where('name', 'like', "%{$search}%")
                                 ->when(
                                     auth()->user()?->company_id && ! auth()->user()?->hasRole('super_admin'),
@@ -337,12 +346,12 @@ class MeetingForm
 
                             $selected = $get('location');
                             if (filled($selected) && in_array(mb_strtolower(trim($selected)), $booked, true)) {
-                                return new \Illuminate\Support\HtmlString(
+                                return new HtmlString(
                                     '<span style="color:#dc2626;font-weight:600;">Ruangan / lokasi rapat sudah dipesan pada rentang waktu tersebut. Silakan pilih ruangan lain atau ubah jadwal.</span>'
                                 );
                             }
 
-                            return new \Illuminate\Support\HtmlString(
+                            return new HtmlString(
                                 '<span style="color:#b45309;">Ruangan yang terkunci sudah dipesan pada rentang waktu yang dipilih.</span>'
                             );
                         })
@@ -358,11 +367,11 @@ class MeetingForm
                                 }
                                 $end = self::resolveWindowEnd($get);
 
-                                $locationId = \App\Models\MeetingLocation::query()
+                                $locationId = MeetingLocation::query()
                                     ->where('name', $value)
                                     ->value('id');
 
-                                $conflict = \App\Models\Meeting::locationConflict(
+                                $conflict = Meeting::locationConflict(
                                     $locationId ? (int) $locationId : null,
                                     $value,
                                     $start,
@@ -373,11 +382,11 @@ class MeetingForm
                                 if ($conflict) {
                                     $conflictEnd = $conflict->effectiveEndTime();
                                     $fail(sprintf(
-                                        'Ruangan / lokasi rapat "%s" sudah dipesan pada %s–%s oleh rapat "%s". Silakan pilih ruangan lain atau ubah jadwal.',
+                                        'Ruangan / lokasi rapat "%s" sudah dipesan pada %s–%s oleh %s. Silakan pilih ruangan lain atau ubah jadwal.',
                                         $value,
                                         $conflict->date_time->format('d M Y H:i'),
                                         $conflictEnd->format('H:i'),
-                                        $conflict->title,
+                                        $conflict->bookingLabel(),
                                     ));
                                 }
                             },
@@ -386,11 +395,11 @@ class MeetingForm
                         ->live()
                         ->afterStateUpdated(function ($state, callable $set) {
                             // Jika lokasi dipilih dari daftar, sinkronkan meeting_location_id
-                            $loc = \App\Models\MeetingLocation::where('name', $state)->first();
+                            $loc = MeetingLocation::where('name', $state)->first();
                             $set('meeting_location_id', $loc?->id);
                         })
                         ->getOptionLabelUsing(fn ($value) => e($value)),
-                    \Filament\Forms\Components\Hidden::make('meeting_location_id'),
+                    Hidden::make('meeting_location_id'),
                     Select::make('status')
                         ->options([
                             'scheduled' => 'Terjadwal',
@@ -423,7 +432,7 @@ class MeetingForm
                         Select::make('filter_company_id')
                             ->label('Perusahaan')
                             ->prefixIcon('heroicon-m-building-office')
-                            ->options(\App\Models\Company::pluck('name', 'id'))
+                            ->options(Company::pluck('name', 'id'))
                             ->default(auth()->user()->company_id)
                             ->live()
                             ->placeholder('Semua Perusahaan')
@@ -444,7 +453,7 @@ class MeetingForm
                             ->options(function (callable $get) {
                                 $companyId = $get('filter_company_id') ?: auth()->user()->company_id;
 
-                                return \App\Models\Department::where('company_id', $companyId)->pluck('name', 'id');
+                                return Department::where('company_id', $companyId)->pluck('name', 'id');
                             })
                             ->live()
                             ->placeholder('Semua Departemen')
@@ -458,11 +467,11 @@ class MeetingForm
                             ->options(function (callable $get) {
                                 $departmentId = $get('filter_department_id');
                                 if ($departmentId) {
-                                    return \App\Models\Unit::where('department_id', $departmentId)->pluck('name', 'id');
+                                    return Unit::where('department_id', $departmentId)->pluck('name', 'id');
                                 }
                                 $companyId = $get('filter_company_id') ?: auth()->user()->company_id;
 
-                                return \App\Models\Unit::whereHas('department', function ($q) use ($companyId) {
+                                return Unit::whereHas('department', function ($q) use ($companyId) {
                                     $q->where('company_id', $companyId);
                                 })->pluck('name', 'id');
                             })
@@ -614,7 +623,7 @@ class MeetingForm
      * Query builder untuk peserta — digunakan oleh options() dan getSearchResultsUsing()
      * agar filter perusahaan/departemen/unit konsisten baik saat dropdown dibuka maupun saat search.
      */
-    protected static function buildParticipantQuery(callable $get, $record): \Illuminate\Database\Eloquent\Builder
+    protected static function buildParticipantQuery(callable $get, $record): Builder
     {
         $filterCompanyId = $get('filter_company_id');
         $filterDepartmentId = $get('filter_department_id');
@@ -657,7 +666,7 @@ class MeetingForm
     /**
      * Jam mulai rapat dari state form (atau null bila belum diisi / tidak valid).
      */
-    protected static function resolveWindowStart(callable $get): ?\Carbon\Carbon
+    protected static function resolveWindowStart(callable $get): ?Carbon
     {
         $value = $get('date_time');
 
@@ -666,7 +675,7 @@ class MeetingForm
         }
 
         try {
-            return \Carbon\Carbon::parse($value);
+            return Carbon::parse($value);
         } catch (\Throwable $e) {
             return null;
         }
@@ -675,7 +684,7 @@ class MeetingForm
     /**
      * Jam berakhir rapat dari state form (atau null → pakai durasi default).
      */
-    protected static function resolveWindowEnd(callable $get): ?\Carbon\Carbon
+    protected static function resolveWindowEnd(callable $get): ?Carbon
     {
         $value = $get('end_time');
 
@@ -684,7 +693,7 @@ class MeetingForm
         }
 
         try {
-            return \Carbon\Carbon::parse($value);
+            return Carbon::parse($value);
         } catch (\Throwable $e) {
             return null;
         }
@@ -713,14 +722,14 @@ class MeetingForm
             return self::$bookedLocationMemo[$memoKey];
         }
 
-        $keys = \App\Models\Meeting::bookedLocationKeys($start, $end, $excludeId ? (int) $excludeId : null);
+        $keys = Meeting::bookedLocationKeys($start, $end, $excludeId ? (int) $excludeId : null);
 
         $names = $keys['names'];
 
         if (! empty($keys['ids'])) {
             $names = array_merge(
                 $names,
-                \App\Models\MeetingLocation::query()
+                MeetingLocation::query()
                     ->whereIn('id', $keys['ids'])
                     ->pluck('name')
                     ->map(fn ($n) => mb_strtolower(trim($n)))

@@ -8,6 +8,27 @@
 <style>
     html.dark { color-scheme: dark; }
 
+    /* ── Token desain modern (theme-modern.blade.php) versi gelap ── */
+    html.dark {
+        --ui-bg: #070d1a;
+        --ui-bg-glow: rgba(96, 165, 250, .10);
+        --ui-surface: #111a2e;
+        --ui-surface-2: #152039;
+        --ui-hover: #17233a;
+        --ui-line: #26344d;
+        --ui-line-soft: #1c2943;
+        --ui-ink: #e5e7eb;
+        --ui-ink-2: #cbd5e1;
+        --ui-muted: #94a3b8;
+        --ui-faint: #64748b;
+        --ui-primary: #60a5fa;
+        --ui-primary-soft: rgba(96, 165, 250, .14);
+        --ui-ring: rgba(96, 165, 250, .28);
+        --ui-shadow: 0 1px 0 rgba(255, 255, 255, .03) inset, 0 8px 24px rgba(0, 0, 0, .25);
+        --ui-shadow-lg: 0 20px 48px -12px rgba(0, 0, 0, .6);
+    }
+    html.dark .dms-icon { background: rgba(96, 165, 250, .14) !important; }
+
     /* ── Latar halaman ── */
     html.dark body,
     html.dark .fi-main,

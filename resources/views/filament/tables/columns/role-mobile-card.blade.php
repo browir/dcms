@@ -3,7 +3,7 @@
     $name          = $record->name ?? '—';
     $guard         = $record->guard_name ?? 'web';
     $permsCount    = $record->permissions_count ?? $record->permissions()->count();
-    $updatedAt     = $record->updated_at?->format('d M Y') ?? '—';
+    $updatedAt     = $record->updated_at?->translatedFormat('d M Y') ?? '—';
     $formattedName = \Illuminate\Support\Str::headline($name);
 @endphp
 

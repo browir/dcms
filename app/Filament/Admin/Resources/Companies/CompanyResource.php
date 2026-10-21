@@ -10,7 +10,6 @@ use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -42,6 +41,10 @@ class CompanyResource extends Resource
                     ->label('Kode')
                     ->required()
                     ->maxLength(50),
+                TextInput::make('whatsapp_group')
+                    ->label('Grup WhatsApp')
+                    ->helperText('ID grup WhatsApp untuk pengumuman kegiatan tingkat perusahaan.')
+                    ->maxLength(255),
                 TextInput::make('kode_surat')
                     ->label('Kode Surat')
                     ->helperText('Kode penerbit di nomor surat, mis. SGG atau RSUSM-BRB. Kosongkan untuk memakai Kode.')

@@ -144,6 +144,8 @@
             color: inherit !important;
             text-decoration: none !important;
         }
+        /* Filament 4.15 menaruh label link di baseline — sejajarkan di tengah dengan ikon */
+        .fi-ta-content-grid .fi-ta-record:has(.mcard) .fi-ta-actions .fi-link > .fi-link-label { align-self: center; }
         .fi-ta-content-grid .fi-ta-record:has(.mcard) .fi-ta-actions :is(.fi-link, .fi-btn) svg {
             width: 15px !important;
             height: 15px !important;
@@ -228,7 +230,9 @@
         .mcard-dur { color: #94a3b8; font-weight: 500; }
         .mcard-agenda {
             font-size: 12px; color: #475569; line-height: 1.5; background: #f8fafc; border-left: 3px solid #cbd5e1;
-            border-radius: 0 8px 8px 0; padding: 7px 10px; white-space: pre-line;
+            border-radius: 0 8px 8px 0; padding: 0 10px; white-space: pre-line;
+            /* jarak atas-bawah lewat border transparan agar baris ke-3 tidak mengintip di padding */
+            border-top: 7px solid transparent; border-bottom: 7px solid transparent;
             display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
         }
         .mcard[data-status="scheduled"] .mcard-agenda { border-left-color: #93c5fd; background: #f5f9ff; }
@@ -241,35 +245,9 @@
             box-shadow: 0 0 0 2px #86efac, 0 8px 24px rgba(22, 163, 74, .16) !important;
         }
 
-        /* ── Desktop: kartu grid; Mobile: pakai meeting-mobile-card ── */
-        @media (min-width: 768px) {
-            .mcard-mobile { display: none !important; }
-        }
-        @media (max-width: 767.98px) {
-            .mcard { display: none !important; }
-
-            /* Kartu mobile sudah punya border, shadow & tombol sendiri */
-            .fi-ta-content-grid .fi-ta-record:has(.mcard),
-            .fi-ta-content-grid .fi-ta-record:has(.mcard):hover {
-                background: transparent !important;
-                box-shadow: none !important;
-                transform: none !important;
-                --tw-ring-shadow: 0 0 #0000 !important;
-            }
-            .fi-ta-content-grid .fi-ta-record:has(.mcard) .fi-ta-actions,
-            .fi-ta-content-grid .fi-ta-record:has(.mcard) .fi-ta-record-checkbox {
-                display: none !important;
-            }
-        }
     </style>
 @endonce
 
-{{-- Mobile: tetap memakai kartu mobile yang sudah ada --}}
-<div class="mcard-mobile">
-    @include('filament.tables.columns.meeting-mobile-card')
-</div>
-
-{{-- Desktop --}}
 <div class="mcard" data-status="{{ $status }}" @if ($progress !== null) data-live @endif>
     {{-- Header: blok tanggal + judul + waktu --}}
     <div class="mcard-head">

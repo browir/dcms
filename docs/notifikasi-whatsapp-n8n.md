@@ -106,6 +106,34 @@ Perubahan berikut sudah dibuat di project:
 
 Header tambahan: `X-DCMS-Signature: <N8N_WEBHOOK_SECRET>` (jika secret diisi).
 
+### Pengumuman kegiatan ke GRUP WhatsApp
+
+Menu **Kegiatan** bisa mengirim pengumuman ke grup WhatsApp memakai webhook yang
+sama. Bedakan di n8n lewat `channel`:
+
+```json
+{
+  "to": "120363012345678901@g.us",
+  "channel": "whatsapp_group",
+  "source": "dcms",
+  "type": "agenda_announcement",
+  "title": "Pemberitahuan Kegiatan",
+  "message": "📢 *PEMBERITAHUAN KEGIATAN*\nNomor: 001/C.2/SGG/X/2026\n\n*Pelatihan Arsip*\n🗓 Senin, 26 Oktober 2026, 09.00–12.00 WITA\n📍 Aula Serbaguna\n...",
+  "url": "https://dcms.contoh.com/admin/kegiatan/12",
+  "letter_number": "001/C.2/SGG/X/2026",
+  "notice_pdf_url": "https://dcms.contoh.com/kegiatan/12/surat/unduh?expires=...&signature=..."
+}
+```
+
+- `to` — **ID grup** (bukan nomor HP). Diambil berurutan dari: Data Master → Unit →
+  *Grup WhatsApp* (jika jangkauan unit) → Data Master → Perusahaan → *Grup WhatsApp*
+  → `N8N_WHATSAPP_GROUP` di `.env`.
+- `notice_pdf_url` — link PDF surat pemberitahuan (bertanda tangan, berlaku 30 hari,
+  tanpa login) bila kegiatan punya surat; bisa dilampirkan sebagai dokumen di node WhatsApp.
+
+Di workflow n8n, tambahkan node **IF** `{{$json.body.channel}} == "whatsapp_group"` lalu
+arahkan ke node pengirim pesan grup milik provider WA Anda.
+
 ---
 
 ## Bagian 3 — Notifikasi yang dikirim ke WhatsApp

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AgendaController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\SopController;
@@ -24,6 +25,8 @@ use Illuminate\Support\Facades\Route;
 |   GET /api/v1/sops/{id}          — single SOP with procedures & revision history
 |   GET /api/v1/schedules          — list meeting schedules (filterable)
 |   GET /api/v1/schedules/{id}     — single meeting with participants & attachments
+|   GET /api/v1/kegiatan           — pengumuman kegiatan unit (yang sudah diumumkan)
+|   GET /api/v1/kegiatan/{id}      — detail kegiatan + nomor & link PDF surat pemberitahuan
 |
 */
 
@@ -67,6 +70,20 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::prefix('schedules')->name('schedules.')->group(function () {
         Route::get('/', [ScheduleController::class, 'index'])->name('index');
         Route::get('/{id}', [ScheduleController::class, 'show'])
+            ->whereNumber('id')
+            ->name('show');
+    });
+
+    /*
+    |------------------------------------------------------------------
+    | Module 4: Pengumuman Kegiatan Unit (hanya yang sudah diumumkan)
+    | GET /api/v1/kegiatan
+    | GET /api/v1/kegiatan/{id}
+    |------------------------------------------------------------------
+    */
+    Route::prefix('kegiatan')->name('kegiatan.')->group(function () {
+        Route::get('/', [AgendaController::class, 'index'])->name('index');
+        Route::get('/{id}', [AgendaController::class, 'show'])
             ->whereNumber('id')
             ->name('show');
     });

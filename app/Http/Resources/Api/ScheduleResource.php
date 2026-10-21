@@ -132,21 +132,14 @@ class ScheduleResource extends JsonResource
     }
 
     /**
-     * Try to generate a URL for a given attachment path.
-     * Attempts the 'documents' disk first, then 'public'.
+     * URL publik lampiran rapat (disk public). Disk documents privat, jadi tidak dipakai di sini.
      */
     private function resolveAttachmentUrl(string $path): ?string
     {
-        foreach (['documents', 'public'] as $disk) {
-            try {
-                if (Storage::disk($disk)->exists($path)) {
-                    return Storage::disk($disk)->url($path);
-                }
-            } catch (\Exception) {
-                continue;
-            }
+        try {
+            return Storage::disk('public')->exists($path) ? Storage::disk('public')->url($path) : null;
+        } catch (\Exception) {
+            return null;
         }
-
-        return null;
     }
 }

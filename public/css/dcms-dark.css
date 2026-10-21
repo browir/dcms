@@ -549,6 +549,24 @@ html.dark .dms-badge-title {
 html.dark .dms-badge-sub {
     color: #93c5fd !important;
 }
+html.dark .dcms-sso-btn:focus-visible {
+    outline: 4px solid #26344d !important;
+}
+html.dark .dcms-sso-hint {
+    color: #94a3b8 !important;
+}
+html.dark .dcms-sso-toggle {
+    border-top: 1px solid #26344d !important;
+    color: #94a3b8 !important;
+}
+html.dark .dcms-sso-toggle:hover {
+    color: #93c5fd !important;
+}
+html.dark .dcms-sso-alert {
+    border: 1px solid hsl(0 35% 30%) !important;
+    background: #3a1a1f !important;
+    color: #fca5a5 !important;
+}
 html.dark .fi-form-override label {
     color: #cbd5e1 !important;
 }
@@ -700,6 +718,26 @@ html.dark .mcard[data-status="scheduled"] .mcard-agenda {
 html.dark .mcard-progress {
     background: #0f2e25 !important;
 }
+html.dark .dcms-tone-info {
+    background: #172a4d !important;
+    color: #93c5fd !important;
+}
+html.dark .dcms-tone-success {
+    background: #0f2e25 !important;
+    color: #6ee7b7 !important;
+}
+html.dark .dcms-tone-warning {
+    background: #33270f !important;
+    color: #fcd34d !important;
+}
+html.dark .dcms-tone-danger {
+    background: #3a1a1f !important;
+    color: #fca5a5 !important;
+}
+html.dark .dcms-tone-gray {
+    background: #17233a !important;
+    color: #cbd5e1 !important;
+}
 html.dark .dcms-theme-toggle-btn:focus-visible {
     outline: 2px solid hsl(212 35% 30%) !important;
 }
@@ -785,6 +823,10 @@ html.dark .dsh-day-label {
 }
 html.dark .dsh-agenda-time {
     color: #cbd5e1 !important;
+}
+html.dark .dsh-kind {
+    color: #fcd34d !important;
+    background: #33270f !important;
 }
 html.dark .dsh-state-done .dsh-agenda-time {
     border-color: #334155 !important;
@@ -1260,5 +1302,3 @@ html.dark [style*="color:#1f2937"] { color: #e5e7eb !important; }
 html.dark [style*="background:linear-gradient(135deg,#eff6ff,#dbeafe)"] { background: linear-gradient(135deg,#172a4d,#172a4d) !important; }
 html.dark [style*="color:#1e3a8a"] { color: #93c5fd !important; }
 html.dark [style*="color:#1d4ed8"] { color: #93c5fd !important; }
-html.dark [style*="background: #fff"] { background: #111a2e !important; }
-html.dark [style*="background: #fafafa"] { background: #17233a !important; }

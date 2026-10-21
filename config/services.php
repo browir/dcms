@@ -51,6 +51,9 @@ return [
     'n8n' => [
         'webhook_url' => env('N8N_WEBHOOK_URL'),
         'secret' => env('N8N_WEBHOOK_SECRET'),
+        // ID grup WhatsApp default untuk pengumuman kegiatan kalau unit/perusahaan
+        // belum punya grup sendiri (Data Master → Unit / Perusahaan → Grup WhatsApp).
+        'default_group' => env('N8N_WHATSAPP_GROUP'),
     ],
 
 ];

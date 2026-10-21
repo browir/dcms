@@ -24,6 +24,7 @@ $menuGroups = [
             ['label' => 'Tambah Dok',    'url' => url("/{$panelPath}/documents/create"), 'icon' => 'add_doc',    'color' => '#059669'],
             ['label' => 'Rapat',         'url' => url("/{$panelPath}/meetings"),         'icon' => 'calendar',   'color' => '#0891b2'],
             ['label' => 'Tambah Rapat',  'url' => url("/{$panelPath}/meetings/create"),  'icon' => 'add_cal',    'color' => '#d97706'],
+            ['label' => 'Kegiatan',      'url' => url("/{$panelPath}/kegiatan"),         'icon' => 'my_cal',     'color' => '#ea580c'],
         ],
     ],
     [

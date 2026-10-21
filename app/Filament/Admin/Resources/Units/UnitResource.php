@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Units;
 
 use App\Filament\Admin\Resources\Units\Pages\ManageUnits;
+use App\Models\Company;
 use App\Models\Unit;
 use BackedEnum;
 use Filament\Forms\Components\Select;
@@ -12,8 +13,8 @@ use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class UnitResource extends Resource
@@ -41,6 +42,10 @@ class UnitResource extends Resource
                 ->helperText('Dipakai di nomor surat: 001/A.<kode>/SGG/VII/2025.')
                 ->maxLength(20)
                 ->required(),
+            TextInput::make('whatsapp_group')
+                ->label('Grup WhatsApp')
+                ->helperText('ID grup WhatsApp (dari n8n/provider WA) untuk pengumuman kegiatan, mis. 120363012345678901@g.us.')
+                ->maxLength(255),
             TextInput::make('keycloak_code')
                 ->label('Kode HRIS')
                 ->helperText('Kode unit organisasi dari HRIS (/publik/unit-organisasi). Dipakai login SSO untuk menempatkan karyawan.')
@@ -48,22 +53,22 @@ class UnitResource extends Resource
                 ->unique(ignoreRecord: true),
             Select::make('company_id')
                 ->label('Perusahaan')
-                ->options(\App\Models\Company::where('is_active', true)->pluck('name', 'id'))
+                ->options(Company::where('is_active', true)->pluck('name', 'id'))
                 ->live()
-                ->afterStateUpdated(fn($set) => $set('department_id', null))
-                ->formatStateUsing(fn($record) => $record?->department?->company_id)
+                ->afterStateUpdated(fn ($set) => $set('department_id', null))
+                ->formatStateUsing(fn ($record) => $record?->department?->company_id)
                 ->dehydrated(false)
                 ->searchable()
                 ->preload()
                 ->required(),
             Select::make('department_id')
                 ->label('Departemen')
-                ->relationship('department', 'name', fn(\Illuminate\Database\Eloquent\Builder $query, $get) => $query->where('company_id', $get('company_id'))->where('is_active', true))
+                ->relationship('department', 'name', fn (Builder $query, $get) => $query->where('company_id', $get('company_id'))->where('is_active', true))
                 ->live()
                 ->searchable()
                 ->preload()
-                ->afterStateUpdated(fn($state) => session()->put('last_department_id', $state))
-                ->default(fn() => session('last_department_id'))
+                ->afterStateUpdated(fn ($state) => session()->put('last_department_id', $state))
+                ->default(fn () => session('last_department_id'))
                 ->required(),
             Toggle::make('is_active')->required(),
         ]);

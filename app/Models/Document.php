@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use OwenIt\Auditing\Contracts\Auditable;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 class Document extends Model implements Auditable
@@ -241,7 +242,7 @@ class Document extends Model implements Auditable
         try {
             $disk = Storage::disk('documents');
             if ($disk->exists($path)) {
-                return asset('storage/documents/'.ltrim($path, '/'));
+                return route('documents.serve', ['path' => ltrim($path, '/')]);
             }
 
             return null;
@@ -317,7 +318,7 @@ class Document extends Model implements Auditable
         return $this->hasMany(DocumentBookmark::class);
     }
 
-    public function bookmarkedByUsers(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function bookmarkedByUsers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'document_bookmarks')->withTimestamps();
     }
@@ -329,7 +330,7 @@ class Document extends Model implements Auditable
 
     public function activityLogs(): HasMany
     {
-        return $this->hasMany(\Spatie\Activitylog\Models\Activity::class, 'subject_id')->where('subject_type', static::class);
+        return $this->hasMany(Activity::class, 'subject_id')->where('subject_type', static::class);
     }
 
     public function rejections(): HasMany
@@ -660,6 +661,34 @@ class Document extends Model implements Auditable
     /**
      * Dokumen yang akan kedaluwarsa dalam $days hari ke depan.
      */
+    /**
+     * Dokumen yang menunggu tindakan user ini, sesuai perannya di alur review:
+     * super_admin → semua antrean review; kabid → antrean Kabid di departemennya;
+     * direktur → antrean Direktur di perusahaannya; selain itu → dokumen miliknya
+     * yang masih draft / ditolak / sedang direview.
+     */
+    public function scopeNeedsActionBy(Builder $query, User $user): Builder
+    {
+        if ($user->hasRole('super_admin')) {
+            return $query->whereIn('status', [self::STATUS_PENDING_KABID, self::STATUS_PENDING_DIREKTUR]);
+        }
+
+        if ($user->hasRole('kabid')) {
+            return $query->where('department_id', $user->department_id)->where('status', self::STATUS_PENDING_KABID);
+        }
+
+        if ($user->hasRole('direktur')) {
+            return $query->where('company_id', $user->company_id)->where('status', self::STATUS_PENDING_DIREKTUR);
+        }
+
+        return $query->where('user_id', $user->id)->whereIn('status', [
+            self::STATUS_DRAFT,
+            self::STATUS_REJECTED,
+            self::STATUS_PENDING_KABID,
+            self::STATUS_PENDING_DIREKTUR,
+        ]);
+    }
+
     public function scopeExpiringSoon(Builder $query, int $days = 30): Builder
     {
         return $query
@@ -755,7 +784,7 @@ class Document extends Model implements Auditable
             ->logOnly([
                 'title',
                 'code_number',
-        'letter_number_id',
+                'letter_number_id',
                 'status',
                 'document_type',
                 'version',

@@ -13,7 +13,6 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -44,13 +43,12 @@ class MeetingsTable
             ])
             ->recordUrl(fn ($record) => MeetingResource::getUrl('view', ['record' => $record]))
             ->defaultSort('date_time', 'desc')
-            ->filtersLayout(FiltersLayout::Modal)
             ->filters([
                 Filter::make('is_invited')
                     ->label('Rapat Undangan Saya')
                     ->toggle()
                     ->query(fn (Builder $query) => $query->whereHas('participants', fn ($q) => $q->where('users.id', auth()->id()))),
-                SelectFilter::make('status')->options([
+                SelectFilter::make('status')->label('Status')->native(false)->options([
                     'scheduled' => 'Terjadwal',
                     'completed' => 'Selesai',
                     'cancelled' => 'Batal',
@@ -58,30 +56,21 @@ class MeetingsTable
                 SelectFilter::make('company_id')
                     ->label('Perusahaan')
                     ->relationship('company', 'name')
+                    ->native(false)
                     ->visible(fn () => auth()->user()->hasRole('super_admin')),
-                SelectFilter::make('month')
-                    ->label('Bulan')
-                    ->options([
-                        '1' => 'Januari',
-                        '2' => 'Februari',
-                        '3' => 'Maret',
-                        '4' => 'April',
-                        '5' => 'Mei',
-                        '6' => 'Juni',
-                        '7' => 'Juli',
-                        '8' => 'Agustus',
-                        '9' => 'September',
-                        '10' => 'Oktober',
-                        '11' => 'November',
-                        '12' => 'Desember',
-                    ])
-                    ->query(fn (Builder $query, array $data) => $query->when($data['value'], fn ($q, $month) => $q->whereMonth('date_time', $month))
-                    ),
+                SelectFilter::make('meeting_location_id')
+                    ->label('Ruangan')
+                    ->relationship('meetingLocation', 'name')
+                    ->preload()
+                    ->native(false),
                 Filter::make('date_filter')
-                    ->form([
-                        DatePicker::make('date_from')->label('Dari Tanggal'),
-                        DatePicker::make('date_until')->label('Sampai Tanggal'),
+                    ->label('Periode')
+                    ->schema([
+                        DatePicker::make('date_from')->label('Dari tanggal')->native(false),
+                        DatePicker::make('date_until')->label('Sampai')->native(false),
                     ])
+                    ->columns(2)
+                    ->columnSpan(2)
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
@@ -115,7 +104,7 @@ class MeetingsTable
                     ->visible(fn ($record) => ! empty($record->file_path) &&
                         (auth()->user()->hasRole(['super_admin', 'Sekretaris']) ||
                          $record->created_by === auth()->id() ||
-                         $record->participants()->where('users.id', auth()->id())->exists())
+                         $record->participants->contains('id', auth()->id()))
                     )
                     ->url(fn ($record) => route('notulen.view', $record))
                     ->openUrlInNewTab(),

@@ -10,16 +10,27 @@
 ])
 
 @php
+    use Filament\Support\Icons\Heroicon;
+    use Filament\Support\View\ComponentAttributeBag;
+    use Filament\View\PanelsIconAlias;
+
     $tag = $url ? 'a' : 'button';
 @endphp
 
-<li @class([
-    'fi-topbar-item',
-    'fi-active' => $active,
-])>
+<li
+    {{
+        $attributes->class([
+            'fi-topbar-item',
+            'fi-active' => $active,
+        ])
+    }}
+>
     <{{ $tag }}
         @if ($url)
             {{ \Filament\Support\generate_href_html($url, $shouldOpenUrlInNewTab) }}
+            @if ($active)
+                aria-current="page"
+            @endif
         @else
             type="button"
         @endif
@@ -30,7 +41,7 @@
         {{-- Icon: always visible; label collapses when search bar is open --}}
         @if ($icon || $activeIcon)
             <span class="dcms-nav-icon-wrap" aria-hidden="true">
-                {{ \Filament\Support\generate_icon_html(($active && $activeIcon) ? $activeIcon : $icon, attributes: (new \Illuminate\View\ComponentAttributeBag)->class(['fi-topbar-item-icon'])) }}
+                {{ \Filament\Support\generate_icon_html(($active && $activeIcon) ? $activeIcon : $icon, attributes: (new ComponentAttributeBag)->class(['fi-topbar-item-icon'])) }}
             </span>
         @endif
 
@@ -50,7 +61,7 @@
         @endif
 
         @if (! $url)
-            {{ \Filament\Support\generate_icon_html(\Filament\Support\Icons\Heroicon::ChevronDown, alias: \Filament\View\PanelsIconAlias::TOPBAR_GROUP_TOGGLE_BUTTON, attributes: (new \Illuminate\View\ComponentAttributeBag)->class(['fi-topbar-group-toggle-icon'])) }}
+            {{ \Filament\Support\generate_icon_html(Heroicon::ChevronDown, alias: PanelsIconAlias::TOPBAR_GROUP_TOGGLE_BUTTON, attributes: (new ComponentAttributeBag)->class(['fi-topbar-group-toggle-icon'])) }}
         @endif
     </{{ $tag }}>
 </li>

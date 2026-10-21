@@ -48,6 +48,11 @@ class ModuleOverviewWidget extends Widget
             ->where('status', '!=', 'cancelled')
             ->whereDate('date_time', today())
             ->count();
+        $weekActivities = $this->agendas()
+            ->where('status', '!=', 'cancelled')
+            ->where('date_time', '<=', now()->endOfWeek())
+            ->where('end_time', '>=', now()->startOfWeek())
+            ->count();
 
         $withoutMinutes = $this->meetingsWithoutMinutes()->count();
         $minutesThisMonth = $this->meetingsWithMinutes()
@@ -68,9 +73,9 @@ class ModuleOverviewWidget extends Widget
         $modules = [
             [
                 'key' => 'meeting',
-                'label' => 'Penjadwalan Rapat',
-                'value' => $weekMeetings,
-                'unit' => 'rapat minggu ini',
+                'label' => 'Rapat & Kegiatan',
+                'value' => $weekMeetings + $weekActivities,
+                'unit' => "agenda minggu ini ({$weekActivities} kegiatan)",
                 'detail' => $todayMeetings > 0 ? "{$todayMeetings} rapat berlangsung hari ini" : 'Tidak ada rapat hari ini',
                 'url' => route('filament.admin.resources.meetings.index'),
                 'icon' => 'heroicon-o-calendar-days',

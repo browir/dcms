@@ -2,8 +2,10 @@
 
 namespace App\Filament\Admin\Widgets\Dashboard;
 
+use App\Filament\Admin\Resources\Agendas\AgendaResource;
 use App\Filament\Admin\Resources\MeetingLocationResource;
 use App\Filament\Admin\Widgets\Dashboard\Concerns\DashboardQueries;
+use App\Models\Agenda;
 use App\Models\Meeting;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Carbon;
@@ -43,37 +45,60 @@ class AgendaRoomsWidget extends Widget
     {
         $user = $this->currentUser();
 
-        $agenda = $this->meetings()
+        $range = [today(), today()->addDays(7)->endOfDay()];
+
+        $meetings = $this->meetings()
             ->with(['meetingLocation:id,name'])
             ->withCount('participants')
             ->where('status', '!=', 'cancelled')
-            ->whereBetween('date_time', [today(), today()->addDays(7)->endOfDay()])
+            ->whereBetween('date_time', $range)
             ->orderBy('date_time')
             ->limit(12)
             ->get()
             ->map(fn (Meeting $meeting) => [
+                'kind' => 'rapat',
                 'title' => $meeting->title,
+                'start' => $meeting->date_time,
                 'time' => $meeting->date_time->format('H:i').'–'.$meeting->effectiveEndTime()->format('H:i'),
                 'location' => $meeting->meetingLocation?->name ?: ($meeting->location ?: 'Lokasi belum ditentukan'),
-                'participants' => $meeting->participants_count,
-                'state' => match (true) {
-                    $this->meetingIsOngoing($meeting) => 'ongoing',
-                    $meeting->status === 'completed' || $meeting->effectiveEndTime()->lt(now()) => 'done',
-                    default => 'scheduled',
-                },
+                'meta' => $meeting->participants_count.' peserta',
+                'state' => $this->bookingState($meeting),
                 'url' => $user->can('update', $meeting)
                     ? route('filament.admin.resources.meetings.edit', $meeting)
                     : route('filament.admin.resources.meetings.view', $meeting),
-                'day' => $meeting->date_time->copy()->startOfDay(),
-            ])
-            ->groupBy(fn (array $item) => $this->dayLabel($item['day']));
+            ]);
+
+        // Kegiatan unit (pelatihan, sosialisasi, dsb.) tampil bersama rapat di agenda.
+        $activities = $this->agendas()
+            ->with(['meetingLocation:id,name', 'unit:id,name'])
+            ->where('status', '!=', 'cancelled')
+            ->where('date_time', '<=', $range[1])
+            ->where('end_time', '>=', $range[0])
+            ->orderBy('date_time')
+            ->limit(12)
+            ->get()
+            ->map(fn (Agenda $activity) => [
+                'kind' => 'kegiatan',
+                'title' => $activity->title,
+                'start' => $activity->date_time->lt($range[0]) ? $range[0]->copy() : $activity->date_time,
+                'time' => $activity->date_time->format('H:i').'–'.$activity->effectiveEndTime()->format('H:i'),
+                'location' => $activity->placeName(),
+                'meta' => $activity->unit?->name ?? 'Kegiatan unit',
+                'state' => $this->bookingState($activity),
+                'url' => AgendaResource::getUrl('view', ['record' => $activity]),
+            ]);
+
+        $agenda = $meetings->concat($activities)
+            ->sortBy('start')
+            ->take(14)
+            ->groupBy(fn (array $item) => $this->dayLabel($item['start']->copy()->startOfDay()));
 
         $span = (self::DAY_END - self::DAY_START) * 60;
         $dayStart = today()->setTime(self::DAY_START, 0);
 
         $rooms = $this->roomStatuses()->map(function (array $room) use ($span, $dayStart) {
             $blocks = $room['today']
-                ->map(function (Meeting $m) use ($span, $dayStart) {
+                ->map(function (Meeting|Agenda $m) use ($span, $dayStart) {
                     $start = max(0, $dayStart->diffInMinutes($m->date_time, false));
                     $end = min($span, $dayStart->diffInMinutes($m->effectiveEndTime(), false));
 
@@ -117,6 +142,15 @@ class AgendaRoomsWidget extends Widget
             'dayStartHour' => self::DAY_START,
             'roomsUrl' => MeetingLocationResource::canViewAny() ? MeetingLocationResource::getUrl() : null,
         ];
+    }
+
+    private function bookingState(Meeting|Agenda $booking): string
+    {
+        return match (true) {
+            $booking->status === 'scheduled' && $booking->date_time->lte(now()) && $booking->effectiveEndTime()->gt(now()) => 'ongoing',
+            $booking->status === 'completed' || $booking->effectiveEndTime()->lt(now()) => 'done',
+            default => 'scheduled',
+        };
     }
 
     private function dayLabel(Carbon $day): string

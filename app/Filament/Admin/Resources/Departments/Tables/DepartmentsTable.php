@@ -8,9 +8,11 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class DepartmentsTable
 {
@@ -35,6 +37,18 @@ class DepartmentsTable
                     ->label('Perusahaan')
                     ->searchable()
                     ->visibleFrom('md'),
+                TextColumn::make('keycloak_code')
+                    ->label('Kode HRIS')
+                    ->fontFamily('mono')
+                    ->placeholder('Belum diisi')
+                    ->searchable()
+                    ->visibleFrom('lg'),
+                TextColumn::make('users_count')
+                    ->label('Pegawai')
+                    ->counts('users')
+                    ->alignCenter()
+                    ->sortable()
+                    ->visibleFrom('md'),
                 IconColumn::make('is_active')
                     ->label('Aktif')
                     ->boolean()
@@ -58,6 +72,10 @@ class DepartmentsTable
                     ->relationship('company', 'name')
                     ->searchable()
                     ->preload(),
+                Filter::make('tanpa_kode_hris')
+                    ->label('Kode HRIS belum diisi')
+                    ->toggle()
+                    ->query(fn (Builder $query) => $query->whereNull('keycloak_code')),
                 TernaryFilter::make('is_active')
                     ->label('Status Aktif')
                     ->boolean()

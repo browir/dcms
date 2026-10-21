@@ -165,6 +165,11 @@
         font-size: .8125rem; font-weight: 600; color: #334155; font-variant-numeric: tabular-nums;
     }
     .dsh-state-ongoing .dsh-agenda-time { border-color: #16a34a; }
+    .dsh-kind {
+        display: inline-block; margin-right: .25rem; padding: 0 .375rem; border-radius: 4px; vertical-align: 1px;
+        font-size: .625rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+        color: #b45309; background: #fffbeb;
+    }
     .dsh-state-done { opacity: .6; }
     .dsh-state-done .dsh-agenda-time { border-color: #cbd5e1; }
 

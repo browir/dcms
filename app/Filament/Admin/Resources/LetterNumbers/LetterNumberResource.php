@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\LetterNumbers;
 
 use App\Enum\JenisSurat;
+use App\Filament\Admin\Resources\Agendas\AgendaResource;
 use App\Filament\Admin\Resources\Documents\DocumentResource;
 use App\Filament\Admin\Resources\LetterNumbers\Pages\ListLetterNumbers;
 use App\Models\Document;
@@ -57,7 +58,7 @@ class LetterNumberResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->access()->with(['unit', 'creator', 'document']);
+        return parent::getEloquentQuery()->access()->with(['unit', 'creator', 'document', 'agenda']);
     }
 
     public static function table(Table $table): Table
@@ -67,11 +68,9 @@ class LetterNumberResource extends Resource
             ->columns([
                 TextColumn::make('nomor')
                     ->label('Nomor Surat')
-                    ->fontFamily('mono')
-                    ->weight('bold')
-                    ->searchable()
-                    ->copyable()
-                    ->copyMessage('Nomor surat disalin'),
+                    // Desktop: nomor; mobile: kartu ringkas (kolom lain disembunyikan di mobile)
+                    ->view('filament.tables.columns.letter-number-card')
+                    ->searchable(),
 
                 TextColumn::make('jenis_surat')
                     ->label('Jenis')
@@ -104,10 +103,18 @@ class LetterNumberResource extends Resource
 
                 TextColumn::make('status')
                     ->label('Dokumen')
-                    ->state(fn (LetterNumber $record): string => $record->document ? 'Sudah diisi' : 'Belum diisi')
+                    ->state(fn (LetterNumber $record): string => match (true) {
+                        $record->document !== null => 'Sudah diisi',
+                        $record->agenda !== null => 'Surat kegiatan',
+                        default => 'Belum diisi',
+                    })
                     ->badge()
-                    ->color(fn (string $state): string => $state === 'Sudah diisi' ? 'success' : 'warning')
-                    ->icon(fn (string $state): string => $state === 'Sudah diisi' ? 'heroicon-m-check-circle' : 'heroicon-m-clock'),
+                    ->color(fn (string $state): string => $state === 'Belum diisi' ? 'warning' : 'success')
+                    ->icon(fn (string $state): string => match ($state) {
+                        'Sudah diisi' => 'heroicon-m-check-circle',
+                        'Surat kegiatan' => 'heroicon-m-megaphone',
+                        default => 'heroicon-m-clock',
+                    }),
             ])
             ->filters([
                 TernaryFilter::make('terpakai')
@@ -135,7 +142,7 @@ class LetterNumberResource extends Resource
                     ->icon('heroicon-m-document-plus')
                     ->color('primary')
                     ->button()
-                    ->visible(fn (LetterNumber $record): bool => ! $record->document && (auth()->user()?->can('create', Document::class) ?? false))
+                    ->visible(fn (LetterNumber $record): bool => ! $record->document && ! $record->agenda && (auth()->user()?->can('create', Document::class) ?? false))
                     ->url(fn (LetterNumber $record): string => DocumentResource::getUrl('create', ['nomor_surat' => $record->id])),
                 Action::make('lihatDokumen')
                     ->label('Lihat Dokumen')
@@ -143,6 +150,12 @@ class LetterNumberResource extends Resource
                     ->color('gray')
                     ->visible(fn (LetterNumber $record): bool => $record->document !== null && $record->document->trashed() === false)
                     ->url(fn (LetterNumber $record): string => DocumentResource::getUrl('view', ['record' => $record->document])),
+                Action::make('lihatKegiatan')
+                    ->label('Lihat Kegiatan')
+                    ->icon('heroicon-m-megaphone')
+                    ->color('gray')
+                    ->visible(fn (LetterNumber $record): bool => $record->agenda !== null)
+                    ->url(fn (LetterNumber $record): string => AgendaResource::getUrl('view', ['record' => $record->agenda])),
             ])
             ->emptyStateHeading('Belum ada nomor surat')
             ->emptyStateDescription('Ambil nomor surat dulu, lalu isi dokumen resminya ke nomor tersebut.');

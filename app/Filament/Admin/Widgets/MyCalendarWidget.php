@@ -2,6 +2,8 @@
 
 namespace App\Filament\Admin\Widgets;
 
+use App\Filament\Admin\Resources\Agendas\AgendaResource;
+use App\Models\Agenda;
 use App\Models\Meeting;
 use Filament\Notifications\Notification;
 use Guava\Calendar\Enums\CalendarViewType;
@@ -16,7 +18,7 @@ use Illuminate\Support\Collection;
 
 class MyCalendarWidget extends CalendarWidget
 {
-    protected \Illuminate\Support\HtmlString|string|bool|null $heading = 'Kalender Rapat';
+    protected \Illuminate\Support\HtmlString|string|bool|null $heading = 'Kalender Rapat & Kegiatan';
 
     protected static ?int $sort = 50;
 
@@ -60,11 +62,38 @@ class MyCalendarWidget extends CalendarWidget
                     ->title($meeting->title)
                     ->start($start)
                     ->end($end);
-            });
+            })
+            ->toBase()
+            ->concat($this->agendaEvents($info));
+    }
+
+    /** Kegiatan unit (warna amber) tampil bersama rapat di kalender. */
+    private function agendaEvents(FetchInfo $info): Collection
+    {
+        return Agenda::query()
+            ->access()
+            ->where('status', '!=', 'cancelled')
+            ->where('date_time', '<', $info->end)
+            ->where('end_time', '>', $info->start)
+            ->get()
+            ->map(fn (Agenda $agenda) => CalendarEvent::make()
+                ->model(Agenda::class)
+                ->key($agenda->id)
+                ->title('Kegiatan · '.$agenda->title)
+                ->start($agenda->date_time)
+                ->end($agenda->effectiveEndTime())
+                ->backgroundColor('#d97706')
+                ->textColor('#ffffff'));
     }
 
     protected function onEventClick(EventClickInfo $info, Model $event, ?string $action = null): void
     {
+        if ($event instanceof Agenda) {
+            $this->redirect(AgendaResource::getUrl('view', ['record' => $event]));
+
+            return;
+        }
+
         $meeting = Meeting::find($event->getKey());
 
         if (! $meeting) {

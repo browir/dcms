@@ -3,6 +3,7 @@
     'availableWidth' => null,
     'flip' => true,
     'maxHeight' => null,
+    'menu' => true,
     'offset' => 8,
     'placement' => null,
     'shift' => false,
@@ -30,11 +31,11 @@
 @endphp
 
 <div
-    x-data="filamentDropdown"
+    x-data="filamentDropdown({ isMenu: @js($menu) })"
+    {{ $attributes->class(['fi-dropdown']) }}
     @if ($isTopbarGroupDropdown)
         x-on:fi-topbar-dropdown-opening.window="if ($event.detail.dropdown !== $el) close()"
     @endif
-    {{ $attributes->class(['fi-dropdown']) }}
 >
     <div
         x-on:mousedown="if ($event.button === 0) { @if ($isTopbarGroupDropdown) window.dispatchEvent(new CustomEvent('fi-topbar-dropdown-opening', { detail: { dropdown: $root } })) @endif; toggle($event) }"
@@ -60,7 +61,7 @@
                 'fi-scrollable' => $maxHeight || $size,
             ])
             @style([
-                "max-height: {$maxHeight}" => $maxHeight,
+                ('max-height: ' . e($maxHeight)) => $maxHeight,
             ])
         >
             {{ $slot }}

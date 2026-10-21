@@ -3,7 +3,7 @@
     $title       = $record->title ?? '—';
     $codeNumber  = $record->code_number ?? null;
     $department  = $record->department?->name ?? null;
-    $deletedAt   = $record->deleted_at?->format('d M Y, H:i') ?? '—';
+    $deletedAt   = $record->deleted_at?->translatedFormat('d M Y, H:i') ?? '—';
     $deletedAgo  = $record->deleted_at?->diffForHumans() ?? '';
 @endphp
 

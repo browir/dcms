@@ -15,6 +15,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -28,6 +29,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 
 class DocumentForm
 {
@@ -35,10 +37,10 @@ class DocumentForm
     {
         return $schema->columns(1)->components([
 
-            \Filament\Forms\Components\Placeholder::make('rejection_history')
+            Placeholder::make('rejection_history')
                 ->hiddenLabel()
                 ->content(function ($record) {
-                    if (! $record || $record->status !== \App\Models\Document::STATUS_REJECTED) {
+                    if (! $record || $record->status !== Document::STATUS_REJECTED) {
                         return null;
                     }
                     $rejections = $record->rejections()->with('user')->get();
@@ -58,9 +60,9 @@ class DocumentForm
                     $html .= '<p class="mt-3 font-semibold">Silakan perbaiki dokumen dan perbarui Versi Dokumen di bawah, lalu simpan.</p>';
                     $html .= '</div>';
 
-                    return new \Illuminate\Support\HtmlString($html);
+                    return new HtmlString($html);
                 })
-                ->visible(fn ($record) => $record && $record->status === \App\Models\Document::STATUS_REJECTED)
+                ->visible(fn ($record) => $record && $record->status === Document::STATUS_REJECTED)
                 ->columnSpanFull(),
 
             /* ─── TIPE DOKUMEN ─── */
@@ -71,7 +73,7 @@ class DocumentForm
                 ->columnSpanFull()
                 ->schema([
                     ToggleButtons::make('document_type')
-                        ->label('')
+                        ->hiddenLabel()
                         ->options([
                             'file' => 'Unggah Berkas',
                             'hybrid' => 'Gabungan',
@@ -184,7 +186,7 @@ class DocumentForm
                 ->schema([
                     Hidden::make('file_name'),
                     FileUpload::make('file_path')
-                        ->label('')
+                        ->hiddenLabel()
                         ->live()
                         ->disk('documents')
                         ->directory('documents')
@@ -254,7 +256,7 @@ class DocumentForm
                 ->hidden(fn ($get) => $get('document_type') === 'file')
                 ->schema([
                     RichEditor::make('content')
-                        ->label('')
+                        ->hiddenLabel()
                         ->live(debounce: 900)
                         ->maxLength(65535)
                         ->required(fn ($get) => in_array($get('document_type'), ['form', 'hybrid']))
@@ -401,7 +403,7 @@ class DocumentForm
                 ->columnSpanFull()
                 ->schema([
                     ToggleButtons::make('status')
-                        ->label('')
+                        ->hiddenLabel()
                         ->options(function () {
                             /** @var User|null $user */
                             $user = Auth::user();
@@ -445,15 +447,15 @@ class DocumentForm
                             $style = '<style>.hlp-desk{display:inline}.hlp-mob{display:none}@media(max-width:767px){.hlp-desk{display:none}.hlp-mob{display:inline}}</style>';
 
                             if ($canDirectApprove) {
-                                return new \Illuminate\Support\HtmlString($style . '<span class="hlp-desk">Draft = simpan sementara. Diterbitkan = dokumen langsung diterbitkan &amp; aktif (akses Direktur).</span><span class="hlp-mob">Draft: simpan sementara. Diterbitkan: langsung aktif.</span>');
+                                return new HtmlString($style.'<span class="hlp-desk">Draft = simpan sementara. Diterbitkan = dokumen langsung diterbitkan &amp; aktif (akses Direktur).</span><span class="hlp-mob">Draft: simpan sementara. Diterbitkan: langsung aktif.</span>');
                             }
 
-                            return new \Illuminate\Support\HtmlString($style . '<span class="hlp-desk">Draft = simpan sementara. Pending = ajukan dokumen untuk peninjauan persetujuan.</span><span class="hlp-mob">Draft: simpan sementara. Pending: ajukan review.</span>');
+                            return new HtmlString($style.'<span class="hlp-desk">Draft = simpan sementara. Pending = ajukan dokumen untuk peninjauan persetujuan.</span><span class="hlp-mob">Draft: simpan sementara. Pending: ajukan review.</span>');
                         }),
 
                     Toggle::make('is_public')
                         ->label('Dokumen Publik (Terlihat oleh semua departemen)')
-                        ->helperText(new \Illuminate\Support\HtmlString('<span class="hlp-desk">Jika diaktifkan, dokumen ini dapat dilihat oleh seluruh departemen dalam perusahaan. Jika dinonaktifkan, hanya departemen Anda yang bisa melihat.</span><span class="hlp-mob">Aktif: terlihat semua dept. Nonaktif: hanya dept. Anda.</span>'))
+                        ->helperText(new HtmlString('<span class="hlp-desk">Jika diaktifkan, dokumen ini dapat dilihat oleh seluruh departemen dalam perusahaan. Jika dinonaktifkan, hanya departemen Anda yang bisa melihat.</span><span class="hlp-mob">Aktif: terlihat semua dept. Nonaktif: hanya dept. Anda.</span>'))
                         ->default(false),
                 ]),
 
@@ -490,12 +492,12 @@ class DocumentForm
                         ->rows(3)
                         ->maxLength(1000)
                         ->placeholder('Tuliskan deskripsi singkat tentang dokumen ini (opsional)...')
-                        ->helperText(new \Illuminate\Support\HtmlString('<span class="hlp-desk">Deskripsi membantu reviewer dan pengguna lain memahami isi dokumen dengan cepat.</span><span class="hlp-mob">Bantu reviewer memahami isi dokumen.</span>')),
+                        ->helperText(new HtmlString('<span class="hlp-desk">Deskripsi membantu reviewer dan pengguna lain memahami isi dokumen dengan cepat.</span><span class="hlp-mob">Bantu reviewer memahami isi dokumen.</span>')),
 
                     // ── Expired Date + "Berlaku Selamanya" ──
                     Toggle::make('is_permanent')
                         ->label('Berlaku Selamanya')
-                        ->helperText(new \Illuminate\Support\HtmlString('<span class="hlp-desk">Aktifkan jika dokumen tidak memiliki batas masa berlaku.</span><span class="hlp-mob">Tanpa batas masa berlaku.</span>'))
+                        ->helperText(new HtmlString('<span class="hlp-desk">Aktifkan jika dokumen tidak memiliki batas masa berlaku.</span><span class="hlp-mob">Tanpa batas masa berlaku.</span>'))
                         ->default(true)
                         ->live()
                         ->afterStateUpdated(function (bool $state, Set $set): void {
@@ -519,7 +521,7 @@ class DocumentForm
 
                     Toggle::make('is_mandatory_read')
                         ->label('Wajib Dibaca (Compliance Hub)')
-                        ->helperText(new \Illuminate\Support\HtmlString('<span class="hlp-desk">Aktifkan agar dokumen ini muncul sebagai dokumen wajib baca untuk pegawai divisi terkait.</span><span class="hlp-mob">Dokumen wajib baca untuk divisi terkait.</span>'))
+                        ->helperText(new HtmlString('<span class="hlp-desk">Aktifkan agar dokumen ini muncul sebagai dokumen wajib baca untuk pegawai divisi terkait.</span><span class="hlp-mob">Dokumen wajib baca untuk divisi terkait.</span>'))
                         ->default(false),
                 ]),
 

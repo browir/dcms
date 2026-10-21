@@ -34,7 +34,7 @@ class MeetingLocation extends Model
      */
     public function isCurrentlyInUse(): bool
     {
-        return \App\Models\Meeting::query()
+        return Meeting::query()
             ->where('status', 'scheduled')
             ->where('date_time', '<=', now()->addMinutes(30))
             ->where(function ($q) {
@@ -55,11 +55,24 @@ class MeetingLocation extends Model
     }
 
     /**
-     * Ambil meeting yang sedang berlangsung di lokasi ini.
+     * Ambil rapat — atau kegiatan unit — yang sedang berlangsung di lokasi ini.
      */
-    public function getCurrentMeeting(): ?Meeting
+    public function getCurrentMeeting(): Meeting|Agenda|null
     {
-        return \App\Models\Meeting::query()
+        return $this->currentMeetingOnly()
+            ?? Agenda::query()
+                ->where('status', 'scheduled')
+                ->where('date_time', '<=', now()->addMinutes(30))
+                ->where('end_time', '>', now())
+                ->where(fn ($q) => $q->where('meeting_location_id', $this->id)->orWhere('location', $this->name))
+                ->with('creator')
+                ->latest('date_time')
+                ->first();
+    }
+
+    private function currentMeetingOnly(): ?Meeting
+    {
+        return Meeting::query()
             ->where('status', 'scheduled')
             ->where('date_time', '<=', now()->addMinutes(30))
             ->where(function ($q) {
@@ -84,9 +97,9 @@ class MeetingLocation extends Model
      * Ambil rapat (jika ada) yang membuat lokasi ini terpakai pada rentang waktu tertentu.
      * Menggunakan logika bentrok yang sama dengan validasi form pemesanan rapat.
      */
-    public function meetingAt(Carbon $start, ?Carbon $end = null): ?Meeting
+    public function meetingAt(Carbon $start, ?Carbon $end = null): Meeting|Agenda|null
     {
-        return \App\Models\Meeting::locationConflict($this->id, $this->name, $start, $end);
+        return Meeting::locationConflict($this->id, $this->name, $start, $end);
     }
 
     /**

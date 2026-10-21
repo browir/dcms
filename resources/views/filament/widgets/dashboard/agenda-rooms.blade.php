@@ -1,14 +1,15 @@
 <x-filament-widgets::widget>
     <div class="dsh-grid dsh-grid-2-1">
-        {{-- Agenda rapat 7 hari --}}
+        {{-- Agenda rapat & kegiatan unit 7 hari --}}
         <section class="dsh-card" aria-labelledby="dsh-agenda-title">
             <header class="dsh-card-head">
                 <span class="dsh-card-icon dsh-tone-meeting"><x-filament::icon icon="heroicon-o-calendar-days" class="dsh-icon" /></span>
                 <div class="dsh-card-heading">
-                    <h3 id="dsh-agenda-title" class="dsh-card-title">Agenda Rapat</h3>
+                    <h3 id="dsh-agenda-title" class="dsh-card-title">Agenda Rapat & Kegiatan</h3>
                     <p class="dsh-card-sub">Hari ini dan 7 hari ke depan</p>
                 </div>
-                <a href="{{ route('filament.admin.resources.meetings.index') }}" wire:navigate class="dsh-link">Semua rapat</a>
+                <a href="{{ route('filament.admin.resources.kegiatan.index') }}" wire:navigate class="dsh-link">Kegiatan</a>
+                <a href="{{ route('filament.admin.resources.meetings.index') }}" wire:navigate class="dsh-link">Rapat</a>
             </header>
 
             @forelse ($agenda as $day => $items)
@@ -20,11 +21,16 @@
                                 <a href="{{ $item['url'] }}" wire:navigate class="dsh-agenda-item dsh-state-{{ $item['state'] }}">
                                     <span class="dsh-agenda-time">{{ $item['time'] }}</span>
                                     <span class="dsh-agenda-body">
-                                        <span class="dsh-item-title">{{ $item['title'] }}</span>
+                                        <span class="dsh-item-title">
+                                            @if ($item['kind'] === 'kegiatan')
+                                                <span class="dsh-kind">Kegiatan</span>
+                                            @endif
+                                            {{ $item['title'] }}
+                                        </span>
                                         <span class="dsh-item-meta">
                                             <x-filament::icon icon="heroicon-m-map-pin" class="dsh-meta-icon" />{{ $item['location'] }}
                                             <span class="dsh-sep">·</span>
-                                            <x-filament::icon icon="heroicon-m-users" class="dsh-meta-icon" />{{ $item['participants'] }} peserta
+                                            <x-filament::icon :icon="$item['kind'] === 'kegiatan' ? 'heroicon-m-user-group' : 'heroicon-m-users'" class="dsh-meta-icon" />{{ $item['meta'] }}
                                         </span>
                                     </span>
                                     <span class="dsh-chip dsh-chip-{{ $item['state'] }}">
@@ -69,7 +75,7 @@
                             <x-filament::icon icon="heroicon-m-users" class="dsh-meta-icon" />{{ $room['capacity'] }} orang
                             <span class="dsh-sep">·</span>
                         @endif
-                        {{ $room['todayCount'] }} rapat hari ini
+                        {{ $room['todayCount'] }} agenda hari ini
                     </div>
                     <div class="dsh-timeline" role="img" aria-label="Jadwal {{ $room['name'] }} hari ini">
                         @foreach ($room['blocks'] as $block)

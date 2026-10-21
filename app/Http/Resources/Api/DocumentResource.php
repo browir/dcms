@@ -2,9 +2,11 @@
 
 namespace App\Http\Resources\Api;
 
+use App\Models\Document;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 /**
  * Transforms a Document model into a safe, client-facing JSON structure.
@@ -23,7 +25,7 @@ class DocumentResource extends JsonResource
             'description' => $this->description,
             'version' => $this->version,
             'status' => $this->status,
-            'status_label' => \App\Models\Document::getStatuses()[$this->status] ?? $this->status,
+            'status_label' => Document::getStatuses()[$this->status] ?? $this->status,
             'document_type' => $this->document_type,
 
             // File metadata
@@ -92,7 +94,7 @@ class DocumentResource extends JsonResource
     }
 
     /**
-     * Resolve a publicly accessible URL for the document file.
+     * Resolve a temporary signed URL for the document file.
      * Uses the 'documents' disk. Falls back to generated_file_path if no primary file.
      */
     protected function resolveFileUrl(): ?string
@@ -106,7 +108,10 @@ class DocumentResource extends JsonResource
         try {
             $disk = Storage::disk('documents');
 
-            return $disk->exists($path) ? $disk->url($path) : null;
+            // Disk privat: berikan link bertanda tangan yang berlaku 1 jam.
+            return $disk->exists($path)
+                ? URL::temporarySignedRoute('documents.serve.signed', now()->addHour(), ['path' => $path])
+                : null;
         } catch (\Exception) {
             return null;
         }
