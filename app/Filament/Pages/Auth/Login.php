@@ -7,6 +7,7 @@ use Filament\Auth\Pages\Login as BaseLogin;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 
 class Login extends BaseLogin
@@ -51,10 +52,13 @@ class Login extends BaseLogin
             ->extraInputAttributes(['tabindex' => 2]);
     }
 
-    /** Tombol "Masuk dengan SSO" tampil kalau Keycloak sudah dikonfigurasi. */
+    /**
+     * Tombol "Masuk dengan SSO" tampil kalau Keycloak sudah dikonfigurasi dan route package
+     * terdaftar (mis. server belum `composer install` → tombol disembunyikan, bukan error 500).
+     */
     public function ssoEnabled(): bool
     {
-        return Sso::enabled();
+        return Sso::enabled() && Route::has('keycloak-sso.redirect');
     }
 
     /** Pesan gagal dari callback SSO (package mengirimnya lewat error bag key 'keycloak'). */
