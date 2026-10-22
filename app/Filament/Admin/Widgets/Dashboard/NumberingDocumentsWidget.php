@@ -28,7 +28,7 @@ class NumberingDocumentsWidget extends Widget
     /** Nama widget di Peran & Hak Akses → Widget. */
     public function getHeading(): string
     {
-        return 'Beranda: Penomoran Surat & Statistik Dokumen';
+        return 'Beranda: Penomoran Dokumen & Statistik Dokumen';
     }
 
     protected int|string|array $columnSpan = 'full';
@@ -47,7 +47,7 @@ class NumberingDocumentsWidget extends Widget
         ];
     }
 
-    /** Nomor surat terbit tahun ini per jenis surat (dari register Nomor Surat). */
+    /** Nomor dokumen terbit tahun ini per kategori (dari register Nomor Dokumen). */
     private function numberCounters(): array
     {
         $rows = LetterNumber::query()->access()
@@ -75,7 +75,7 @@ class NumberingDocumentsWidget extends Widget
         })->all();
     }
 
-    /** Urutan terakhir counter nomor surat tahun ini, per perusahaan penerbit. */
+    /** Urutan terakhir counter nomor dokumen tahun ini, per perusahaan penerbit. */
     private function companySequences(): array
     {
         $user = $this->currentUser();

@@ -27,7 +27,7 @@ class ReminderHub extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Dokumen';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 6;
 
     protected static ?string $navigationLabel = 'Pusat Pengingat';
 

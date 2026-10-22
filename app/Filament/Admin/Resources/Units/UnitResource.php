@@ -39,7 +39,7 @@ class UnitResource extends Resource
             TextInput::make('name')->label('Nama')->required(),
             TextInput::make('prefix')
                 ->label('Kode')
-                ->helperText('Dipakai di nomor surat: 001/A.<kode>/SGG/VII/2025.')
+                ->helperText('Dipakai di nomor dokumen: 001/A.<kode>/SGG/VII/2025.')
                 ->maxLength(20)
                 ->required(),
             TextInput::make('whatsapp_group')

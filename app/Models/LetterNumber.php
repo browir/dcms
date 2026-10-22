@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Register nomor surat. Nomor diterbitkan lebih dulu lewat LetterNumberService::issue(),
+ * Register nomor dokumen. Nomor diterbitkan lebih dulu lewat LetterNumberService::issue(),
  * lalu dokumen resminya diisi ke nomor ini (satu nomor = satu dokumen, lihat
  * documents.letter_number_id). Nomor yang sudah terbit tidak diubah dan tidak dibatalkan.
  */
@@ -21,6 +21,7 @@ class LetterNumber extends Model
         'nomor',
         'nomor_urut',
         'jenis_surat',
+        'category_id',
         'company_id',
         'department_id',
         'unit_id',
@@ -40,6 +41,12 @@ class LetterNumber extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /** Kategori dokumen (jenis) nomor ini; kodenya = jenis_surat. */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(DocumentCategory::class, 'category_id');
     }
 
     public function department(): BelongsTo

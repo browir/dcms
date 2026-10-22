@@ -82,6 +82,21 @@ enum JenisSurat: string
         };
     }
 
+    /**
+     * Kelompok awal saat jenis ini dijadikan Kategori Dokumen: 'surat_keluar' untuk surat,
+     * 'dokumen' untuk dokumen resmi. Admin bisa mengubahnya per kategori.
+     */
+    public function kelompokAwal(): string
+    {
+        return match ($this) {
+            self::EDARAN_PENGUMUMAN, self::INTERNAL_MEMO, self::SURAT_PERINTAH, self::SURAT_TUGAS,
+            self::SURAT_UNDANGAN, self::SURAT_KUASA, self::PERMOHONAN_BARANG_JASA, self::SURAT_BALASAN,
+            self::SURAT_TANDA_TERIMA, self::SURAT_PENGANTAR, self::SURAT_PERINGATAN, self::SURAT_REKOMENDASI,
+            self::SURAT_KETERANGAN, self::SPKK, self::SKK => 'surat_keluar',
+            default => 'dokumen',
+        };
+    }
+
     /** Opsi untuk Select Filament: "A — Kebijakan / Peraturan / PP". */
     public static function options(): array
     {

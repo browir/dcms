@@ -1,7 +1,8 @@
 @php
     $record   = $getRecord();
     $name     = $record->name ?? '—';
-    $prefix   = $record->prefix ?? null;
+    $prefix   = $record->code ?? null;
+    $kelompok = \App\Models\DocumentCategory::KELOMPOK[$record->kelompok] ?? null;
     $isActive = isset($record->is_active) ? (bool) $record->is_active : null;
     $createdAt= $record->created_at?->translatedFormat('d M Y') ?? '—';
     $initials = collect(explode(' ', $name))->map(fn($w) => strtoupper(mb_substr($w,0,1)))->take(2)->implode('');
@@ -33,7 +34,7 @@
             <div style="flex:1;min-width:0;">
                 <div style="font-size:13px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $name }}</div>
                 @if($prefix)
-                    <div style="font-size:11px;color:#64748b;margin-top:1px;">Prefix: <span style="font-weight:600;color:#334155;">{{ $prefix }}</span></div>
+                    <div style="font-size:11px;color:#64748b;margin-top:1px;">Kode <span style="font-weight:600;color:#334155;">{{ $prefix }}</span>@if($kelompok) · {{ $kelompok }}@endif · {{ $record->company?->name ?? 'Semua perusahaan' }}</div>
                 @endif
             </div>
             @if($isActive !== null)

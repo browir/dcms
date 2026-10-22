@@ -95,7 +95,7 @@
             @endif
 
             @if ($unfilledNumbers->isNotEmpty())
-                <div class="dsh-subhead">Nomor surat Anda yang belum diisi dokumen</div>
+                <div class="dsh-subhead">Nomor dokumen Anda yang belum diisi dokumen</div>
                 <ul class="dsh-list">
                     @foreach ($unfilledNumbers as $item)
                         <li>

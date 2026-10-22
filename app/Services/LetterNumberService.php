@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enum\JenisSurat;
 use App\Models\Company;
+use App\Models\DocumentCategory;
 use App\Models\LetterNumber;
 use App\Models\Unit;
 use App\Models\User;
@@ -68,14 +69,13 @@ class LetterNumberService
      */
     public function issue(
         Unit $unit,
-        JenisSurat|string $jenis,
+        DocumentCategory|JenisSurat|string $jenis,
         Carbon $tanggal,
         string $judul,
         ?string $perihal = null,
         ?string $deskripsi = null,
         ?User $by = null,
     ): LetterNumber {
-        $jenis = $jenis instanceof JenisSurat ? $jenis : JenisSurat::from($jenis);
         $department = $unit->department;
         $company = $department?->company;
 
@@ -83,13 +83,23 @@ class LetterNumberService
             throw new InvalidArgumentException("Unit {$unit->name} belum terhubung ke perusahaan.");
         }
 
-        return DB::transaction(function () use ($unit, $jenis, $tanggal, $judul, $perihal, $deskripsi, $by, $department, $company) {
+        // Kategori dokumen menentukan kode jenis di nomor; kode saja tetap diterima (mis. surat kegiatan).
+        $category = $jenis instanceof DocumentCategory ? $jenis : null;
+        $jenis = match (true) {
+            $category !== null => $category->jenis() ?? throw new InvalidArgumentException("Kategori {$category->name} belum punya kode jenis."),
+            $jenis instanceof JenisSurat => $jenis,
+            default => JenisSurat::from($jenis),
+        };
+        $category ??= DocumentCategory::forCode($jenis, $company->id);
+
+        return DB::transaction(function () use ($unit, $jenis, $category, $tanggal, $judul, $perihal, $deskripsi, $by, $department, $company) {
             ['number' => $number, 'sequence' => $sequence] = $this->generate($company, $jenis, $unit, $tanggal);
 
             return LetterNumber::create([
                 'nomor' => $number,
                 'nomor_urut' => $sequence,
                 'jenis_surat' => $jenis,
+                'category_id' => $category?->id,
                 'company_id' => $company->id,
                 'department_id' => $department->id,
                 'unit_id' => $unit->id,

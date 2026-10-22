@@ -114,7 +114,7 @@ class ModuleOverviewWidget extends Widget
             ],
             [
                 'key' => 'numbering',
-                'label' => 'Penomoran Surat',
+                'label' => 'Penomoran Dokumen',
                 'value' => $numbersThisYear,
                 'unit' => 'nomor terbit '.now()->year,
                 'detail' => $numbersWithoutDocument > 0 ? "{$numbersWithoutDocument} nomor belum diisi dokumen" : 'Semua nomor sudah berisi dokumen',
@@ -142,7 +142,7 @@ class ModuleOverviewWidget extends Widget
                 'primary' => true,
             ] : null,
             $this->opens(LetterNumberResource::class) && $user->can('create', LetterNumber::class) ? [
-                'label' => 'Ambil Nomor Surat',
+                'label' => 'Ambil Nomor Dokumen',
                 'url' => LetterNumberResource::getUrl(),
                 'icon' => 'heroicon-m-hashtag',
                 'primary' => false,

@@ -3,7 +3,9 @@
 namespace App\Filament\Admin\Resources\Documents\Schemas;
 
 use App\Enum\JenisSurat;
+use App\Livewire\DocumentDiscussionThread;
 use App\Models\Document;
+use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
 use Filament\Schemas\Components\Livewire;
@@ -113,7 +115,7 @@ class DocumentInfolist
                             ->copyMessageDuration(1500),
 
                         TextEntry::make('jenis_surat')
-                            ->label('Jenis Surat')
+                            ->label('Kategori')
                             ->icon('heroicon-o-tag')
                             ->iconColor('primary')
                             ->formatStateUsing(fn (?JenisSurat $state): ?string => $state ? "{$state->value} — {$state->label()}" : null)
@@ -121,7 +123,7 @@ class DocumentInfolist
                             ->visible(fn ($record): bool => filled($record?->jenis_surat)),
 
                         TextEntry::make('tanggal_surat')
-                            ->label('Tanggal Surat')
+                            ->label('Tanggal Dokumen')
                             ->icon('heroicon-o-calendar')
                             ->iconColor('primary')
                             ->date('d M Y')
@@ -319,7 +321,7 @@ class DocumentInfolist
                     ->collapsible()
                     ->visible(fn (Document $record): bool => $record->rejections()->exists())
                     ->schema([
-                        \Filament\Infolists\Components\RepeatableEntry::make('rejections')
+                        RepeatableEntry::make('rejections')
                             ->label('')
                             ->schema([
                                 TextEntry::make('user.name')
@@ -389,7 +391,7 @@ class DocumentInfolist
                     ->columnSpanFull()
                     ->hidden()
                     ->schema([
-                        Livewire::make(\App\Livewire\DocumentDiscussionThread::class)
+                        Livewire::make(DocumentDiscussionThread::class)
                             ->key(fn (Document $record) => 'discussion-'.$record->id)
                             ->data(fn (Document $record) => ['documentId' => $record->id])
                             ->lazy()

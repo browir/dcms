@@ -7,22 +7,34 @@ use App\Filament\Admin\Resources\DocumentChangeRequestResource\Pages\ListDocumen
 use App\Filament\Admin\Resources\DocumentChangeRequestResource\Pages\ViewDocumentChangeRequest;
 use App\Models\Document;
 use App\Models\DocumentChangeRequest;
+use App\Models\User;
 use App\Notifications\ChangeRequestStatusUpdatedNotification;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\ForceDeleteAction;
+use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\RestoreAction;
+use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use UnitEnum;
 
 class DocumentChangeRequestResource extends Resource
@@ -33,7 +45,7 @@ class DocumentChangeRequestResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Dokumen';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 4;
 
     protected static ?string $modelLabel = 'Usulan Revisi';
 
@@ -43,10 +55,10 @@ class DocumentChangeRequestResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $pending = \Illuminate\Support\Facades\Cache::remember(
+        $pending = Cache::remember(
             'nav_badge_change_requests_pending',
             30,
-            fn () => \App\Models\DocumentChangeRequest::where('status', 'pending')->count()
+            fn () => DocumentChangeRequest::where('status', 'pending')->count()
         );
 
         return $pending > 0 ? (string) $pending : null;
@@ -61,7 +73,7 @@ class DocumentChangeRequestResource extends Resource
     {
         return parent::getEloquentQuery()
             ->withoutGlobalScopes([
-                \Illuminate\Database\Eloquent\SoftDeletingScope::class,
+                SoftDeletingScope::class,
             ]);
     }
 
@@ -101,7 +113,7 @@ class DocumentChangeRequestResource extends Resource
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) {
-                /** @var \App\Models\User|null $user */
+                /** @var User|null $user */
                 $user = Auth::user();
                 // Regular users only see their own
                 if (! $user?->hasAnyRole(['super_admin', 'kabid', 'direktur'])) {
@@ -172,12 +184,12 @@ class DocumentChangeRequestResource extends Resource
                         'rejected' => 'Ditolak',
                     ])
                     ->native(false),
-                \Filament\Tables\Filters\TrashedFilter::make(),
+                TrashedFilter::make(),
             ])
             ->recordActions([
                 ViewAction::make()->icon('heroicon-o-eye')->label('Lihat')->button()->outlined()->size('xs')->color('gray'),
 
-                \Filament\Actions\DeleteAction::make()
+                DeleteAction::make()
                     ->icon('heroicon-o-trash')
                     ->label('Hapus')
                     ->button()
@@ -185,26 +197,26 @@ class DocumentChangeRequestResource extends Resource
                     ->size('xs')
                     ->color('danger'),
 
-                \Filament\Actions\RestoreAction::make()
+                RestoreAction::make()
                     ->button()
                     ->outlined()
                     ->size('xs')
                     ->color('success'),
 
-                \Filament\Actions\ForceDeleteAction::make()
+                ForceDeleteAction::make()
                     ->button()
                     ->outlined()
                     ->size('xs')
                     ->color('danger'),
 
-                \Filament\Actions\Action::make('approve')
+                Action::make('approve')
                     ->label('Setujui')
                     ->icon('heroicon-o-check-circle')
                     ->button()
                     ->size('xs')
                     ->color('primary')
                     ->visible(function (DocumentChangeRequest $record): bool {
-                        /** @var \App\Models\User|null $user */
+                        /** @var User|null $user */
                         $user = Auth::user();
 
                         return $record->status === 'pending'
@@ -222,7 +234,7 @@ class DocumentChangeRequestResource extends Resource
 
                         // Jika dokumen induk masih berstatus rejected, masukkan kembali ke alur approval
                         $document = $record->document;
-                        if ($document && $document->status === \App\Models\Document::STATUS_REJECTED) {
+                        if ($document && $document->status === Document::STATUS_REJECTED) {
                             $document->resubmit();
                         }
 
@@ -231,17 +243,17 @@ class DocumentChangeRequestResource extends Resource
                         } catch (\Throwable $e) {
                             logger()->error('Failed to send ChangeRequestStatusUpdatedNotification: '.$e->getMessage());
                         }
-                        \Filament\Notifications\Notification::make()->title('Usulan disetujui — dokumen dikembalikan ke alur review')->success()->send();
+                        Notification::make()->title('Usulan disetujui — dokumen dikembalikan ke alur review')->success()->send();
                     }),
 
-                \Filament\Actions\Action::make('reject')
+                Action::make('reject')
                     ->label('Tolak')
                     ->icon('heroicon-o-x-circle')
                     ->button()
                     ->size('xs')
                     ->color('danger')
                     ->visible(function (DocumentChangeRequest $record): bool {
-                        /** @var \App\Models\User|null $user */
+                        /** @var User|null $user */
                         $user = Auth::user();
 
                         return $record->status === 'pending'
@@ -261,14 +273,14 @@ class DocumentChangeRequestResource extends Resource
                         } catch (\Throwable $e) {
                             logger()->error('Failed to send ChangeRequestStatusUpdatedNotification: '.$e->getMessage());
                         }
-                        \Filament\Notifications\Notification::make()->title('Usulan ditolak')->danger()->send();
+                        Notification::make()->title('Usulan ditolak')->danger()->send();
                     }),
             ])
             ->bulkActions([
-                \Filament\Actions\BulkActionGroup::make([
-                    \Filament\Actions\DeleteBulkAction::make(),
-                    \Filament\Actions\RestoreBulkAction::make(),
-                    \Filament\Actions\ForceDeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                    RestoreBulkAction::make(),
+                    ForceDeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc')

@@ -20,7 +20,7 @@ class ListLetterNumbers extends ListRecords
 
     public function getSubheading(): ?string
     {
-        return 'Ambil nomor surat dulu, lalu isi dokumen resminya ke nomor tersebut. Nomor yang sudah terbit tidak bisa diubah atau dibatalkan.';
+        return 'Ambil nomor dokumen dulu, lalu isi dokumen resminya ke nomor tersebut. Nomor yang sudah terbit tidak bisa diubah atau dibatalkan.';
     }
 
     public function getTabs(): array
@@ -40,9 +40,9 @@ class ListLetterNumbers extends ListRecords
     {
         return [
             CreateAction::make()
-                ->label('Ambil Nomor Surat')
+                ->label('Ambil Nomor Dokumen')
                 ->icon('heroicon-o-hashtag')
-                ->modalHeading('Ambil Nomor Surat')
+                ->modalHeading('Ambil Nomor Dokumen')
                 ->modalDescription('Nomor diterbitkan saat disimpan dan langsung tercatat. Setelah itu isi dokumen resminya ke nomor ini.')
                 ->modalSubmitActionLabel('Terbitkan Nomor')
                 ->modalWidth('lg')
@@ -53,7 +53,7 @@ class ListLetterNumbers extends ListRecords
                 ->after(function (LetterNumber $record): void {
                     Notification::make()
                         ->success()
-                        ->title('Nomor surat terbit')
+                        ->title('Nomor dokumen terbit')
                         ->body($record->nomor)
                         ->persistent()
                         ->actions(array_filter([

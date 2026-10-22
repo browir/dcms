@@ -73,7 +73,7 @@ class MobileNavigationTest extends TestCase
             ->all();
 
         $this->assertContains('Tambah Dokumen', $labels);
-        $this->assertContains('Nomor Surat', $labels);
+        $this->assertContains('Nomor Dokumen', $labels);
         $this->assertContains('Pengguna', $labels);
         $this->assertNotContains('Beranda', $labels);
         $this->assertNotContains('Rapat', $labels);

@@ -10,7 +10,9 @@ use App\Filament\Admin\Resources\Documents\Schemas\DocumentForm;
 use App\Filament\Admin\Resources\Documents\Schemas\DocumentInfolist;
 use App\Filament\Admin\Resources\Documents\Tables\DocumentsTable;
 use App\Models\Document;
+use App\Models\DocumentCategory;
 use BackedEnum;
+use Filament\Navigation\NavigationItem;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
@@ -77,6 +79,26 @@ class DocumentResource extends Resource
     public static function getNavigationBadgeColor(): string|array|null
     {
         return 'warning';
+    }
+
+    /**
+     * Satu daftar dokumen, dua menu: Dokumen Resmi & Surat Keluar (dibedakan kelompok kategori).
+     *
+     * @return array<NavigationItem>
+     */
+    public static function getNavigationItems(): array
+    {
+        return collect(DocumentCategory::KELOMPOK)
+            ->map(fn (string $label, string $kelompok): NavigationItem => NavigationItem::make($label)
+                ->group(static::getNavigationGroup())
+                ->sort(static::getNavigationSort() + ($kelompok === DocumentCategory::KELOMPOK_SURAT_KELUAR ? 1 : 0))
+                ->url(static::getUrl('index', ['kelompok' => $kelompok]))
+                ->isActiveWhen(fn (): bool => request()->routeIs(static::getRouteBaseName().'.*')
+                    && (request()->query('kelompok') ?? DocumentCategory::KELOMPOK_DOKUMEN) === $kelompok)
+                // Antrean persetujuan cukup sekali, di menu pertama.
+                ->badge($kelompok === DocumentCategory::KELOMPOK_DOKUMEN ? static::getNavigationBadge() : null, color: 'warning'))
+            ->values()
+            ->all();
     }
 
     public static function getNavigationBadgeTooltip(): ?string

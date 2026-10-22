@@ -5,16 +5,30 @@ namespace App\Filament\Admin\Resources\Documents\Pages;
 use App\Filament\Admin\Resources\Documents\DocumentResource;
 use App\Filament\Admin\Resources\Documents\Schemas\DocumentForm;
 use App\Models\Document;
+use App\Models\DocumentCategory;
+use App\Models\User;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Url;
 
 class CreateDocument extends CreateRecord
 {
     protected static string $resource = DocumentResource::class;
 
+    /** Dibuka dari menu Dokumen Resmi / Surat Keluar: pilihan nomor & kategori ikut dibatasi. */
+    #[Url]
+    public ?string $kelompok = null;
+
+    public function getTitle(): string
+    {
+        return $this->kelompok === DocumentCategory::KELOMPOK_SURAT_KELUAR ? 'Buat Surat Keluar' : 'Buat Dokumen';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            \Filament\Actions\Action::make('guide')
+            Action::make('guide')
                 ->label('Panduan Tambah Dokumen')
                 ->icon('heroicon-o-information-circle')
                 ->color('info')
@@ -43,8 +57,8 @@ class CreateDocument extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        /** @var \App\Models\User|null $user */
-        $user = \Illuminate\Support\Facades\Auth::user();
+        /** @var User|null $user */
+        $user = Auth::user();
 
         if ($user) {
             if (empty($data['company_id']) && $user->company_id) {

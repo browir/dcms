@@ -9,7 +9,7 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 use Illuminate\Foundation\Auth\User as AuthUser;
 
 /**
- * Nomor surat diambil sebelum dokumen dibuat, jadi siapa pun yang boleh membuat/melihat
+ * Nomor dokumen diambil sebelum dokumen dibuat, jadi siapa pun yang boleh membuat/melihat
  * dokumen juga boleh mengambil/melihat nomor — tanpa perlu menambah permission di tiap role.
  * Nomor yang sudah terbit tidak bisa diubah atau dihapus (sama seperti HRIS).
  */

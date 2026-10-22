@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\Agendas\AgendaResource;
 use App\Filament\Admin\Resources\Documents\DocumentResource;
 use App\Filament\Admin\Resources\LetterNumbers\Pages\ListLetterNumbers;
 use App\Models\Document;
+use App\Models\DocumentCategory;
 use App\Models\LetterNumber;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -20,13 +21,13 @@ use Illuminate\Support\HtmlString;
 use UnitEnum;
 
 /**
- * Register nomor surat: nomor diambil dulu di sini, lalu dokumen resminya diisi ke nomor itu.
+ * Register nomor dokumen: nomor diambil dulu di sini, lalu dokumen resminya diisi ke nomor itu.
  */
 class LetterNumberResource extends Resource
 {
     protected static ?string $model = LetterNumber::class;
 
-    protected static ?string $slug = 'nomor-surat';
+    protected static ?string $slug = 'nomor-dokumen';
 
     protected static string|BackedEnum|null $navigationIcon = null;
 
@@ -34,11 +35,11 @@ class LetterNumberResource extends Resource
 
     protected static ?int $navigationSort = 0;
 
-    protected static ?string $navigationLabel = 'Nomor Surat';
+    protected static ?string $navigationLabel = 'Nomor Dokumen';
 
-    protected static ?string $modelLabel = 'Nomor Surat';
+    protected static ?string $modelLabel = 'Nomor Dokumen';
 
-    protected static ?string $pluralModelLabel = 'Nomor Surat';
+    protected static ?string $pluralModelLabel = 'Nomor Dokumen';
 
     protected static ?string $recordTitleAttribute = 'nomor';
 
@@ -53,12 +54,12 @@ class LetterNumberResource extends Resource
 
     public static function getNavigationBadgeTooltip(): ?string
     {
-        return 'Nomor surat Anda yang belum diisi dokumen';
+        return 'Nomor dokumen Anda yang belum diisi dokumen';
     }
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->access()->with(['unit', 'creator', 'document', 'agenda']);
+        return parent::getEloquentQuery()->access()->with(['unit', 'creator', 'document', 'agenda', 'category']);
     }
 
     public static function table(Table $table): Table
@@ -67,16 +68,16 @@ class LetterNumberResource extends Resource
             ->defaultSort(fn (Builder $query) => $query->orderByDesc('tanggal_surat')->orderByDesc('nomor_urut'))
             ->columns([
                 TextColumn::make('nomor')
-                    ->label('Nomor Surat')
+                    ->label('Nomor Dokumen')
                     // Desktop: nomor; mobile: kartu ringkas (kolom lain disembunyikan di mobile)
                     ->view('filament.tables.columns.letter-number-card')
                     ->searchable(),
 
                 TextColumn::make('jenis_surat')
-                    ->label('Jenis')
+                    ->label('Kategori')
                     ->formatStateUsing(fn (JenisSurat $state): HtmlString => self::jenisBadge($state))
                     ->html()
-                    ->tooltip(fn (LetterNumber $record): string => $record->jenis_surat->label())
+                    ->tooltip(fn (LetterNumber $record): string => $record->category?->name ?? $record->jenis_surat->label())
                     ->visibleFrom('md'),
 
                 TextColumn::make('judul_surat')
@@ -127,10 +128,17 @@ class LetterNumberResource extends Resource
                         false: fn (Builder $q) => $q->available(),
                         blank: fn (Builder $q) => $q,
                     ),
-                SelectFilter::make('jenis_surat')
-                    ->label('Jenis surat')
-                    ->options(JenisSurat::options())
-                    ->searchable(),
+                SelectFilter::make('category_id')
+                    ->label('Kategori')
+                    ->relationship('category', 'name', fn (Builder $query) => $query->whereNotNull('code')->orderBy('code'))
+                    ->getOptionLabelFromRecordUsing(fn (DocumentCategory $record): string => $record->option_label)
+                    ->multiple()
+                    ->searchable()
+                    ->preload(),
+                SelectFilter::make('kelompok')
+                    ->label('Kelompok')
+                    ->options(DocumentCategory::KELOMPOK)
+                    ->query(fn (Builder $q, array $data) => $q->when($data['value'], fn (Builder $q, string $kelompok) => $q->whereHas('category', fn (Builder $c) => $c->where('kelompok', $kelompok)))),
                 SelectFilter::make('tahun')
                     ->label('Tahun')
                     ->options(fn () => collect(range(now()->year, now()->year - 4))->mapWithKeys(fn ($y) => [$y => $y])->all())
@@ -157,8 +165,8 @@ class LetterNumberResource extends Resource
                     ->visible(fn (LetterNumber $record): bool => $record->agenda !== null)
                     ->url(fn (LetterNumber $record): string => AgendaResource::getUrl('view', ['record' => $record->agenda])),
             ])
-            ->emptyStateHeading('Belum ada nomor surat')
-            ->emptyStateDescription('Ambil nomor surat dulu, lalu isi dokumen resminya ke nomor tersebut.');
+            ->emptyStateHeading('Belum ada nomor dokumen')
+            ->emptyStateDescription('Ambil nomor dokumen dulu, lalu isi dokumen resminya ke nomor tersebut.');
     }
 
     public static function jenisBadge(JenisSurat $jenis): HtmlString

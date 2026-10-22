@@ -21,8 +21,10 @@ class MobileNavigation
         '' => ['home', '#2563eb'],
         'meetings' => ['calendar', '#0891b2'],
         'kegiatan' => ['my_cal', '#ea580c'],
-        'nomor-surat' => ['my_doc', '#d97706'],
+        'nomor-dokumen' => ['my_doc', '#d97706'],
         'documents' => ['document', '#7c3aed'],
+        'documents?surat_keluar' => ['send', '#0284c7'],
+        'surat-masuk' => ['inbox', '#059669'],
         'bookmarks' => ['bookmark', '#db2777'],
         'document-change-requests' => ['change', '#0f766e'],
         'compliance-hub' => ['compliance', '#2563eb'],
@@ -122,7 +124,10 @@ class MobileNavigation
     /** @return array{label: string, url: string, icon: string, color: string} */
     private static function item(string $label, string $url): array
     {
-        [$icon, $color] = self::STYLES[self::pathKey($url)] ?? ['document', '#475569'];
+        // Surat Keluar memakai URL daftar dokumen dengan ?kelompok=surat_keluar.
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+        $key = self::pathKey($url).(isset($query['kelompok']) && $query['kelompok'] !== 'dokumen' ? '?'.$query['kelompok'] : '');
+        [$icon, $color] = self::STYLES[$key] ?? self::STYLES[self::pathKey($url)] ?? ['document', '#475569'];
 
         return ['label' => $label, 'url' => $url, 'icon' => $icon, 'color' => $color];
     }

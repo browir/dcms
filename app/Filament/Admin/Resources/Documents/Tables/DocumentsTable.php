@@ -6,6 +6,7 @@ use App\Enum\JenisSurat;
 use App\Filament\Admin\Resources\Documents\DocumentResource;
 use App\Filament\Admin\Resources\LetterNumbers\LetterNumberResource;
 use App\Models\Document;
+use App\Models\DocumentCategory;
 use App\Models\User;
 use App\Services\DocumentConversionService;
 use Filament\Actions\Action;
@@ -71,7 +72,7 @@ class DocumentsTable
                     ->grow(),
 
                 TextColumn::make('jenis_surat')
-                    ->label('Jenis')
+                    ->label('Kategori')
                     ->formatStateUsing(fn (?JenisSurat $state): HtmlString|string => $state ? LetterNumberResource::jenisBadge($state) : '—')
                     ->html()
                     ->tooltip(fn (Document $record): ?string => $record->jenis_surat?->label() ?? $record->category?->name)
@@ -204,16 +205,11 @@ class DocumentsTable
 
                 SelectFilter::make('category')
                     ->label('Kategori')
-                    ->relationship('category', 'name')
-                    ->multiple()
-                    ->preload()
-                    ->native(false),
-
-                SelectFilter::make('jenis_surat')
-                    ->label('Jenis Surat')
-                    ->options(JenisSurat::options())
+                    ->relationship('category', 'name', fn (Builder $query) => $query->orderBy('code'))
+                    ->getOptionLabelFromRecordUsing(fn (DocumentCategory $record): string => $record->code ? $record->option_label : $record->name)
                     ->multiple()
                     ->searchable()
+                    ->preload()
                     ->native(false),
 
                 SelectFilter::make('masa_berlaku')

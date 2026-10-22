@@ -105,7 +105,7 @@ class FollowUpWidget extends Widget
                 'url' => $this->opens(DocumentResource::class) ? route('filament.admin.resources.documents.view', $document) : null,
             ]);
 
-        // Nomor surat yang diambil user ini tapi dokumen resminya belum diisi.
+        // Nomor dokumen yang diambil user ini tapi dokumen resminya belum diisi.
         $unfilledNumbers = LetterNumber::query()->access()->available()
             ->where('created_by', $user->id)
             ->orderBy('tanggal_surat')

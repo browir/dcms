@@ -5,8 +5,8 @@
             <header class="dsh-card-head">
                 <span class="dsh-card-icon dsh-tone-numbering"><x-filament::icon icon="heroicon-o-hashtag" class="dsh-icon" /></span>
                 <div class="dsh-card-heading">
-                    <h3 id="dsh-numbering-title" class="dsh-card-title">Penomoran Surat</h3>
-                    <p class="dsh-card-sub">Nomor terbit per jenis surat, tahun {{ $year }}</p>
+                    <h3 id="dsh-numbering-title" class="dsh-card-title">Penomoran Dokumen</h3>
+                    <p class="dsh-card-sub">Nomor terbit per kategori, tahun {{ $year }}</p>
                 </div>
             </header>
 
@@ -22,7 +22,7 @@
             @if (empty($counters))
                 <div class="dsh-empty">
                     <x-filament::icon icon="heroicon-o-hashtag" class="dsh-empty-icon" />
-                    <p>Belum ada nomor surat terbit tahun ini.</p>
+                    <p>Belum ada nomor dokumen terbit tahun ini.</p>
                 </div>
             @else
                 <ul class="dsh-counters">

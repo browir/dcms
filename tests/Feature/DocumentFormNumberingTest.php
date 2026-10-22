@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Enum\JenisSurat;
 use App\Filament\Admin\Resources\Documents\Pages\CreateDocument;
 use App\Filament\Admin\Resources\LetterNumbers\Pages\ListLetterNumbers;
 use App\Models\Company;
@@ -50,7 +49,7 @@ class DocumentFormNumberingTest extends TestCase
         $company = Company::create(['name' => 'PT Syifa Global Group', 'code' => 'SYIFA', 'kode_surat' => 'SGG']);
         $department = Department::create(['name' => 'Umum', 'code' => 'UMM', 'company_id' => $company->id]);
         $this->unit = Unit::create(['name' => 'Kepegawaian', 'prefix' => '2', 'department_id' => $department->id]);
-        $this->category = DocumentCategory::create(['name' => 'SOP', 'prefix' => 'SOP', 'company_id' => $company->id]);
+        $this->category = DocumentCategory::create(['name' => 'SOP Unit', 'prefix' => 'SOP', 'code' => 'SOP', 'kelompok' => 'dokumen', 'company_id' => $company->id]);
 
         $user = User::create([
             'name' => 'Penulis',
@@ -73,7 +72,7 @@ class DocumentFormNumberingTest extends TestCase
         // 1) Ambil nomor surat di halaman Nomor Surat.
         Livewire::test(ListLetterNumbers::class)
             ->callAction('create', [
-                'jenis_surat' => JenisSurat::SOP->value,
+                'category_id' => $this->category->id,
                 'unit_id' => $this->unit->id,
                 'tanggal_surat' => '2026-07-15',
                 'judul_surat' => 'SOP Pengarsipan',
@@ -89,13 +88,12 @@ class DocumentFormNumberingTest extends TestCase
             ->test(CreateDocument::class)
             ->assertSchemaStateSet([
                 'letter_number_id' => $letter->id,
-                'jenis_surat' => JenisSurat::SOP->value,
+                'category_id' => $this->category->id,
                 'tanggal_surat' => '2026-07-15',
                 'title' => 'SOP Pengarsipan',
             ])
             ->fillForm([
                 'document_type' => 'file',
-                'category_id' => $this->category->id,
                 'file_path' => UploadedFile::fake()->create('sop.pdf', 20, 'application/pdf'),
             ])
             ->call('create')
@@ -105,6 +103,9 @@ class DocumentFormNumberingTest extends TestCase
 
         $this->assertSame($letter->id, $document->letter_number_id);
         $this->assertSame('001/SOP.2/SGG/VII/2026', $document->code_number);
+        // Kategori dokumen mengikuti kategori nomornya.
+        $this->assertSame($this->category->id, $letter->category_id);
+        $this->assertSame($this->category->id, $document->category_id);
         $this->assertSame(0, LetterNumber::query()->available()->count());
     }
 
@@ -114,7 +115,6 @@ class DocumentFormNumberingTest extends TestCase
             ->fillForm([
                 'document_type' => 'file',
                 'title' => 'Tanpa nomor',
-                'category_id' => $this->category->id,
                 'file_path' => UploadedFile::fake()->create('x.pdf', 20, 'application/pdf'),
             ])
             ->call('create')

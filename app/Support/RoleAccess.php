@@ -40,6 +40,9 @@ class RoleAccess
         'Create:DocumentChangeRequest',
         'View:ComplianceHub',
         'View:MyBookmarks',
+        // Surat masuk: membaca surat untuk unitnya (mencatat surat diatur per role)
+        'ViewAny:IncomingLetter',
+        'View:IncomingLetter',
         // Rapat: buat & ikuti rapat; notulis perlu Update untuk mengisi notulen
         'ViewAny:Meeting',
         'View:Meeting',

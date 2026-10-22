@@ -2,7 +2,6 @@
 
 namespace App\Filament\Admin\Resources\Documents\Schemas;
 
-use App\Enum\JenisSurat;
 use App\Filament\Admin\Resources\LetterNumbers\Schemas\LetterNumberForm;
 use App\Models\Company;
 use App\Models\Department;
@@ -112,9 +111,9 @@ class DocumentForm
                 ->columnSpanFull()
                 ->schema([
                     Select::make('letter_number_id')
-                        ->label('Nomor Surat')
-                        ->helperText('Dokumen resmi diisi ke nomor surat yang sudah diambil. Belum punya nomor? Klik tombol + untuk mengambil nomor baru.')
-                        ->options(fn (): array => self::letterNumberOptions())
+                        ->label('Nomor Dokumen')
+                        ->helperText('Dokumen diisi ke nomor dokumen yang sudah diambil. Belum punya nomor? Klik tombol + untuk mengambil nomor baru.')
+                        ->options(fn ($livewire): array => self::letterNumberOptions(data_get($livewire, 'kelompok')))
                         ->searchable()
                         ->native(false)
                         ->live()
@@ -122,10 +121,10 @@ class DocumentForm
                         ->required()
                         ->visibleOn('create')
                         ->prefixIcon('heroicon-o-hashtag')
-                        ->createOptionForm(LetterNumberForm::components())
+                        ->createOptionForm(fn ($livewire): array => LetterNumberForm::components(data_get($livewire, 'kelompok')))
                         ->createOptionUsing(fn (array $data): int => LetterNumberForm::issue($data)->id)
                         ->createOptionAction(fn (Action $action) => $action
-                            ->modalHeading('Ambil Nomor Surat')
+                            ->modalHeading('Ambil Nomor Dokumen')
                             ->modalSubmitActionLabel('Terbitkan Nomor')
                             ->modalWidth('lg'))
                         ->afterStateUpdated(function ($state, Set $set, Get $get): void {
@@ -135,25 +134,26 @@ class DocumentForm
                         }),
 
                     TextInput::make('code_number')
-                        ->label('Nomor Surat')
+                        ->label('Nomor Dokumen')
                         ->readOnly()
                         ->dehydrated(false)
                         ->visibleOn('edit')
                         ->prefixIcon('heroicon-o-hashtag')
-                        ->helperText('Nomor surat yang sudah terbit tidak berubah.'),
+                        ->helperText('Nomor dokumen yang sudah terbit tidak berubah.'),
 
-                    Select::make('jenis_surat')
-                        ->label('Jenis Surat')
-                        ->options(JenisSurat::options())
-                        ->placeholder('Mengikuti nomor surat')
+                    // Kategori = jenis dokumen, selalu mengikuti nomor dokumen (diset model saat simpan).
+                    Select::make('category_id')
+                        ->label('Kategori Dokumen')
+                        ->options(fn () => DocumentCategory::query()->whereNotNull('code')->get()->mapWithKeys(fn (DocumentCategory $c) => [$c->id => $c->option_label]))
+                        ->placeholder('Mengikuti nomor dokumen')
                         ->disabled()
                         ->dehydrated(false)
                         ->native(false)
                         ->prefixIcon('heroicon-o-tag'),
 
                     DatePicker::make('tanggal_surat')
-                        ->label('Tanggal Surat')
-                        ->placeholder('Mengikuti nomor surat')
+                        ->label('Tanggal Dokumen')
+                        ->placeholder('Mengikuti nomor dokumen')
                         ->disabled()
                         ->dehydrated(false)
                         ->native(false)
@@ -287,7 +287,7 @@ class DocumentForm
                             return optional($user)->company_id ?? null;
                         })
                         ->disabled(function (Get $get) {
-                            // Mengikuti unit & perusahaan penerbit nomor surat.
+                            // Mengikuti unit & perusahaan penerbit nomor dokumen.
                             if (filled($get('letter_number_id'))) {
                                 return true;
                             }
@@ -328,7 +328,7 @@ class DocumentForm
                             return optional($user)->department_id ?? null;
                         })
                         ->disabled(function (Get $get) {
-                            // Mengikuti unit & perusahaan penerbit nomor surat.
+                            // Mengikuti unit & perusahaan penerbit nomor dokumen.
                             if (filled($get('letter_number_id'))) {
                                 return true;
                             }
@@ -368,7 +368,7 @@ class DocumentForm
                             return optional($user)->unit_id ?? null;
                         })
                         ->disabled(function (Get $get) {
-                            // Mengikuti unit & perusahaan penerbit nomor surat.
+                            // Mengikuti unit & perusahaan penerbit nomor dokumen.
                             if (filled($get('letter_number_id'))) {
                                 return true;
                             }
@@ -379,16 +379,6 @@ class DocumentForm
                             return ! $user->hasRole(['super_admin', 'direktur', 'kabid']);
                         })
                         ->dehydrated()
-                        ->required(),
-
-                    Select::make('category_id')
-                        ->label('Kategori Dokumen')
-                        ->options(fn () => DocumentCategory::where('is_active', true)->pluck('name', 'id'))
-                        ->searchable()
-                        ->preload()
-                        ->native(false)
-                        ->live()
-                        ->prefixIcon('heroicon-o-tag')
                         ->required(),
                 ]),
 
@@ -547,11 +537,11 @@ class DocumentForm
 
         $checklist = [
             [
-                'label' => 'Nomor surat',
+                'label' => 'Nomor dokumen',
                 'completed' => $hasLetterNumber,
                 'description' => $hasLetterNumber
-                    ? 'Dokumen diisi ke nomor surat yang sudah diambil.'
-                    : 'Pilih nomor surat yang sudah diambil, atau ambil nomor baru.',
+                    ? 'Dokumen diisi ke nomor dokumen yang sudah diambil.'
+                    : 'Pilih nomor dokumen yang sudah diambil, atau ambil nomor baru.',
             ],
             [
                 'label' => 'Judul dokumen',
@@ -679,8 +669,8 @@ class DocumentForm
                 ->all(),
             'codePreview' => LetterNumber::query()->whereKey($get('letter_number_id'))->value('nomor') ?? $get('code_number') ?? '—',
             'codePreviewNote' => filled($get('letter_number_id')) || filled($get('code_number'))
-                ? 'Dokumen ini diisi ke nomor surat tersebut.'
-                : 'Pilih nomor surat yang sudah diambil, atau ambil nomor baru dengan tombol +.',
+                ? 'Dokumen ini diisi ke nomor dokumen tersebut.'
+                : 'Pilih nomor dokumen yang sudah diambil, atau ambil nomor baru dengan tombol +.',
             'statusLabel' => match ($status) {
                 'approved' => 'Diterbitkan',
                 'archived' => 'Diarsipkan',
@@ -690,12 +680,13 @@ class DocumentForm
         ];
     }
 
-    /** Nomor surat yang belum diisi dokumen; nomor yang diambil user sendiri tampil lebih dulu. */
-    private static function letterNumberOptions(): array
+    /** Nomor dokumen yang belum diisi dokumen; nomor yang diambil user sendiri tampil lebih dulu. */
+    private static function letterNumberOptions(?string $kelompok = null): array
     {
         return LetterNumber::query()
             ->access()
             ->available()
+            ->when(isset(DocumentCategory::KELOMPOK[$kelompok]), fn ($q) => $q->whereHas('category', fn ($c) => $c->where('kelompok', $kelompok)))
             ->orderByRaw('created_by = ? desc', [Auth::id()])
             ->orderByDesc('tanggal_surat')
             ->orderByDesc('nomor_urut')
@@ -706,7 +697,7 @@ class DocumentForm
     }
 
     /**
-     * Nilai field form yang mengikuti nomor surat terpilih: jenis, tanggal, organisasi
+     * Nilai field form yang mengikuti nomor dokumen terpilih: jenis, tanggal, organisasi
      * penerbit, dan judul (bila judul dokumen masih kosong).
      *
      * @return array<string, mixed>
@@ -716,11 +707,11 @@ class DocumentForm
         $letter = filled($letterNumberId) ? LetterNumber::query()->find($letterNumberId) : null;
 
         if (! $letter) {
-            return ['jenis_surat' => null, 'tanggal_surat' => null];
+            return ['category_id' => null, 'tanggal_surat' => null];
         }
 
         return [
-            'jenis_surat' => $letter->jenis_surat->value,
+            'category_id' => $letter->category_id,
             'tanggal_surat' => $letter->tanggal_surat->toDateString(),
             'company_id' => $letter->company_id,
             'department_id' => $letter->department_id,

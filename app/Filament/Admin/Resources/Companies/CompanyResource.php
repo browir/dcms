@@ -47,7 +47,7 @@ class CompanyResource extends Resource
                     ->maxLength(255),
                 TextInput::make('kode_surat')
                     ->label('Kode Surat')
-                    ->helperText('Kode penerbit di nomor surat, mis. SGG atau RSUSM-BRB. Kosongkan untuk memakai Kode.')
+                    ->helperText('Kode penerbit di nomor dokumen, mis. SGG atau RSUSM-BRB. Kosongkan untuk memakai Kode.')
                     ->maxLength(20)
                     ->unique(ignoreRecord: true),
                 Toggle::make('is_active')

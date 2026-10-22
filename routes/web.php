@@ -3,6 +3,7 @@
 use App\Http\Controllers\AgendaNoticeController;
 use App\Http\Controllers\BrandingController;
 use App\Http\Controllers\DocumentFileController;
+use App\Http\Controllers\IncomingLetterFileController;
 use App\Http\Controllers\NotulenController;
 use App\Http\Controllers\PushSubscriptionController;
 use Filament\Http\Middleware\Authenticate;
@@ -47,6 +48,7 @@ Route::get('/kegiatan/{agenda}/surat/unduh', [AgendaNoticeController::class, 'si
 Route::middleware([Authenticate::class])->group(function () {
     Route::get('/notulen/view/{id}', [NotulenController::class, 'view'])->name('notulen.view');
     Route::get('/kegiatan/{agenda}/surat', [AgendaNoticeController::class, 'show'])->name('kegiatan.surat');
+    Route::get('/surat-masuk/{incomingLetter}/file', IncomingLetterFileController::class)->name('surat-masuk.file');
 
     // File dokumen resmi (disk privat) — dicek login + hak akses dokumen
     Route::get('/storage/documents/{path}', [DocumentFileController::class, 'show'])

@@ -108,7 +108,7 @@ class Document extends Model implements Auditable
                 $document->user_id = Auth::id();
             }
 
-            // Setiap dokumen memakai nomor surat dari register. code_number yang diisi
+            // Setiap dokumen memakai nomor dokumen dari register. code_number yang diisi
             // langsung hanya untuk impor dokumen lama yang sudah bernomor.
             if (! $document->code_number || $document->letter_number_id) {
                 $document->attachLetterNumber();
@@ -161,7 +161,7 @@ class Document extends Model implements Auditable
     }
 
     /**
-     * Hubungkan dokumen baru ke nomor surat di register, lalu salin nomor, jenis, tanggal,
+     * Hubungkan dokumen baru ke nomor dokumen di register, lalu salin nomor, jenis, tanggal,
      * dan organisasi penerbitnya. Nomor yang dipilih harus belum dipakai dokumen lain; tanpa
      * nomor, dokumen yang membawa jenis_surat langsung diterbitkan nomor baru.
      * Dipanggil dari event `creating`, di dalam transaksi save() (lihat save()).
@@ -173,13 +173,13 @@ class Document extends Model implements Auditable
 
             if ($letter->isUsed()) {
                 throw ValidationException::withMessages([
-                    'letter_number_id' => "Nomor surat {$letter->nomor} sudah dipakai dokumen lain.",
+                    'letter_number_id' => "Nomor dokumen {$letter->nomor} sudah dipakai dokumen lain.",
                 ]);
             }
-        } elseif ($this->jenis_surat && $this->unit) {
+        } elseif (($this->jenis_surat || $this->category?->code) && $this->unit) {
             $letter = app(LetterNumberService::class)->issue(
                 $this->unit,
-                $this->jenis_surat,
+                $this->category?->code ? $this->category : $this->jenis_surat,
                 $this->tanggal_surat ?? today(),
                 $this->title,
                 by: $this->user,
@@ -187,12 +187,14 @@ class Document extends Model implements Auditable
             $this->letter_number_id = $letter->id;
         } else {
             throw ValidationException::withMessages([
-                'letter_number_id' => 'Dokumen wajib memakai nomor surat. Ambil nomor surat terlebih dahulu.',
+                'letter_number_id' => 'Dokumen wajib memakai nomor dokumen. Ambil nomor dokumen terlebih dahulu.',
             ]);
         }
 
         $this->code_number = $letter->nomor;
         $this->jenis_surat = $letter->jenis_surat;
+        // Kategori dokumen selalu mengikuti nomornya (satu master jenis).
+        $this->category_id = $letter->category_id ?? $this->category_id;
         $this->tanggal_surat = $letter->tanggal_surat;
         $this->company_id = $letter->company_id;
         $this->department_id = $letter->department_id ?? $this->department_id;
@@ -200,7 +202,7 @@ class Document extends Model implements Auditable
     }
 
     /**
-     * INSERT dokumen baru dibungkus transaksi supaya kunci counter nomor surat (diambil di
+     * INSERT dokumen baru dibungkus transaksi supaya kunci counter nomor dokumen (diambil di
      * event `creating`) bertahan sampai commit, dan nomor tidak terpakai kalau insert gagal.
      * Di dalam transaksi lain (mis. halaman Filament) ini menjadi savepoint, jadi counter
      * tetap ikut dibatalkan walau transaksi luarnya menangkap error dan lanjut.
