@@ -44,14 +44,14 @@
                 <ul class="dsh-list">
                     @foreach ($recentNumbers as $item)
                         <li>
-                            <a href="{{ $item['url'] }}" wire:navigate class="dsh-row dsh-row-compact">
+                            <x-dsh-link :href="$item['url']" class="dsh-row dsh-row-compact">
                                 <span class="dsh-number">{{ $item['number'] }}</span>
                                 <span class="dsh-row-body">
                                     <span class="dsh-item-title">{{ $item['title'] }}</span>
                                     <span class="dsh-item-meta">{{ $item['type'] }}@unless ($item['filled']) · <span class="dsh-text-warning">Belum diisi dokumen</span>@endunless</span>
                                 </span>
                                 <span class="dsh-row-age">{{ $item['date'] }}</span>
-                            </a>
+                            </x-dsh-link>
                         </li>
                     @endforeach
                 </ul>
@@ -66,7 +66,9 @@
                     <h3 id="dsh-docstats-title" class="dsh-card-title">Statistik Dokumen Resmi</h3>
                     <p class="dsh-card-sub">Status seluruh dokumen dan dokumen baru 6 bulan terakhir</p>
                 </div>
-                <a href="{{ route('filament.admin.resources.documents.index') }}" wire:navigate class="dsh-link">Semua dokumen</a>
+                @if ($documentsUrl)
+                    <a href="{{ $documentsUrl }}" wire:navigate class="dsh-link">Semua dokumen</a>
+                @endif
             </header>
 
             <div class="dsh-kpis">

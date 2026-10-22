@@ -207,11 +207,11 @@
                 </div>
 
                 @if ($nextMeeting)
-                    <a href="{{ $nextMeeting['url'] }}" wire:navigate class="eah-next-link">
+                    <x-dsh-link :href="$nextMeeting['url']" class="eah-next-link">
                         <div class="eah-next-title">{{ $nextMeeting['title'] }}</div>
                         <div class="eah-next-time">{{ $nextMeeting['when'] }}</div>
                         <div class="eah-next-location">{{ $nextMeeting['location'] }}</div>
-                    </a>
+                    </x-dsh-link>
                 @else
                     <div class="eah-next-empty">
                         Belum ada agenda rapat mendatang.

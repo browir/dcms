@@ -2,7 +2,12 @@
 
 namespace App\Filament\Admin\Widgets\Dashboard;
 
+use App\Filament\Admin\Pages\ComplianceHub;
+use App\Filament\Admin\Pages\ReminderHub;
+use App\Filament\Admin\Resources\Agendas\AgendaResource;
+use App\Filament\Admin\Resources\Documents\DocumentResource;
 use App\Filament\Admin\Resources\LetterNumbers\LetterNumberResource;
+use App\Filament\Admin\Resources\Meetings\MeetingResource;
 use App\Filament\Admin\Widgets\Dashboard\Concerns\DashboardQueries;
 use App\Models\Document;
 use App\Models\LetterNumber;
@@ -77,7 +82,11 @@ class ModuleOverviewWidget extends Widget
                 'value' => $weekMeetings + $weekActivities,
                 'unit' => "agenda minggu ini ({$weekActivities} kegiatan)",
                 'detail' => $todayMeetings > 0 ? "{$todayMeetings} rapat berlangsung hari ini" : 'Tidak ada rapat hari ini',
-                'url' => route('filament.admin.resources.meetings.index'),
+                'url' => match (true) {
+                    $this->opens(MeetingResource::class) => MeetingResource::getUrl(),
+                    $this->opens(AgendaResource::class) => AgendaResource::getUrl(),
+                    default => null,
+                },
                 'icon' => 'heroicon-o-calendar-days',
                 'alert' => false,
             ],
@@ -97,7 +106,7 @@ class ModuleOverviewWidget extends Widget
                 'value' => $activeDocuments,
                 'unit' => 'dokumen berlaku',
                 'detail' => $pendingReview > 0 ? "{$pendingReview} menunggu persetujuan" : 'Tidak ada antrean persetujuan',
-                'url' => route('filament.admin.resources.documents.index'),
+                'url' => $this->opens(DocumentResource::class) ? DocumentResource::getUrl() : null,
                 'icon' => 'heroicon-o-document-text',
                 'alert' => $pendingReview > 0,
             ],
@@ -107,7 +116,7 @@ class ModuleOverviewWidget extends Widget
                 'value' => $numbersThisYear,
                 'unit' => 'nomor terbit '.now()->year,
                 'detail' => $numbersWithoutDocument > 0 ? "{$numbersWithoutDocument} nomor belum diisi dokumen" : 'Semua nomor sudah berisi dokumen',
-                'url' => LetterNumberResource::getUrl(),
+                'url' => $this->opens(LetterNumberResource::class) ? LetterNumberResource::getUrl() : null,
                 'icon' => 'heroicon-o-hashtag',
                 'alert' => $numbersWithoutDocument > 0,
             ],
@@ -124,36 +133,36 @@ class ModuleOverviewWidget extends Widget
         ];
 
         $quickActions = array_values(array_filter([
-            $user->can('create', Meeting::class) ? [
+            $this->opens(MeetingResource::class) && $user->can('create', Meeting::class) ? [
                 'label' => 'Jadwalkan Rapat',
                 'url' => route('filament.admin.resources.meetings.create'),
                 'icon' => 'heroicon-m-plus',
                 'primary' => true,
             ] : null,
-            $user->can('create', LetterNumber::class) ? [
+            $this->opens(LetterNumberResource::class) && $user->can('create', LetterNumber::class) ? [
                 'label' => 'Ambil Nomor Surat',
                 'url' => LetterNumberResource::getUrl(),
                 'icon' => 'heroicon-m-hashtag',
                 'primary' => false,
             ] : null,
-            $user->can('create', Document::class) ? [
+            $this->opens(DocumentResource::class) && $user->can('create', Document::class) ? [
                 'label' => 'Isi Dokumen',
                 'url' => route('filament.admin.resources.documents.create'),
                 'icon' => 'heroicon-m-arrow-up-tray',
                 'primary' => false,
             ] : null,
-            [
+            $this->opens(ReminderHub::class) ? [
                 'label' => 'Pengingat',
-                'url' => route('filament.admin.pages.reminders'),
+                'url' => ReminderHub::getUrl(),
                 'icon' => 'heroicon-m-bell-alert',
                 'primary' => false,
-            ],
-            [
+            ] : null,
+            $this->opens(ComplianceHub::class) ? [
                 'label' => 'Compliance Hub',
-                'url' => route('filament.admin.pages.compliance-hub'),
+                'url' => ComplianceHub::getUrl(),
                 'icon' => 'heroicon-m-shield-check',
                 'primary' => false,
-            ],
+            ] : null,
         ]));
 
         return [

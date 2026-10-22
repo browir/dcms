@@ -8,57 +8,10 @@ $panelPath = request()->segment(1) ?: 'admin';
 $name = $user?->name ?? 'User';
 $initials = collect(explode(' ', $name))->take(2)->map(fn($w) => strtoupper(substr($w, 0, 1)))->join('');
 
-// Determine which menu items to show based on permissions/roles
-$isSuperAdmin = $user?->hasRole('super_admin');
-$isDirektur   = $user?->hasRole('direktur');
-$isKabid      = $user?->hasRole('kabid');
-$isAdmin      = $isSuperAdmin || $isDirektur || $isKabid;
-
-// Menu structure: groups → items
-$menuGroups = [
-    [
-        'label' => 'Utama',
-        'items' => [
-            ['label' => 'Beranda',       'url' => url("/{$panelPath}"),                 'icon' => 'home',       'color' => '#2563eb'],
-            ['label' => 'Dokumen',       'url' => url("/{$panelPath}/documents"),        'icon' => 'document',   'color' => '#7c3aed'],
-            ['label' => 'Tambah Dok',    'url' => url("/{$panelPath}/documents/create"), 'icon' => 'add_doc',    'color' => '#059669'],
-            ['label' => 'Rapat',         'url' => url("/{$panelPath}/meetings"),         'icon' => 'calendar',   'color' => '#0891b2'],
-            ['label' => 'Tambah Rapat',  'url' => url("/{$panelPath}/meetings/create"),  'icon' => 'add_cal',    'color' => '#d97706'],
-            ['label' => 'Kegiatan',      'url' => url("/{$panelPath}/kegiatan"),         'icon' => 'my_cal',     'color' => '#ea580c'],
-        ],
-    ],
-    [
-        'label' => 'Dokumen',
-        'items' => array_filter([
-            ['label' => 'Nomor Surat',    'url' => url("/{$panelPath}/nomor-surat"),              'icon' => 'my_doc',     'color' => '#d97706'],
-            ['label' => 'Bookmark',       'url' => url("/{$panelPath}/bookmarks"),                'icon' => 'bookmark',   'color' => '#db2777'],
-            ['label' => 'Pengingat',      'url' => url("/{$panelPath}/reminders"),                'icon' => 'bell',       'color' => '#ea580c'],
-            ['label' => 'Perubahan',      'url' => url("/{$panelPath}/document-change-requests"), 'icon' => 'change',     'color' => '#0f766e'],
-            ['label' => 'Compliance',     'url' => url("/{$panelPath}/compliance-hub"),           'icon' => 'compliance', 'color' => '#2563eb'],
-            $isAdmin ? ['label' => 'Recycle Bin', 'url' => url("/{$panelPath}/recycle-bin"),      'icon' => 'recycle',    'color' => '#ef4444'] : null,
-        ]),
-    ],
-    // Sama dengan navbar desktop: Data Master = data referensi, Pengaturan = akun, akses & sistem.
-    [
-        'label' => 'Data Master',
-        'items' => array_filter([
-            $isSuperAdmin ? ['label' => 'Perusahaan',   'url' => url("/{$panelPath}/companies"),           'icon' => 'company',   'color' => '#059669'] : null,
-            $isAdmin     ? ['label' => 'Departemen',    'url' => url("/{$panelPath}/departments"),         'icon' => 'dept',      'color' => '#7c3aed'] : null,
-            $isAdmin     ? ['label' => 'Unit',          'url' => url("/{$panelPath}/units"),               'icon' => 'unit',      'color' => '#f59e0b'] : null,
-            $isAdmin     ? ['label' => 'Kategori',      'url' => url("/{$panelPath}/document-categories"), 'icon' => 'category',  'color' => '#0891b2'] : null,
-            ['label' => 'Ruangan Rapat', 'url' => url("/{$panelPath}/meeting-locations"),                  'icon' => 'location',  'color' => '#dc2626'],
-        ]),
-    ],
-    [
-        'label' => 'Pengaturan',
-        'items' => array_filter([
-            $isAdmin     ? ['label' => 'Pengguna',      'url' => url("/{$panelPath}/users"),              'icon' => 'users',     'color' => '#1d4ed8'] : null,
-            $isSuperAdmin ? ['label' => 'Peran & Akses', 'url' => url("/{$panelPath}/shield/roles"),      'icon' => 'role',      'color' => '#9333ea'] : null,
-            $isAdmin     ? ['label' => 'Audit Trail',   'url' => url("/{$panelPath}/audit-trail"),        'icon' => 'audit',     'color' => '#64748b'] : null,
-            $isSuperAdmin ? ['label' => 'Logo Aplikasi', 'url' => url("/{$panelPath}/app-settings"),      'icon' => 'dashboard', 'color' => '#475569'] : null,
-        ]),
-    ],
-];
+// Menu mengikuti navigasi Filament (sama dengan navbar desktop), jadi otomatis hanya berisi
+// halaman yang boleh diakses user. Item yang sudah ada di bar bawah tidak diulang.
+$bottomBar = \App\Support\MobileNavigation::bottomBar();
+$menuGroups = \App\Support\MobileNavigation::menuGroups(collect($bottomBar)->pluck('url')->all());
 @endphp
 
 {{-- ══════════════════════════════════════════════════════════
@@ -451,11 +404,15 @@ $menuGroups = [
     font-weight: 500;
     color: #334155;
     text-align: center;
-    line-height: 1.3;
-    white-space: nowrap;
+    line-height: 1.25;
+    /* Label panjang ("Tambah Dokumen", "Pusat Pengingat") turun ke 2 baris, tidak terpotong */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 68px;
+    overflow-wrap: anywhere;
+    max-width: 76px;
+    min-height: 2.5em;
     transition: color 0.15s;
 }
 

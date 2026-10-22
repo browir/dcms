@@ -1,5 +1,8 @@
 <style>
     /* ═══ Beranda terpadu (widget Dashboard\*) ═══════════════════════════ */
+    /* Item tanpa link (user tidak punya akses ke halaman tujuan): info saja, tanpa efek klik */
+    .dsh-static { cursor: default; }
+    .dsh-static:hover { transform: none !important; }
     :root {
         --dsh-ink: #0f172a;
         --dsh-muted: #64748b;

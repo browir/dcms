@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Widgets\Dashboard;
 
 use App\Enum\JenisSurat;
+use App\Filament\Admin\Resources\Documents\DocumentResource;
 use App\Filament\Admin\Resources\LetterNumbers\LetterNumberResource;
 use App\Filament\Admin\Widgets\Dashboard\Concerns\DashboardQueries;
 use App\Models\Document;
@@ -39,6 +40,7 @@ class NumberingDocumentsWidget extends Widget
             'companySequences' => $this->companySequences(),
             'recentNumbers' => $this->recentNumbers(),
             'year' => now()->year,
+            'documentsUrl' => $this->opens(DocumentResource::class) ? DocumentResource::getUrl() : null,
             ...$this->documentStats(),
         ];
     }
@@ -104,9 +106,11 @@ class NumberingDocumentsWidget extends Widget
                 'type' => $letter->jenis_surat->label(),
                 'filled' => $letter->document !== null,
                 'date' => $letter->tanggal_surat->locale('id')->isoFormat('D MMM YYYY'),
-                'url' => $letter->document && ! $letter->document->trashed()
-                    ? route('filament.admin.resources.documents.view', $letter->document)
-                    : LetterNumberResource::getUrl(),
+                'url' => match (true) {
+                    $letter->document && ! $letter->document->trashed() && $this->opens(DocumentResource::class) => route('filament.admin.resources.documents.view', $letter->document),
+                    $this->opens(LetterNumberResource::class) => LetterNumberResource::getUrl(),
+                    default => null,
+                },
             ])
             ->all();
     }

@@ -22,7 +22,7 @@
                 <ul class="dsh-list">
                     @foreach ($pendingMinutes as $item)
                         <li>
-                            <a href="{{ $item['url'] }}" wire:navigate class="dsh-row">
+                            <x-dsh-link :href="$item['url']" class="dsh-row">
                                 <span class="dsh-row-body">
                                     <span class="dsh-item-title">{{ $item['title'] }}</span>
                                     <span class="dsh-item-meta">{{ $item['meta'] }}</span>
@@ -33,7 +33,7 @@
                                     @endif
                                     <span class="dsh-row-age">{{ $item['age'] }}</span>
                                 </span>
-                            </a>
+                            </x-dsh-link>
                         </li>
                     @endforeach
                 </ul>
@@ -44,7 +44,7 @@
                 <ul class="dsh-list">
                     @foreach ($recentMinutes as $item)
                         <li>
-                            <a href="{{ $item['url'] }}" wire:navigate class="dsh-row dsh-row-compact">
+                            <x-dsh-link :href="$item['url']" class="dsh-row dsh-row-compact">
                                 <x-filament::icon icon="heroicon-m-document-check" class="dsh-row-lead dsh-text-minutes" />
                                 <span class="dsh-row-body">
                                     <span class="dsh-item-title">{{ $item['title'] }}</span>
@@ -53,7 +53,7 @@
                                 @if ($item['actions'] > 0)
                                     <span class="dsh-row-age">{{ $item['actions'] }} action plan</span>
                                 @endif
-                            </a>
+                            </x-dsh-link>
                         </li>
                     @endforeach
                 </ul>
@@ -82,13 +82,13 @@
                 <ul class="dsh-list">
                     @foreach ($documents as $item)
                         <li>
-                            <a href="{{ $item['url'] }}" wire:navigate class="dsh-row">
+                            <x-dsh-link :href="$item['url']" class="dsh-row">
                                 <span class="dsh-row-body">
                                     <span class="dsh-item-title">{{ $item['title'] }}</span>
                                     <span class="dsh-item-meta dsh-mono">{{ $item['meta'] }}</span>
                                 </span>
                                 <span class="dsh-chip dsh-doc-{{ $item['status'] }}">{{ $item['statusLabel'] }}</span>
-                            </a>
+                            </x-dsh-link>
                         </li>
                     @endforeach
                 </ul>
@@ -99,13 +99,13 @@
                 <ul class="dsh-list">
                     @foreach ($unfilledNumbers as $item)
                         <li>
-                            <a href="{{ $item['url'] }}" wire:navigate class="dsh-row dsh-row-compact">
+                            <x-dsh-link :href="$item['url']" class="dsh-row dsh-row-compact">
                                 <span class="dsh-number">{{ $item['number'] }}</span>
                                 <span class="dsh-row-body">
                                     <span class="dsh-item-title">{{ $item['title'] }}</span>
                                 </span>
                                 <span class="dsh-row-age dsh-text-warning">Isi dokumen →</span>
-                            </a>
+                            </x-dsh-link>
                         </li>
                     @endforeach
                 </ul>
@@ -116,13 +116,13 @@
                 <ul class="dsh-list">
                     @foreach ($expiring as $item)
                         <li>
-                            <a href="{{ $item['url'] }}" wire:navigate class="dsh-row dsh-row-compact">
+                            <x-dsh-link :href="$item['url']" class="dsh-row dsh-row-compact">
                                 <x-filament::icon icon="heroicon-m-clock" @class(['dsh-row-lead', 'dsh-text-danger' => $item['expired'], 'dsh-text-warning' => ! $item['expired']]) />
                                 <span class="dsh-row-body">
                                     <span class="dsh-item-title">{{ $item['title'] }}</span>
                                 </span>
                                 <span @class(['dsh-row-age', 'dsh-text-danger' => $item['expired']])>{{ $item['when'] }}</span>
-                            </a>
+                            </x-dsh-link>
                         </li>
                     @endforeach
                 </ul>

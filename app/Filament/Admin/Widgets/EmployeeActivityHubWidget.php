@@ -2,12 +2,14 @@
 
 namespace App\Filament\Admin\Widgets;
 
+use App\Filament\Admin\Resources\Meetings\MeetingResource;
 use App\Models\Document;
 use App\Models\Meeting;
 use App\Models\User;
 use Filament\Widgets\Widget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class EmployeeActivityHubWidget extends Widget
 {
@@ -19,13 +21,13 @@ class EmployeeActivityHubWidget extends Widget
 
     public static function canView(): bool
     {
-        return \Illuminate\Support\Facades\Auth::check();
+        return Auth::check();
     }
 
     protected function getViewData(): array
     {
         /** @var User $user */
-        $user = \Illuminate\Support\Facades\Auth::user();
+        $user = Auth::user();
 
         $todayMeetingsQuery = Meeting::query()
             ->access()
@@ -120,7 +122,8 @@ class EmployeeActivityHubWidget extends Widget
 
         return [
             'title' => $meeting->title,
-            'url' => '/admin/meetings/'.$meeting->id,
+            // Tanpa akses ke modul Rapat: tampil sebagai info saja (tanpa link ke halaman 403).
+            'url' => MeetingResource::canAccess() ? MeetingResource::getUrl('view', ['record' => $meeting]) : null,
             'when' => $this->formatMeetingWhen($dateTime),
             'time' => $dateTime->format('H:i'),
             'location' => $meeting->location ?: 'Lokasi belum diisi',

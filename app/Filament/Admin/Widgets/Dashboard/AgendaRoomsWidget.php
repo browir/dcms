@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Widgets\Dashboard;
 
 use App\Filament\Admin\Resources\Agendas\AgendaResource;
 use App\Filament\Admin\Resources\MeetingLocationResource;
+use App\Filament\Admin\Resources\Meetings\MeetingResource;
 use App\Filament\Admin\Widgets\Dashboard\Concerns\DashboardQueries;
 use App\Models\Agenda;
 use App\Models\Meeting;
@@ -63,9 +64,11 @@ class AgendaRoomsWidget extends Widget
                 'location' => $meeting->meetingLocation?->name ?: ($meeting->location ?: 'Lokasi belum ditentukan'),
                 'meta' => $meeting->participants_count.' peserta',
                 'state' => $this->bookingState($meeting),
-                'url' => $user->can('update', $meeting)
-                    ? route('filament.admin.resources.meetings.edit', $meeting)
-                    : route('filament.admin.resources.meetings.view', $meeting),
+                'url' => match (true) {
+                    ! $this->opens(MeetingResource::class) => null,
+                    $user->can('update', $meeting) => route('filament.admin.resources.meetings.edit', $meeting),
+                    default => route('filament.admin.resources.meetings.view', $meeting),
+                },
             ]);
 
         // Kegiatan unit (pelatihan, sosialisasi, dsb.) tampil bersama rapat di agenda.
@@ -85,7 +88,7 @@ class AgendaRoomsWidget extends Widget
                 'location' => $activity->placeName(),
                 'meta' => $activity->unit?->name ?? 'Kegiatan unit',
                 'state' => $this->bookingState($activity),
-                'url' => AgendaResource::getUrl('view', ['record' => $activity]),
+                'url' => $this->opens(AgendaResource::class) ? AgendaResource::getUrl('view', ['record' => $activity]) : null,
             ]);
 
         $agenda = $meetings->concat($activities)
@@ -140,7 +143,9 @@ class AgendaRoomsWidget extends Widget
             'hourMarks' => range(self::DAY_START, self::DAY_END, 3),
             'hourSpan' => self::DAY_END - self::DAY_START,
             'dayStartHour' => self::DAY_START,
-            'roomsUrl' => MeetingLocationResource::canViewAny() ? MeetingLocationResource::getUrl() : null,
+            'roomsUrl' => $this->opens(MeetingLocationResource::class) ? MeetingLocationResource::getUrl() : null,
+            'activitiesUrl' => $this->opens(AgendaResource::class) ? AgendaResource::getUrl() : null,
+            'meetingsUrl' => $this->opens(MeetingResource::class) ? MeetingResource::getUrl() : null,
         ];
     }
 

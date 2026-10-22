@@ -17,8 +17,7 @@
 
         <div class="dsh-modules">
             @foreach ($modules as $module)
-                <a href="{{ $module['url'] }}"
-                   @unless (str_starts_with($module['url'], '#')) wire:navigate @endunless
+                <x-dsh-link :href="$module['url']"
                    class="dsh-module dsh-tone-{{ $module['key'] }}">
                     <div class="dsh-module-top">
                         <span class="dsh-module-icon">
@@ -34,7 +33,7 @@
                     </div>
                     <div class="dsh-module-unit">{{ $module['unit'] }}</div>
                     <div class="dsh-module-detail" title="{{ $module['detail'] }}">{{ $module['detail'] }}</div>
-                </a>
+                </x-dsh-link>
             @endforeach
         </div>
     </section>

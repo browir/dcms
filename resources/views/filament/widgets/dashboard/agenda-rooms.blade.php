@@ -8,8 +8,12 @@
                     <h3 id="dsh-agenda-title" class="dsh-card-title">Agenda Rapat & Kegiatan</h3>
                     <p class="dsh-card-sub">Hari ini dan 7 hari ke depan</p>
                 </div>
-                <a href="{{ route('filament.admin.resources.kegiatan.index') }}" wire:navigate class="dsh-link">Kegiatan</a>
-                <a href="{{ route('filament.admin.resources.meetings.index') }}" wire:navigate class="dsh-link">Rapat</a>
+                @if ($activitiesUrl)
+                    <a href="{{ $activitiesUrl }}" wire:navigate class="dsh-link">Kegiatan</a>
+                @endif
+                @if ($meetingsUrl)
+                    <a href="{{ $meetingsUrl }}" wire:navigate class="dsh-link">Rapat</a>
+                @endif
             </header>
 
             @forelse ($agenda as $day => $items)
@@ -18,7 +22,7 @@
                     <ul class="dsh-list">
                         @foreach ($items as $item)
                             <li>
-                                <a href="{{ $item['url'] }}" wire:navigate class="dsh-agenda-item dsh-state-{{ $item['state'] }}">
+                                <x-dsh-link :href="$item['url']" class="dsh-agenda-item dsh-state-{{ $item['state'] }}">
                                     <span class="dsh-agenda-time">{{ $item['time'] }}</span>
                                     <span class="dsh-agenda-body">
                                         <span class="dsh-item-title">
@@ -36,7 +40,7 @@
                                     <span class="dsh-chip dsh-chip-{{ $item['state'] }}">
                                         {{ ['ongoing' => 'Berlangsung', 'done' => 'Selesai', 'scheduled' => 'Terjadwal'][$item['state']] }}
                                     </span>
-                                </a>
+                                </x-dsh-link>
                             </li>
                         @endforeach
                     </ul>

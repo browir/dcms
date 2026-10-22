@@ -6,57 +6,25 @@ $isAuthPage = ! auth()->check() || request()->is('*/login', '*/register', 'login
 
 @if (! $isAuthPage)
 @php
-$panelPath = request()->segment(1) ?: 'admin';
-
-// Explicit absolute URLs
-$dashUrl = url("/{$panelPath}");
-$docUrl = ($panelPath === 'reviewer') ? url("/reviewer/review-documents") : url("/{$panelPath}/documents");
-$meetingUrl = url("/{$panelPath}/meetings");
-$profileUrl = url("/{$panelPath}/profile");
-
-// Active State Checks
-$isDashActive = ($currentPath === $panelPath || $currentPath === "{$panelPath}/");
-$isDocActive = str_contains($currentPath, 'documents') && !str_contains($currentPath, 'create');
-$isMeetingActive = str_contains($currentPath, 'meetings');
-$isMenuActive = false; // menu button is never "active" like a page
+// Hanya tujuan yang boleh diakses user (lihat App\Support\MobileNavigation).
+$bottomBarItems = \App\Support\MobileNavigation::bottomBar();
 @endphp
 
 {{-- Compact Mobile Bottom Navigation Bar --}}
 <nav class="dcms-mobile-bottom-bar" aria-label="Navigasi Bawah Mobile">
     <div class="dcms-mbb-container">
-        {{-- 1. Dashboard --}}
-        <a href="{{ $dashUrl }}" onclick="window.location.href='{{ $dashUrl }}'; return false;" class="dcms-mbb-item {{ $isDashActive ? 'active' : '' }}">
-            <div class="dcms-mbb-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="{{ $isDashActive ? '2.5' : '1.8' }}">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-                </svg>
-            </div>
-            <span class="dcms-mbb-label">Beranda</span>
-        </a>
+        @foreach ($bottomBarItems as $item)
+            <a href="{{ $item['url'] }}" class="dcms-mbb-item {{ $item['active'] ? 'active' : '' }}" @if ($item['active']) aria-current="page" @endif>
+                <div class="dcms-mbb-icon">
+                    @include('filament.mobile-menu-icon', ['icon' => $item['icon'], 'color' => 'currentColor'])
+                </div>
+                <span class="dcms-mbb-label">{{ $item['label'] }}</span>
+            </a>
+        @endforeach
 
-        {{-- 2. Manajemen Dokumen --}}
-        <a href="{{ $docUrl }}" onclick="window.location.href='{{ $docUrl }}'; return false;" class="dcms-mbb-item {{ $isDocActive ? 'active' : '' }}">
-            <div class="dcms-mbb-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="{{ $isDocActive ? '2.5' : '1.8' }}">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                </svg>
-            </div>
-            <span class="dcms-mbb-label">Dokumen</span>
-        </a>
-
-        {{-- 3. Rapat --}}
-        <a href="{{ $meetingUrl }}" onclick="window.location.href='{{ $meetingUrl }}'; return false;" class="dcms-mbb-item {{ $isMeetingActive ? 'active' : '' }}">
-            <div class="dcms-mbb-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="{{ $isMeetingActive ? '2.5' : '1.8' }}">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 9v7.5" />
-                </svg>
-            </div>
-            <span class="dcms-mbb-label">Rapat</span>
-        </a>
-
-        {{-- 4. Menu --}}
+        {{-- Menu --}}
         <button type="button"
-                class="dcms-mbb-item {{ $isMenuActive ? 'active' : '' }}"
+                class="dcms-mbb-item"
                 onclick="dcmsOpenMenu()"
                 aria-label="Buka Menu">
             <div class="dcms-mbb-icon">
@@ -241,6 +209,10 @@ $isMenuActive = false; // menu button is never "active" like a page
         .dcms-mbb-icon svg {
             width: 18px !important;
             height: 18px !important;
+        }
+
+        .dcms-mbb-item.active .dcms-mbb-icon svg {
+            stroke-width: 2.5 !important;
         }
 
         .dcms-mbb-label {

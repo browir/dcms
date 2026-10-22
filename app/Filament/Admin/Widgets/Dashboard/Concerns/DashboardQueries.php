@@ -23,6 +23,19 @@ trait DashboardQueries
         return Auth::user();
     }
 
+    /**
+     * Boleh membuka halaman resource/page ini? Link di Beranda hanya diberikan kalau ya,
+     * supaya user tidak diarahkan ke halaman 403.
+     *
+     * @param  class-string  $target  Resource atau Page Filament
+     */
+    protected function opens(string $target): bool
+    {
+        static $cache = [];
+
+        return $cache[Auth::id().$target] ??= $target::canAccess();
+    }
+
     protected function seesAllCompanies(): bool
     {
         $user = $this->currentUser();

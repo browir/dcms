@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Widgets\Dashboard;
 
 use App\Filament\Admin\Resources\Documents\DocumentResource;
+use App\Filament\Admin\Resources\Meetings\MeetingResource;
 use App\Filament\Admin\Widgets\Dashboard\Concerns\DashboardQueries;
 use App\Models\Document;
 use App\Models\LetterNumber;
@@ -48,9 +49,11 @@ class FollowUpWidget extends Widget
                     .' · Notulis: '.($meeting->notulis?->name ?? 'belum ditentukan'),
                 'age' => $meeting->date_time->locale('id')->diffForHumans(),
                 'mine' => $meeting->notulis_id === $user->id,
-                'url' => $user->can('update', $meeting)
-                    ? route('filament.admin.resources.meetings.edit', $meeting)
-                    : route('filament.admin.resources.meetings.view', $meeting),
+                'url' => match (true) {
+                    ! $this->opens(MeetingResource::class) => null,
+                    $user->can('update', $meeting) => route('filament.admin.resources.meetings.edit', $meeting),
+                    default => route('filament.admin.resources.meetings.view', $meeting),
+                },
             ]);
 
         $recentMinutes = $this->meetingsWithMinutes()
@@ -62,7 +65,7 @@ class FollowUpWidget extends Widget
                 'meta' => $meeting->date_time->locale('id')->isoFormat('D MMM YYYY')
                     .($meeting->doc_number ? ' · '.$meeting->doc_number : ''),
                 'actions' => count($meeting->action_items ?? []),
-                'url' => route('filament.admin.resources.meetings.view', $meeting),
+                'url' => $this->opens(MeetingResource::class) ? route('filament.admin.resources.meetings.view', $meeting) : null,
             ]);
 
         $documentsQuery = $this->documentsNeedingAction();
@@ -81,7 +84,7 @@ class FollowUpWidget extends Widget
                     Document::STATUS_PENDING_DIREKTUR => 'Menunggu Direktur',
                     default => ucfirst($document->status),
                 },
-                'url' => route('filament.admin.resources.documents.view', $document),
+                'url' => $this->opens(DocumentResource::class) ? route('filament.admin.resources.documents.view', $document) : null,
             ]);
 
         $expiring = Document::query()->access()
@@ -97,7 +100,7 @@ class FollowUpWidget extends Widget
                 'when' => $document->expires_at->isPast()
                     ? 'Kedaluwarsa '.$document->expires_at->locale('id')->diffForHumans()
                     : 'Berakhir '.$document->expires_at->locale('id')->isoFormat('D MMM YYYY'),
-                'url' => route('filament.admin.resources.documents.view', $document),
+                'url' => $this->opens(DocumentResource::class) ? route('filament.admin.resources.documents.view', $document) : null,
             ]);
 
         // Nomor surat yang diambil user ini tapi dokumen resminya belum diisi.
@@ -109,7 +112,9 @@ class FollowUpWidget extends Widget
             ->map(fn (LetterNumber $letter) => [
                 'number' => $letter->nomor,
                 'title' => $letter->judul_surat,
-                'url' => DocumentResource::getUrl('create', ['nomor_surat' => $letter->id]),
+                'url' => $this->opens(DocumentResource::class) && DocumentResource::canCreate()
+                    ? DocumentResource::getUrl('create', ['nomor_surat' => $letter->id])
+                    : null,
             ]);
 
         return [
