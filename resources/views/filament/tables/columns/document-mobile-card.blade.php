@@ -105,10 +105,12 @@
                     <span>Proses</span>
                 </button>
             @endif
-            <a href="{{ \App\Filament\Admin\Resources\Documents\DocumentResource::getUrl('view', ['record' => $record->id]) }}" x-data="{}" x-on:click="$event.stopPropagation()" title="Detail Dokumen" style="display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 10px;height:30px;border-radius:9999px;border:1px solid #3b82f6;color:#2563eb;background:#fff;font-size:11px;font-weight:700;text-decoration:none;position:relative;z-index:20;flex-shrink:0;">
+            {{-- Bukan <a>: kolom ini sudah dibungkus link baris oleh Filament (link di dalam link merusak
+                 layout kartu). Klik diteruskan ke link baris, yang membuka halaman detail. --}}
+            <span title="Detail Dokumen" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 10px;height:30px;border-radius:9999px;border:1px solid #3b82f6;color:#2563eb;background:#fff;font-size:11px;font-weight:700;text-decoration:none;position:relative;z-index:20;flex-shrink:0;">
                 <svg style="width:13px;height:13px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                 <span>Detail</span>
-            </a>
+            </span>
 
             @php
                 $isBookmarked = (int) ($record->is_bookmarked ?? 0) > 0;

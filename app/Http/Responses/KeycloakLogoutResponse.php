@@ -24,6 +24,8 @@ class KeycloakLogoutResponse extends LogoutResponse
         return redirect()->away(Socialite::driver('keycloak')->getLogoutUrl(
             url(config('keycloak-sso.routes.redirect_after_logout', '/admin/login')),
             config('keycloak-sso.client_id'),
+            // id_token_hint: Keycloak langsung logout & kembali ke DCMS tanpa halaman konfirmasi.
+            $request->attributes->get('keycloak_id_token'),
         ));
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Http\Responses\KeycloakLogoutResponse;
+use App\Support\Sso\KeycloakProvider;
 use App\Support\Sso\KeycloakUserSync;
 use Filament\Actions\Action;
 use Filament\Auth\Http\Responses\Contracts\LogoutResponse as LogoutResponseContract;
@@ -13,6 +14,7 @@ use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use NotificationChannels\WebPush\WebPushServiceProvider;
+use SocialiteProviders\Manager\SocialiteWasCalled;
 use Syifa\KeycloakSso\Events\KeycloakLoginSucceeded;
 
 class AppServiceProvider extends ServiceProvider
@@ -55,8 +57,13 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(KeycloakLoginSucceeded::class, KeycloakUserSync::class);
 
         // Logout dari sesi SSO juga mengakhiri sesi di Keycloak (lihat KeycloakLogoutResponse).
+        // Driver keycloak versi DCMS (simpan id_token) — didaftarkan setelah listener package, jadi menimpanya.
+        Event::listen(SocialiteWasCalled::class, function (SocialiteWasCalled $event): void {
+            $event->extendSocialite('keycloak', KeycloakProvider::class);
+        });
         Event::listen(Logout::class, function (): void {
             request()->attributes->set('keycloak_sso_logout', (bool) session('keycloak.sso'));
+            request()->attributes->set('keycloak_id_token', session('keycloak.id_token'));
         });
         $this->app->bind(LogoutResponseContract::class, KeycloakLogoutResponse::class);
     }

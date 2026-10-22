@@ -1,4 +1,4 @@
-﻿<x-filament-widgets::widget>
+<x-filament-widgets::widget>
 <div class="dms-wrap">
     <div class="dms-grid">
 
