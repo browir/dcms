@@ -34,7 +34,8 @@ class RoleAccessTest extends TestCase
     {
         parent::setUp();
 
-        // Migration sync_role_permissions sudah menjalankan RoleAccess::sync().
+        // Di server izin role diatur manual lewat Peran & Hak Akses; di test pakai set dasar.
+        RoleAccess::sync();
         $this->company = Company::create(['name' => 'PT Syifa Global Group', 'code' => 'SYIFA', 'kode_surat' => 'SGG']);
         $this->department = Department::create(['name' => 'Umum', 'code' => 'UMM', 'company_id' => $this->company->id]);
         $this->unit = Unit::create(['name' => 'Kepegawaian', 'prefix' => '2', 'department_id' => $this->department->id]);
