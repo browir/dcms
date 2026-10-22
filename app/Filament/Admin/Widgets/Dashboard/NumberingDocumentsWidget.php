@@ -8,8 +8,8 @@ use App\Filament\Admin\Resources\LetterNumbers\LetterNumberResource;
 use App\Filament\Admin\Widgets\Dashboard\Concerns\DashboardQueries;
 use App\Models\Document;
 use App\Models\LetterNumber;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\Widget;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -20,18 +20,20 @@ class NumberingDocumentsWidget extends Widget
 {
     use DashboardQueries;
 
+    // Tampil-tidaknya widget diatur per role di Peran & Hak Akses → Widget (View:<NamaWidget>).
+    use HasWidgetShield;
+
     protected string $view = 'filament.widgets.dashboard.numbering-documents';
+
+    /** Nama widget di Peran & Hak Akses → Widget. */
+    public function getHeading(): string
+    {
+        return 'Beranda: Penomoran Surat & Statistik Dokumen';
+    }
 
     protected int|string|array $columnSpan = 'full';
 
     protected static ?int $sort = 40;
-
-    protected static bool $isDiscovered = false;
-
-    public static function canView(): bool
-    {
-        return Auth::check();
-    }
 
     protected function getViewData(): array
     {

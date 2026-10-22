@@ -5,17 +5,21 @@ namespace App\Filament\Admin\Pages;
 use App\Filament\Admin\Resources\Documents\Tables\DocumentsTable;
 use App\Models\Document;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Pages\Page;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use UnitEnum;
 
 class MyBookmarks extends Page implements HasTable
 {
+    // Akses diatur di Peran & Hak Akses → Halaman (View:MyBookmarks).
+    use HasPageShield;
     use InteractsWithTable;
 
     protected static string|BackedEnum|null $navigationIcon = null;
@@ -44,7 +48,7 @@ class MyBookmarks extends Page implements HasTable
             return null;
         }
 
-        $count = \Illuminate\Support\Facades\Cache::remember(
+        $count = Cache::remember(
             'nav_badge_bookmarks_'.$userId,
             30,
             fn () => DB::table('document_bookmarks')->where('user_id', $userId)->count()

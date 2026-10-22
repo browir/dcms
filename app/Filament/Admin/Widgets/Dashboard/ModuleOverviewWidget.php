@@ -12,8 +12,8 @@ use App\Filament\Admin\Widgets\Dashboard\Concerns\DashboardQueries;
 use App\Models\Document;
 use App\Models\LetterNumber;
 use App\Models\Meeting;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\Widget;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * Kartu ringkasan lima modul DCMS: penjadwalan rapat, notulensi,
@@ -23,18 +23,20 @@ class ModuleOverviewWidget extends Widget
 {
     use DashboardQueries;
 
+    // Tampil-tidaknya widget diatur per role di Peran & Hak Akses → Widget (View:<NamaWidget>).
+    use HasWidgetShield;
+
     protected string $view = 'filament.widgets.dashboard.module-overview';
+
+    /** Nama widget di Peran & Hak Akses → Widget. */
+    public function getHeading(): string
+    {
+        return 'Beranda: Ringkasan Layanan';
+    }
 
     protected int|string|array $columnSpan = 'full';
 
     protected static ?int $sort = 10;
-
-    protected static bool $isDiscovered = false;
-
-    public static function canView(): bool
-    {
-        return Auth::check();
-    }
 
     protected function getPollingInterval(): ?string
     {

@@ -3,15 +3,18 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Support\Branding;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class AppSettings extends Page
 {
+    // Akses diatur di Peran & Hak Akses → Halaman (View:AppSettings).
+    use HasPageShield;
+
     protected static string|\BackedEnum|null $navigationIcon = null;
 
     protected static string|\UnitEnum|null $navigationGroup = 'Pengaturan';
@@ -23,16 +26,6 @@ class AppSettings extends Page
     protected static ?string $title = 'Pengaturan Aplikasi';
 
     protected string $view = 'filament.admin.pages.app-settings';
-
-    public static function canAccess(): bool
-    {
-        return Auth::user()?->hasRole('super_admin') ?? false;
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return Auth::user()?->hasRole('super_admin') ?? false;
-    }
 
     public function logoVersion(): int
     {

@@ -11,7 +11,9 @@ use App\Notifications\DocumentExpiryReminderNotification;
 use App\Notifications\DocumentSubmittedNotification;
 use App\Notifications\MandatoryDocumentReminderNotification;
 use App\Notifications\MeetingReminderNotification;
+use App\Notifications\PersonalReminderNotification;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification as FilamentNotification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
@@ -38,7 +40,7 @@ class ReminderHub extends Page
     protected function getHeaderActions(): array
     {
         return [
-            \Filament\Actions\Action::make('guide')
+            Action::make('guide')
                 ->label('Panduan Pusat Pengingat')
                 ->icon('heroicon-o-information-circle')
                 ->color('info')
@@ -128,7 +130,7 @@ class ReminderHub extends Page
         }
 
         try {
-            $user->notify(new \App\Notifications\PersonalReminderNotification(
+            $user->notify(new PersonalReminderNotification(
                 trim($this->personalTitle),
                 trim($this->personalNotes) ?: 'Tidak ada catatan tambahan.'
             ));

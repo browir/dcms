@@ -3,6 +3,12 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Models\Document;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\ForceDeleteAction;
+use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\RestoreAction;
+use Filament\Actions\RestoreBulkAction;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -11,6 +17,8 @@ use Filament\Tables\Table;
 
 class RecycleBin extends Page implements HasTable
 {
+    // Akses diatur di Peran & Hak Akses → Halaman (View:RecycleBin).
+    use HasPageShield;
     use InteractsWithTable;
 
     protected static string|\BackedEnum|null $navigationIcon = null;
@@ -22,14 +30,6 @@ class RecycleBin extends Page implements HasTable
     protected static ?string $title = 'Recycle Bin';
 
     protected string $view = 'filament.admin.pages.recycle-bin';
-
-    public static function canAccess(): bool
-    {
-        /** @var \App\Models\User|null $user */
-        $user = \Illuminate\Support\Facades\Auth::user();
-
-        return $user?->hasRole(['super_admin', 'direktur', 'kabid']) ?? false;
-    }
 
     public function table(Table $table): Table
     {
@@ -57,19 +57,19 @@ class RecycleBin extends Page implements HasTable
                     ->visibleFrom('md'),
             ])
             ->actions([
-                \Filament\Actions\RestoreAction::make()
+                RestoreAction::make()
                     ->label('Pulihkan')
                     ->successNotificationTitle('Dokumen dipulihkan'),
-                \Filament\Actions\ForceDeleteAction::make()
+                ForceDeleteAction::make()
                     ->label('Hapus Permanen')
                     ->successNotificationTitle('Dokumen dihapus permanen'),
             ])
             ->bulkActions([
-                \Filament\Actions\BulkActionGroup::make([
-                    \Filament\Actions\RestoreBulkAction::make()
+                BulkActionGroup::make([
+                    RestoreBulkAction::make()
                         ->label('Pulihkan')
                         ->successNotificationTitle('Dokumen yang dipilih telah dipulihkan'),
-                    \Filament\Actions\ForceDeleteBulkAction::make()
+                    ForceDeleteBulkAction::make()
                         ->label('Hapus Permanen')
                         ->successNotificationTitle('Dokumen yang dipilih telah dihapus permanen'),
                 ]),

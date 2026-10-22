@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Widgets;
 use App\Filament\Admin\Resources\Agendas\AgendaResource;
 use App\Models\Agenda;
 use App\Models\Meeting;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Notifications\Notification;
 use Guava\Calendar\Enums\CalendarViewType;
 use Guava\Calendar\Filament\CalendarWidget;
@@ -18,6 +19,9 @@ use Illuminate\Support\Collection;
 
 class MyCalendarWidget extends CalendarWidget
 {
+    // Tampil-tidaknya widget diatur per role di Peran & Hak Akses → Widget (View:MyCalendarWidget).
+    use HasWidgetShield;
+
     protected \Illuminate\Support\HtmlString|string|bool|null $heading = 'Kalender Rapat & Kegiatan';
 
     protected static ?int $sort = 50;

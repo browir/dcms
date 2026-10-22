@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Pages;
 
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Components\DatePicker;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
@@ -15,6 +16,8 @@ use Spatie\Activitylog\Models\Activity;
 
 class AuditTrail extends Page implements HasTable
 {
+    // Akses diatur di Peran & Hak Akses → Halaman (View:AuditTrail).
+    use HasPageShield;
     use InteractsWithTable;
 
     protected static string|\BackedEnum|null $navigationIcon = null;
@@ -26,14 +29,6 @@ class AuditTrail extends Page implements HasTable
     protected static ?string $title = 'Audit Trail';
 
     protected string $view = 'filament.admin.pages.audit-trail';
-
-    public static function canAccess(): bool
-    {
-        /** @var \App\Models\User|null $user */
-        $user = \Illuminate\Support\Facades\Auth::user();
-
-        return $user?->hasRole(['super_admin', 'direktur', 'kabid']) ?? false;
-    }
 
     public function table(Table $table): Table
     {

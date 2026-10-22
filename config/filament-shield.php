@@ -1,5 +1,11 @@
 <?php
 
+use App\Filament\Admin\Pages\ReminderHub;
+use BezhanSalleh\FilamentShield\Resources\Roles\RoleResource;
+use Filament\Pages\Dashboard;
+use Filament\Widgets\AccountWidget;
+use Filament\Widgets\FilamentInfoWidget;
+
 return [
 
     /*
@@ -102,6 +108,9 @@ return [
         'separator' => ':',
         'case' => 'pascal',
         'generate' => true,
+        // Izin custom dipakai kode dengan nama snake_case (mis. can('view_all_companies_data')).
+        // Tanpa ini Shield mengubahnya jadi PascalCase, sehingga centang di Peran & Hak Akses tidak berpengaruh.
+        'format_custom_permission_keys' => false,
     ],
 
     /*
@@ -172,7 +181,7 @@ return [
     'resources' => [
         'subject' => 'model',
         'manage' => [
-            \BezhanSalleh\FilamentShield\Resources\Roles\RoleResource::class => [
+            RoleResource::class => [
                 'viewAny',
                 'view',
                 'create',
@@ -200,7 +209,11 @@ return [
         'subject' => 'class',
         'prefix' => 'view',
         'exclude' => [
-            \Filament\Pages\Dashboard::class,
+            Dashboard::class,
+            // Beranda selalu terbuka untuk user login; isinya diatur per widget.
+            App\Filament\Admin\Pages\Dashboard::class,
+            // Diatur izin custom access_reminder_hub.
+            ReminderHub::class,
         ],
     ],
 
@@ -219,8 +232,8 @@ return [
         'subject' => 'class',
         'prefix' => 'view',
         'exclude' => [
-            \Filament\Widgets\AccountWidget::class,
-            \Filament\Widgets\FilamentInfoWidget::class,
+            AccountWidget::class,
+            FilamentInfoWidget::class,
         ],
     ],
 
@@ -236,17 +249,20 @@ return [
     */
 
     'custom_permissions' => [
-        'view_any_company_participants',
-        'view_all_companies_data',
-        'view_own_company_data',
-        'edit_other_documents',
-        'direct_approve_document',
-        'access_reminder_hub',
-        'send_mandatory_read_reminder',
-        'create_personal_reminder',
-        'create_own_reminder',
-        'send_meeting_reminder',
-        'send_expiry_reminder',
+        'view_any_company_participants' => 'Undang peserta dari perusahaan lain',
+        'view_all_companies_data' => 'Lihat data semua perusahaan',
+        'view_own_company_data' => 'Lihat data perusahaan sendiri',
+        'edit_other_documents' => 'Ubah dokumen milik orang lain',
+        'direct_approve_document' => 'Terbitkan dokumen langsung (tanpa review)',
+        'review_document' => 'Review dokumen',
+        'approve_document_kabid' => 'ACC dokumen tingkat Kabid',
+        'approve_document_direktur' => 'ACC dokumen tingkat Direktur',
+        'access_reminder_hub' => 'Buka Pusat Pengingat',
+        'send_mandatory_read_reminder' => 'Kirim pengingat wajib baca',
+        'create_personal_reminder' => 'Buat pengingat pribadi',
+        'create_own_reminder' => 'Buat pengingat sendiri',
+        'send_meeting_reminder' => 'Kirim pengingat rapat',
+        'send_expiry_reminder' => 'Kirim pengingat masa berlaku',
     ],
 
     /*

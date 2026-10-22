@@ -4,13 +4,21 @@ namespace App\Filament\Admin\Pages;
 
 use App\Models\Document;
 use App\Models\DocumentReadAcknowledgment;
+use App\Models\User;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use UnitEnum;
 
 class ComplianceHub extends Page
 {
+    // Akses diatur di Peran & Hak Akses → Halaman (View:ComplianceHub).
+    use HasPageShield;
+
     protected static string|BackedEnum|null $navigationIcon = null;
 
     protected static string|UnitEnum|null $navigationGroup = 'Dokumen';
@@ -29,7 +37,7 @@ class ComplianceHub extends Page
     protected function getHeaderActions(): array
     {
         return [
-            \Filament\Actions\Action::make('guide')
+            Action::make('guide')
                 ->label('Panduan Compliance Hub')
                 ->icon('heroicon-o-information-circle')
                 ->color('info')
@@ -44,13 +52,13 @@ class ComplianceHub extends Page
 
     public static function getNavigationBadge(): ?string
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = Auth::user();
         if (! $user) {
             return null;
         }
 
-        $unread = \Illuminate\Support\Facades\Cache::remember(
+        $unread = Cache::remember(
             'nav_badge_compliance_unread_'.$user->id,
             30,
             function () {
@@ -76,7 +84,7 @@ class ComplianceHub extends Page
 
     public static function getMandatoryDocuments()
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = Auth::user();
 
         return Document::query()
@@ -100,7 +108,7 @@ class ComplianceHub extends Page
 
     public function acknowledge(int $documentId): void
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = Auth::user();
 
         if (! $user) {
@@ -110,7 +118,7 @@ class ComplianceHub extends Page
         // Validasi ketersediaan dan relevansi dokumen
         $doc = Document::query()->mandatoryForUser($user)->find($documentId);
         if (! $doc) {
-            \Filament\Notifications\Notification::make()
+            Notification::make()
                 ->title('Dokumen Tidak Valid')
                 ->body('Dokumen ini tidak ditemukan atau tidak wajib dibaca untuk Anda.')
                 ->danger()
@@ -127,10 +135,10 @@ class ComplianceHub extends Page
         ]);
 
         // Hapus cache badge & widget
-        \Illuminate\Support\Facades\Cache::forget('nav_badge_compliance_unread_'.$user->id);
-        \Illuminate\Support\Facades\Cache::forget('widget_unread_compliance_'.$user->id);
+        Cache::forget('nav_badge_compliance_unread_'.$user->id);
+        Cache::forget('widget_unread_compliance_'.$user->id);
 
-        \Filament\Notifications\Notification::make()
+        Notification::make()
             ->title('Konfirmasi Kepatuhan Berhasil')
             ->body('Terima kasih. Pernyataan bahwa Anda telah membaca dokumen "'.$doc->title.'" telah berhasil dicatat.')
             ->success()

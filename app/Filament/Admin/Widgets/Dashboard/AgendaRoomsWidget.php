@@ -8,9 +8,9 @@ use App\Filament\Admin\Resources\Meetings\MeetingResource;
 use App\Filament\Admin\Widgets\Dashboard\Concerns\DashboardQueries;
 use App\Models\Agenda;
 use App\Models\Meeting;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * Agenda rapat 7 hari ke depan berdampingan dengan status pemakaian ruangan hari ini.
@@ -19,6 +19,9 @@ class AgendaRoomsWidget extends Widget
 {
     use DashboardQueries;
 
+    // Tampil-tidaknya widget diatur per role di Peran & Hak Akses → Widget (View:<NamaWidget>).
+    use HasWidgetShield;
+
     /** Rentang jam yang ditampilkan pada timeline ruangan. */
     private const DAY_START = 7;
 
@@ -26,16 +29,15 @@ class AgendaRoomsWidget extends Widget
 
     protected string $view = 'filament.widgets.dashboard.agenda-rooms';
 
+    /** Nama widget di Peran & Hak Akses → Widget. */
+    public function getHeading(): string
+    {
+        return 'Beranda: Agenda & Ruangan Rapat';
+    }
+
     protected int|string|array $columnSpan = 'full';
 
     protected static ?int $sort = 20;
-
-    protected static bool $isDiscovered = false;
-
-    public static function canView(): bool
-    {
-        return Auth::check();
-    }
 
     protected function getPollingInterval(): ?string
     {

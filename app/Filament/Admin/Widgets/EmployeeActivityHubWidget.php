@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\Meetings\MeetingResource;
 use App\Models\Document;
 use App\Models\Meeting;
 use App\Models\User;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\Widget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -13,16 +14,20 @@ use Illuminate\Support\Facades\Auth;
 
 class EmployeeActivityHubWidget extends Widget
 {
+    // Tampil-tidaknya widget diatur per role di Peran & Hak Akses → Widget (View:<NamaWidget>).
+    use HasWidgetShield;
+
     protected string $view = 'filament.widgets.employee-activity-hub';
+
+    /** Nama widget di Peran & Hak Akses → Widget. */
+    public function getHeading(): string
+    {
+        return 'Beranda: Sapaan & Agenda Terdekat';
+    }
 
     protected int|string|array $columnSpan = 'full';
 
     protected static ?int $sort = 5;
-
-    public static function canView(): bool
-    {
-        return Auth::check();
-    }
 
     protected function getViewData(): array
     {
