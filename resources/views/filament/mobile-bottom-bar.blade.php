@@ -14,12 +14,26 @@ $bottomBarItems = \App\Support\MobileNavigation::bottomBar();
 <nav class="dcms-mobile-bottom-bar" aria-label="Navigasi Bawah Mobile">
     <div class="dcms-mbb-container">
         @foreach ($bottomBarItems as $item)
-            <a href="{{ $item['url'] }}" class="dcms-mbb-item {{ $item['active'] ? 'active' : '' }}" @if ($item['active']) aria-current="page" @endif>
-                <div class="dcms-mbb-icon">
-                    @include('filament.mobile-menu-icon', ['icon' => $item['icon'], 'color' => 'currentColor'])
-                </div>
-                <span class="dcms-mbb-label">{{ $item['label'] }}</span>
-            </a>
+            @if ($item['options'])
+                {{-- Punya beberapa tujuan (mis. Dokumen): tampilkan pilihan dulu --}}
+                <button type="button"
+                        class="dcms-mbb-item {{ $item['active'] ? 'active' : '' }}"
+                        onclick="dcmsToggleSheet('dcms-sheet-{{ $loop->index }}')"
+                        aria-haspopup="dialog"
+                        aria-controls="dcms-sheet-{{ $loop->index }}">
+                    <div class="dcms-mbb-icon">
+                        @include('filament.mobile-menu-icon', ['icon' => $item['icon'], 'color' => 'currentColor'])
+                    </div>
+                    <span class="dcms-mbb-label">{{ $item['label'] }}</span>
+                </button>
+            @else
+                <a href="{{ $item['url'] }}" class="dcms-mbb-item {{ $item['active'] ? 'active' : '' }}" @if ($item['active']) aria-current="page" @endif>
+                    <div class="dcms-mbb-icon">
+                        @include('filament.mobile-menu-icon', ['icon' => $item['icon'], 'color' => 'currentColor'])
+                    </div>
+                    <span class="dcms-mbb-label">{{ $item['label'] }}</span>
+                </a>
+            @endif
         @endforeach
 
         {{-- Menu --}}
@@ -36,6 +50,46 @@ $bottomBarItems = \App\Support\MobileNavigation::bottomBar();
         </button>
     </div>
 </nav>
+
+{{-- Pilihan untuk tombol bar bawah yang punya beberapa tujuan --}}
+@foreach ($bottomBarItems as $item)
+    @if ($item['options'])
+        <div id="dcms-sheet-{{ $loop->index }}" class="dcms-mbb-sheet" role="dialog" aria-modal="true" aria-label="Pilih {{ $item['label'] }}" hidden
+             onclick="if (event.target === this) dcmsToggleSheet(this.id)">
+            <div class="dcms-mbb-sheet-panel">
+                <div class="dcms-mbb-sheet-title">{{ $item['label'] }}</div>
+                @foreach ($item['options'] as $option)
+                    <a href="{{ $option['url'] }}" class="dcms-mbb-sheet-item {{ $option['active'] ? 'active' : '' }}">
+                        <span class="dcms-mbb-sheet-icon" style="background: {{ $option['color'] }}1a; color: {{ $option['color'] }}">
+                            @include('filament.mobile-menu-icon', ['icon' => $option['icon'], 'color' => $option['color']])
+                        </span>
+                        <span class="dcms-mbb-sheet-text">
+                            <strong>{{ $option['label'] }}</strong>
+                            <small>{{ $option['description'] }}</small>
+                        </span>
+                        @if ($option['active'])
+                            <svg class="dcms-mbb-sheet-check" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+                        @endif
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    @endif
+@endforeach
+
+<script>
+    // Buka/tutup pilihan tombol bar bawah. Esc atau ketuk di luar panel untuk menutup.
+    window.dcmsToggleSheet = window.dcmsToggleSheet || function (id) {
+        var sheet = document.getElementById(id);
+        if (! sheet) return;
+        var open = sheet.hasAttribute('hidden');
+        document.querySelectorAll('.dcms-mbb-sheet').forEach(function (s) { s.setAttribute('hidden', ''); });
+        if (open) sheet.removeAttribute('hidden');
+    };
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') document.querySelectorAll('.dcms-mbb-sheet').forEach(function (s) { s.setAttribute('hidden', ''); });
+    });
+</script>
 
 {{-- Mobile Menu Overlay --}}
 @include('filament.mobile-menu-overlay')
@@ -228,5 +282,48 @@ $bottomBarItems = \App\Support\MobileNavigation::bottomBar();
             color: #0b2545 !important;
         }
     }
+
+    /* ── Pilihan tombol bar bawah (mis. Dokumen) — panel kecil di atas bar ── */
+    .dcms-mbb-sheet {
+        position: fixed; inset: 0 0 48px 0; z-index: 999998;
+        background: rgba(15, 23, 42, .32);
+        display: flex; align-items: flex-end; justify-content: center;
+        animation: dcms-sheet-fade .15s ease-out;
+    }
+    .dcms-mbb-sheet[hidden] { display: none; }
+    .dcms-mbb-sheet-panel {
+        width: calc(100% - 24px); max-width: 420px; margin-bottom: 10px;
+        background: #fff; border-radius: 16px; padding: 8px;
+        box-shadow: 0 -6px 30px rgba(15, 23, 42, .18);
+        animation: dcms-sheet-up .2s cubic-bezier(.16, 1, .3, 1);
+    }
+    .dcms-mbb-sheet-title {
+        padding: 6px 10px 8px; font-size: 11px; font-weight: 700; letter-spacing: .06em;
+        text-transform: uppercase; color: #94a3b8;
+    }
+    .dcms-mbb-sheet-item {
+        display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 12px;
+        text-decoration: none; color: #0f172a;
+    }
+    .dcms-mbb-sheet-item:active, .dcms-mbb-sheet-item.active { background: #f1f5f9; }
+    .dcms-mbb-sheet-icon {
+        flex: none; width: 38px; height: 38px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .dcms-mbb-sheet-icon svg { width: 20px; height: 20px; }
+    .dcms-mbb-sheet-text { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+    .dcms-mbb-sheet-text strong { font-size: 14px; font-weight: 600; }
+    .dcms-mbb-sheet-text small { font-size: 12px; color: #64748b; }
+    .dcms-mbb-sheet-check { flex: none; width: 18px; height: 18px; color: #2563eb; }
+    @keyframes dcms-sheet-fade { from { opacity: 0; } }
+    @keyframes dcms-sheet-up { from { transform: translateY(16px); opacity: 0; } }
+    @media (min-width: 768px) { .dcms-mbb-sheet { display: none !important; } }
+
+    html.dark .dcms-mbb-sheet { background: rgba(2, 6, 23, .55); }
+    html.dark .dcms-mbb-sheet-panel { background: #111a2e; box-shadow: 0 -6px 30px rgba(0, 0, 0, .5); }
+    html.dark .dcms-mbb-sheet-item { color: #e2e8f0; }
+    html.dark .dcms-mbb-sheet-item:active, html.dark .dcms-mbb-sheet-item.active { background: #1b2742; }
+    html.dark .dcms-mbb-sheet-text small { color: #94a3b8; }
+    html.dark .dcms-mbb-sheet-check { color: #60a5fa; }
 </style>
 @endif

@@ -79,6 +79,25 @@ class MobileNavigationTest extends TestCase
         $this->assertNotContains('Rapat', $labels);
     }
 
+    public function test_tombol_dokumen_menampilkan_pilihan_yang_boleh_dibuka(): void
+    {
+        $this->actingAs($this->user('admin', 'super_admin'));
+
+        $dokumen = collect(MobileNavigation::bottomBar())->firstWhere('label', 'Dokumen');
+        $this->assertSame(['Dokumen Resmi', 'Surat Keluar', 'Nomor Dokumen'], array_column($dokumen['options'], 'label'));
+        $this->assertStringContainsString('kelompok=surat_keluar', $dokumen['options'][1]['url']);
+    }
+
+    public function test_hanya_akses_surat_masuk_langsung_ke_surat_masuk(): void
+    {
+        Role::findOrCreate('penerima', 'web')->givePermissionTo(Permission::findOrCreate('ViewAny:IncomingLetter', 'web'));
+        $this->actingAs($this->user('penerima', 'penerima'));
+
+        $dokumen = collect(MobileNavigation::bottomBar())->firstWhere('label', 'Dokumen');
+        $this->assertSame([], $dokumen['options']);
+        $this->assertStringEndsWith('/admin/surat-masuk', $dokumen['url']);
+    }
+
     public function test_halaman_tetap_tampil_untuk_user_tanpa_izin(): void
     {
         $this->actingAs($this->user('staf'))

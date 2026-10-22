@@ -5,7 +5,10 @@ namespace App\Support;
 use App\Filament\Admin\Pages\MyBookmarks;
 use App\Filament\Admin\Resources\Agendas\AgendaResource;
 use App\Filament\Admin\Resources\Documents\DocumentResource;
+use App\Filament\Admin\Resources\IncomingLetters\IncomingLetterResource;
+use App\Filament\Admin\Resources\LetterNumbers\LetterNumberResource;
 use App\Filament\Admin\Resources\Meetings\MeetingResource;
+use App\Models\DocumentCategory;
 use Filament\Facades\Filament;
 use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
@@ -42,33 +45,71 @@ class MobileNavigation
     ];
 
     /**
-     * Tujuan utama di bar bawah (tombol Menu ditambahkan oleh view).
+     * Tujuan utama di bar bawah (tombol Menu ditambahkan oleh view). Item dengan `options`
+     * membuka pilihan dulu (mis. Dokumen → Dokumen Resmi / Surat Keluar / Surat Masuk).
      *
-     * @return array<int, array{label: string, url: string, icon: string, active: bool}>
+     * @return array<int, array{label: string, url: string, icon: string, active: bool, options: array<int, array{label: string, url: string, icon: string, color: string}>}>
      */
     public static function bottomBar(): array
     {
         $items = [
             ['label' => 'Beranda', 'url' => Filament::getUrl(), 'icon' => 'home', 'can' => true],
-            ['label' => 'Dokumen', 'resource' => DocumentResource::class, 'icon' => 'document'],
+            ['label' => 'Dokumen', 'icon' => 'document', 'options' => self::documentOptions()],
             ['label' => 'Rapat', 'resource' => MeetingResource::class, 'icon' => 'calendar'],
             ['label' => 'Kegiatan', 'resource' => AgendaResource::class, 'icon' => 'my_cal'],
         ];
 
         return collect($items)
-            ->filter(fn (array $item): bool => $item['can'] ?? $item['resource']::canAccess())
+            ->filter(fn (array $item): bool => isset($item['options']) ? $item['options'] !== [] : ($item['can'] ?? $item['resource']::canAccess()))
             ->map(function (array $item): array {
-                $url = isset($item['resource']) ? $item['resource']::getUrl() : $item['url'];
+                $options = $item['options'] ?? [];
+                // Hanya satu pilihan yang boleh dibuka → langsung ke halaman itu, tanpa pilihan.
+                $url = $options[0]['url'] ?? (isset($item['resource']) ? $item['resource']::getUrl() : $item['url']);
 
                 return [
                     'label' => $item['label'],
                     'url' => $url,
                     'icon' => $item['icon'],
-                    'active' => self::isActive($url, exact: ! isset($item['resource'])),
+                    'active' => $options
+                        ? collect($options)->contains('active', true)
+                        : self::isActive($url, exact: ! isset($item['resource'])),
+                    'options' => count($options) > 1 ? $options : [],
                 ];
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * Pilihan tombol Dokumen di bar bawah, hanya yang boleh dibuka user.
+     *
+     * @return array<int, array{label: string, url: string, icon: string, color: string, active: bool, description: string}>
+     */
+    public static function documentOptions(): array
+    {
+        $options = [];
+
+        if (DocumentResource::canAccess()) {
+            foreach (DocumentCategory::KELOMPOK as $kelompok => $label) {
+                $options[] = [
+                    ...self::item($label, $url = DocumentResource::getUrl('index', ['kelompok' => $kelompok])),
+                    'active' => self::isActive($url, exact: false) && request()->query('kelompok', DocumentCategory::KELOMPOK_DOKUMEN) === $kelompok,
+                    'description' => $kelompok === DocumentCategory::KELOMPOK_SURAT_KELUAR
+                        ? 'Surat resmi yang kita terbitkan'
+                        : 'SOP, SK, kebijakan, pedoman, formulir',
+                ];
+            }
+        }
+
+        if (IncomingLetterResource::canAccess()) {
+            $options[] = [...self::item('Surat Masuk', $url = IncomingLetterResource::getUrl()), 'active' => self::isActive($url, exact: false), 'description' => 'Surat dari pihak luar'];
+        }
+
+        if (LetterNumberResource::canAccess()) {
+            $options[] = [...self::item('Nomor Dokumen', $url = LetterNumberResource::getUrl()), 'active' => self::isActive($url, exact: false), 'description' => 'Ambil nomor sebelum membuat dokumen'];
+        }
+
+        return $options;
     }
 
     /**
