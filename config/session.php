@@ -32,7 +32,9 @@ return [
     |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
+    // DCMS: 8 jam (satu hari kerja) tanpa aktivitas. Lewat dari itu user "Ingat saya"
+    // otomatis masuk lagi lewat cookie remember (auth.guards.web.remember).
+    'lifetime' => (int) env('SESSION_LIFETIME', 480),
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 

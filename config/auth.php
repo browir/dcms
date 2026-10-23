@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\User;
+
 return [
 
     /*
@@ -39,6 +41,9 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            // Lama cookie "Ingat saya" (menit). Default 30 hari supaya notifikasi tetap jalan
+            // tanpa login berulang; logout / ganti password mengakhirinya lebih awal.
+            'remember' => (int) env('AUTH_REMEMBER_MINUTES', 43200),
         ],
     ],
 
@@ -62,7 +67,7 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', App\Models\User::class),
+            'model' => env('AUTH_MODEL', User::class),
         ],
 
         // 'users' => [

@@ -83,6 +83,10 @@ class AdminPanelProvider extends PanelProvider
             )
             ->renderHook(
                 'panels::body.end',
+                fn (): string => view('filament.session-expired-handler')->render()
+            )
+            ->renderHook(
+                'panels::body.end',
                 fn (): string => view('filament.mobile-bottom-bar')->render()
             )
             ->renderHook(

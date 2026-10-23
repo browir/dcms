@@ -24,7 +24,8 @@ class Login extends BaseLogin
             ->components([
                 $this->getLoginFormComponent(),
                 $this->getPasswordFormComponent(),
-                $this->getRememberFormComponent(),
+                // "Ingat saya" dicentang default: aplikasi notifikasi sebaiknya tidak sering logout sendiri.
+                $this->getRememberFormComponent()->default(true),
             ])
             ->statePath('data');
     }
