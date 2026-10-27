@@ -16,12 +16,18 @@ return new class extends Migration
     {
         Schema::table('companies', function (Blueprint $table) {
             // Kode penerbit di nomor surat (mis. SGG, RSUSM-BRB). Kosong = pakai `code`.
-            $table->string('kode_surat', 20)->nullable()->unique()->after('code');
+            if (!Schema::hasColumn('companies', 'kode_surat')) {
+                $table->string('kode_surat', 20)->nullable()->unique()->after('code');
+            }
         });
 
         Schema::table('documents', function (Blueprint $table) {
-            $table->string('jenis_surat', 10)->nullable()->after('category_id');
-            $table->date('tanggal_surat')->nullable()->index()->after('jenis_surat');
+            if (!Schema::hasColumn('documents', 'jenis_surat')) {
+                $table->string('jenis_surat', 10)->nullable()->after('category_id');
+            }
+            if (!Schema::hasColumn('documents', 'tanggal_surat')) {
+                $table->date('tanggal_surat')->nullable()->index()->after('jenis_surat');
+            }
         });
 
         // Counter nomor urut: satu urutan per (perusahaan, tahun tanggal surat),
