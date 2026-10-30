@@ -182,7 +182,7 @@ class EditMeeting extends EditRecord
 
         $notulisName = $record->notulis?->name ?? '-';
 
-        $contentFromEditor = (string) $record->content;
+        $contentFromEditor = $this->sanitizeEditorHtmlForPdf((string) $record->content);
         $actionItemsHtml = $this->buildActionItemsHtml($record);
 
         // Lampiran (Foto/Dokumentasi) — dibaca dari disk "public", tiap gambar dibungkus try/catch
@@ -260,9 +260,14 @@ class EditMeeting extends EditRecord
         .colon { width: 15px; text-align: left; }
 
         /* Style untuk tabel yang dibuat di Rich Editor agar rapi di PDF */
-        .content-main table { width: 100%; border-collapse: collapse; margin-top: 5px; page-break-inside: auto; }
+        .content-main { overflow-wrap: anywhere; }
+        .content-main table { width: 100% !important; max-width: 100%; border-collapse: collapse; margin-top: 5px; page-break-inside: auto; }
         .content-main table tr { page-break-inside: avoid; page-break-after: auto; }
-        .content-main table th, .content-main table td { border: 1px solid black; padding: 6px; vertical-align: top; }
+        /* overflow-wrap: anywhere = pengaman agar teks tanpa spasi (URL, kata sangat panjang)
+           dipatahkan, bukan membuat tabel melebar keluar halaman. */
+        .content-main table th, .content-main table td { border: 1px solid black; padding: 6px; vertical-align: top; overflow-wrap: anywhere; }
+        .content-main table th { overflow-wrap: break-word; }
+        .content-main table td p, .content-main table th p { margin: 0; }
         .content-main table th { background-color: #f2f2f2; font-weight: bold; text-align: center; }
         .content-main table thead { display: table-header-group; }
 
@@ -350,44 +355,109 @@ class EditMeeting extends EditRecord
             return '';
         }
 
-        $picNames = \App\Models\User::with(['company', 'department', 'unit'])
+        // Label PIC di PDF cukup nama lengkap + perusahaan.
+        $picNames = \App\Models\User::with('company')
             ->whereIn('id', $record->uniqueActionItemPicUserIds())
             ->get()
-            ->mapWithKeys(function ($u) {
-                $parts = array_filter([$u->company?->name, $u->department?->name, $u->unit?->name]);
-                $label = $parts ? $u->name.' — '.implode(' / ', $parts) : $u->name;
-
-                return [$u->id => $label];
-            });
+            ->mapWithKeys(fn ($u) => [
+                $u->id => $u->company?->name ? $u->name.' ('.$u->company->name.')' : $u->name,
+            ]);
 
         $rows = '';
         foreach (array_values($items) as $index => $item) {
-            $pembahasan = e((string) ($item['pembahasan'] ?? ''));
-            $actionPlan = e((string) ($item['action_plan'] ?? ''));
+            $pembahasan = $this->plainTextForPdf((string) ($item['pembahasan'] ?? ''));
+            $actionPlan = $this->plainTextForPdf((string) ($item['action_plan'] ?? ''));
+            // Satu PIC per baris agar kolom PIC tetap terbaca dan tidak memanjang ke bawah.
             $picLabel = collect((array) ($item['pic_ids'] ?? []))
-                ->map(fn ($id) => $picNames->get((int) $id, '-'))
-                ->implode(', ');
+                ->map(fn ($id) => $this->plainTextForPdf($picNames->get((int) $id, '-')))
+                ->implode('<br>');
 
             $rows .= "<tr>
                 <td style='text-align:center;'>".($index + 1)."</td>
                 <td>{$pembahasan}</td>
                 <td>{$actionPlan}</td>
-                <td>".e($picLabel ?: '-').'</td>
+                <td>".($picLabel ?: '-').'</td>
             </tr>';
         }
 
+        // table-layout: fixed + lebar persen → lebar kolom selalu pas satu halaman,
+        // tidak bergantung pada panjang isi teks.
         return "
-            <table width='100%' border='1' style='border-collapse: collapse; margin-top: 10px;'>
+            <table style='width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 10px;'>
                 <thead>
                     <tr style='background-color: #f2f2f2;'>
-                        <th style='width: 30px;'>NO</th>
-                        <th style='width: 180px;'>PEMBAHASAN</th>
-                        <th>ACTION PLAN</th>
-                        <th style='width: 100px;'>PIC</th>
+                        <th style='width: 6%;'>NO</th>
+                        <th style='width: 28%;'>PEMBAHASAN</th>
+                        <th style='width: 38%;'>ACTION PLAN</th>
+                        <th style='width: 28%;'>PIC</th>
                     </tr>
                 </thead>
                 <tbody>{$rows}</tbody>
             </table>
         ";
+    }
+
+    /**
+     * Escape teks biasa (dari Textarea) untuk PDF: normalisasi spasi & pertahankan baris baru.
+     */
+    protected function plainTextForPdf(string $text): string
+    {
+        return nl2br(e($this->normalizeSpaces($text)), false);
+    }
+
+    /**
+     * Rapikan HTML dari Rich Editor sebelum dirender dompdf: buang lebar kolom/tabel
+     * bawaan editor (hasil resize / paste dari Word) dan normalisasi spasi.
+     */
+    protected function sanitizeEditorHtmlForPdf(string $html): string
+    {
+        if (trim($html) === '') {
+            return '';
+        }
+
+        // <colgroup> dari editor menyimpan lebar kolom absolut (px) yang bisa melebihi halaman.
+        $html = preg_replace('#<colgroup\b[^>]*>.*?</colgroup>#is', '', $html) ?? $html;
+
+        // Hapus width/min-width inline pada elemen tabel.
+        $html = preg_replace_callback(
+            '#<(table|thead|tbody|tr|th|td|col)\b([^>]*)>#i',
+            function (array $m): string {
+                $attrs = preg_replace('#\s(width|data-colwidth)\s*=\s*("[^"]*"|\'[^\']*\'|\S+)#i', '', $m[2]) ?? $m[2];
+                $attrs = preg_replace_callback(
+                    '#\sstyle\s*=\s*("([^"]*)"|\'([^\']*)\')#i',
+                    function (array $s): string {
+                        $css = $s[2] !== '' ? $s[2] : ($s[3] ?? '');
+                        $css = trim(preg_replace('#(^|;)\s*(min-|max-)?width\s*:[^;]*#i', '$1', $css) ?? $css, ' ;');
+
+                        return $css === '' ? '' : ' style="'.$css.'"';
+                    },
+                    $attrs
+                ) ?? $attrs;
+
+                return '<'.$m[1].$attrs.'>';
+            },
+            $html
+        ) ?? $html;
+
+        // Paragraf kosong (<p>&nbsp;</p>) tetap dipertahankan sebagai baris kosong;
+        // &nbsp; di antara kata diganti spasi biasa agar teks bisa dilipat.
+        $html = preg_replace('#(?<=[^\s>;])(&nbsp;|&\#160;|\x{00A0})+(?=[^\s<&])#u', ' ', $html) ?? $html;
+
+        return $this->normalizeSpaces($html, keepNbsp: true);
+    }
+
+    /**
+     * Ganti spasi "tak terpatahkan" (umum dari copy-paste WhatsApp/Word) dengan spasi biasa.
+     * Tanpa ini dompdf menganggap satu kalimat utuh sebagai satu kata, sehingga kolom tabel
+     * melebar keluar halaman dan kolom lain (mis. PIC) terdorong/terpotong.
+     */
+    protected function normalizeSpaces(string $text, bool $keepNbsp = false): string
+    {
+        // Zero-width space / BOM: dibuang.
+        $text = preg_replace('/[\x{200B}\x{FEFF}]/u', '', $text) ?? $text;
+
+        $pattern = $keepNbsp ? '/[\x{2007}\x{202F}]/u' : '/[\x{00A0}\x{2007}\x{202F}]/u';
+
+        return preg_replace($pattern, ' ', $text) ?? $text;
     }
 }
