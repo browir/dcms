@@ -116,11 +116,6 @@
             No. Dok: {{ $record->doc_number }}
         </div>
     @endif
-    @if ($record->agenda)
-        <div style="margin-top:.55rem;font-size:.86rem;color:rgba(255,255,255,.82);max-width:52rem;line-height:1.55;">
-            {{ \Illuminate\Support\Str::limit($record->agenda, 180) }}
-        </div>
-    @endif
 
     <div style="height:1px;background:rgba(255,255,255,.15);margin:1.1rem 0;"></div>
 
