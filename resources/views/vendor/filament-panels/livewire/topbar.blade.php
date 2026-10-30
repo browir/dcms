@@ -284,6 +284,33 @@
                 pointer-events: none !important;
             }
         }
+        /* ── Reduced Motion: disable layout shifts, keep minimal opacity fade ── */
+        @media (prefers-reduced-motion: reduce) {
+            :root {
+                --dcms-open-text-dur:       0ms;
+                --dcms-open-icon-dur:       150ms;
+                --dcms-open-search-dur:     0ms;
+                --dcms-close-icon-dur:      150ms;
+                --dcms-close-search-dur:    0ms;
+                --dcms-close-text-dur:      0ms;
+            }
+            /* No width animation — instant snap */
+            .fi-global-search,
+            .fi-topbar-nav-groups .dcms-label-outer {
+                transition: opacity 150ms ease-out !important;
+            }
+            .dcms-search-active .fi-global-search,
+            .dcms-search-active .fi-topbar-nav-groups .dcms-label-outer {
+                transition: opacity 150ms ease-out !important;
+            }
+            /* Label: fade out instead of wipe */
+            .fi-topbar-nav-groups .fi-topbar-item-label {
+                transition: opacity 150ms ease-out !important;
+            }
+            .dcms-search-active .fi-topbar-nav-groups .fi-topbar-item-label {
+                opacity: 0 !important;
+            }
+        }
     </style>
 
     <nav class="fi-topbar">
@@ -464,6 +491,23 @@
                             $groupExtraTopbarAttributeBag = $group->getExtraTopbarAttributeBag();
                             $isGroupActive = $group->isActive();
                             $groupIcon = $group->getIcon();
+
+                            /*
+                             * Fallback icons for groups without a NavigationGroup icon.
+                             * (Groups that have items with icons cannot declare an icon via
+                             *  NavigationGroup::icon() — it triggers sidebar validation.)
+                             * This mapping assigns an icon purely at the topbar render layer.
+                             */
+                            if (blank($groupIcon)) {
+                                $groupIcon = match ($groupLabel) {
+                                    'Agenda'         => 'heroicon-o-queue-list',
+                                    'Administrasi'   => 'heroicon-o-building-office-2',
+                                    'Dokumen'        => 'heroicon-o-document-duplicate',
+                                    'Data Master'    => 'heroicon-o-circle-stack',
+                                    'Pengaturan'     => 'heroicon-o-cog-6-tooth',
+                                    default          => null,
+                                };
+                            }
                         @endphp
 
                         @if ($groupLabel)

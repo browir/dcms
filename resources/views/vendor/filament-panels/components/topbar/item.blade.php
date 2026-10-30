@@ -33,10 +33,12 @@
             @endif
         @else
             type="button"
+            aria-haspopup="true"
         @endif
         class="fi-topbar-item-btn"
         data-dcms-label="{{ strip_tags((string) $slot) }}"
         title="{{ strip_tags((string) $slot) }}"
+        aria-label="{{ strip_tags((string) $slot) }}"
     >
         {{-- Icon: always visible; label collapses when search bar is open --}}
         @if ($icon || $activeIcon)

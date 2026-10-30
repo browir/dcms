@@ -53,6 +53,8 @@ class AdminPanelProvider extends PanelProvider
                 'gray' => Color::Slate,
             ])
             ->navigationGroups([
+                NavigationGroup::make('Agenda'),
+                NavigationGroup::make('Administrasi'),
                 NavigationGroup::make('Dokumen')->icon('heroicon-o-document-duplicate'),
                 NavigationGroup::make('Data Master')->icon('heroicon-o-circle-stack'),
                 NavigationGroup::make('Pengaturan')->icon('heroicon-o-cog-6-tooth'),
@@ -331,10 +333,13 @@ class AdminPanelProvider extends PanelProvider
                             background: #94a3b8 !important;
                         }
 
-                        /* ================================================
-                           NAVBAR & TOPBAR MICRO-ANIMATIONS
-                        ================================================ */
-                        /* Hide Audit Trail / Relation Managers on Mobile (< 768px) */
+                        /* ════════════════════════════════════════════════════
+                           NAVBAR & TOPBAR — UNIFIED ANIMATIONS
+                           Satu set animasi dipakai oleh SEMUA tombol navbar
+                           (item langsung, group dropdown, ikon utilitas).
+                        ════════════════════════════════════════════════════ */
+
+                        /* Sembunyikan Audit Trail / Relation Managers di Mobile (< 768px) */
                         @media (max-width: 767.98px) {
                             .fi-page-relation-managers,
                             .fi-resource-relation-manager {
@@ -342,6 +347,7 @@ class AdminPanelProvider extends PanelProvider
                             }
                         }
 
+                        /* Topbar sticky + latar gelap */
                         .fi-topbar {
                             position: sticky !important;
                             top: 0 !important;
@@ -349,7 +355,6 @@ class AdminPanelProvider extends PanelProvider
                             background-color: #0B2545 !important;
                             border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
                         }
-
                         .fi-topbar header,
                         .fi-sidebar,
                         .fi-sidebar header {
@@ -358,24 +363,7 @@ class AdminPanelProvider extends PanelProvider
                             border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
                         }
 
-                        .fi-topbar-item,
-                        .fi-sidebar-item {
-                            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease, box-shadow 0.2s ease !important;
-                        }
-
-                        /* Brand Logo DCMS Text Color - Pure White (#FFFFFF) */
-                        .fi-logo,
-                        .fi-logo *,
-                        a.fi-logo,
-                        .fi-topbar .fi-logo,
-                        .fi-sidebar .fi-logo,
-                        .fi-topbar-header .fi-logo,
-                        .fi-sidebar-header .fi-logo,
-                        header .fi-logo {
-                            color: #ffffff !important;
-                            font-weight: 800 !important;
-                        }
-
+                        /* Warna teks default navbar — semua label & ikon */
                         .fi-topbar .fi-topbar-item-label,
                         .fi-topbar .fi-topbar-item-icon,
                         .fi-topbar .fi-topbar-group-label,
@@ -384,24 +372,25 @@ class AdminPanelProvider extends PanelProvider
                         .fi-sidebar .fi-sidebar-item-label,
                         .fi-sidebar .fi-sidebar-item-icon,
                         .fi-sidebar .fi-sidebar-group-label,
-                        .fi-topbar-item button svg {
+                        .fi-topbar-item button svg,
+                        .fi-topbar-item > button span,
+                        .fi-topbar-item > a span,
+                        .fi-topbar-item button .fi-topbar-item-label,
+                        .fi-topbar-item a .fi-topbar-item-label {
                             color: rgba(255, 255, 255, 0.75) !important;
-                            transition: color 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+                            transition: color 0.18s ease-out !important;
                         }
 
-                        .fi-topbar-item:hover,
-                        .fi-sidebar-item:hover {
-                            background-color: rgba(255, 255, 255, 0.12) !important;
-                            border-radius: 8px !important;
-                            transform: translateY(-1px) !important;
+                        /* ── Logo ── */
+                        .fi-logo, .fi-logo *, a.fi-logo,
+                        .fi-topbar .fi-logo, .fi-sidebar .fi-logo,
+                        .fi-topbar-header .fi-logo, .fi-sidebar-header .fi-logo,
+                        header .fi-logo {
+                            color: #ffffff !important;
+                            font-weight: 800 !important;
                         }
 
-                        .fi-topbar-item:hover .fi-topbar-item-icon,
-                        .fi-sidebar-item:hover .fi-sidebar-item-icon {
-                            transform: scale(1.15) rotate(-3deg) !important;
-                        }
-
-                        /* Paksa semua button & link di dalam topbar & sidebar agar tidak ada background putih dari Tailwind */
+                        /* ── Transparan background tombol di dalam topbar ── */
                         .fi-topbar-item > button,
                         .fi-topbar-item > a,
                         .fi-topbar-item > div > button,
@@ -414,47 +403,241 @@ class AdminPanelProvider extends PanelProvider
                             background-color: transparent !important;
                         }
 
-                        /* Item aktif (halaman saat ini) */
+                        /* ════════════════════════════════════════════════════
+                           UNIFIED NAVBUTTON TRANSITION
+                           .fi-topbar-item & .fi-sidebar-item = satu sumber kebenaran
+                        ════════════════════════════════════════════════════ */
+                        .fi-topbar-item,
+                        .fi-sidebar-item {
+                            transition:
+                                background-color 0.18s ease-out,
+                                transform        0.18s ease-out,
+                                box-shadow       0.18s ease-out !important;
+                            border-radius: 8px !important;
+                        }
+
+                        /* Hover: latar semi-transparan + ikon naik 1px */
+                        .fi-topbar-item:hover,
+                        .fi-sidebar-item:hover {
+                            background-color: rgba(255, 255, 255, 0.12) !important;
+                            transform: translateY(-1px) !important;
+                        }
+                        .fi-topbar-item:hover .fi-topbar-item-icon,
+                        .fi-sidebar-item:hover .fi-sidebar-item-icon {
+                            transform: translateY(-1px) !important;
+                            transition: transform 0.18s ease-out !important;
+                        }
+                        .fi-topbar-item:hover .fi-topbar-item-label,
+                        .fi-topbar-item:hover .fi-topbar-item-icon,
+                        .fi-topbar-item:hover svg {
+                            color: rgba(255, 255, 255, 0.95) !important;
+                        }
+
+                        /* Active/ditekan: scale 0.97 */
+                        .fi-topbar-item:active,
+                        .fi-sidebar-item:active {
+                            transform: scale(0.97) !important;
+                        }
+
+                        /* ── Item halaman aktif (highlight biru) ── */
                         .fi-topbar-item.fi-active,
                         .fi-sidebar-item.fi-active {
                             background: linear-gradient(135deg, #1E40AF, #1D4ED8) !important;
-                            border-radius: 8px !important;
                             box-shadow: 0 4px 14px -2px rgba(30, 64, 175, 0.6) !important;
                             animation: fi-active-pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
                         }
                         @keyframes fi-active-pulse {
                             0%, 100% { box-shadow: 0 4px 14px -2px rgba(30, 64, 175, 0.6); }
-                            50%      { box-shadow: 0 4px 20px 2px rgba(59, 130, 246, 0.5); }
+                            50%      { box-shadow: 0 4px 20px  2px rgba(59, 130, 246, 0.5); }
                         }
-
-                        /* Item dropdown yang sedang terbuka */
-                        .fi-topbar-item:has(button[aria-expanded="true"]) {
-                            background: rgba(255, 255, 255, 0.15) !important;
-                            border-radius: 8px !important;
-                            transform: none !important;
-                        }
-
-                        /* Warna teks navbar */
-                        .fi-topbar .fi-topbar-item-label,
-                        .fi-topbar .fi-topbar-item-icon,
-                        .fi-topbar-item > button span,
-                        .fi-topbar-item > a span,
-                        .fi-topbar-item button .fi-topbar-item-label,
-                        .fi-topbar-item a .fi-topbar-item-label,
                         .fi-topbar-item.fi-active .fi-topbar-item-label,
                         .fi-topbar-item.fi-active .fi-topbar-item-icon,
+                        .fi-topbar-item.fi-active svg,
                         .fi-sidebar-item.fi-active .fi-sidebar-item-label,
-                        .fi-sidebar-item.fi-active .fi-sidebar-item-icon,
+                        .fi-sidebar-item.fi-active .fi-sidebar-item-icon {
+                            color: #ffffff !important;
+                            font-weight: 700 !important;
+                        }
+
+                        /* ── Group dropdown yang SEDANG TERBUKA ── */
+                        .fi-topbar-item:has(button[aria-expanded="true"]) {
+                            background: rgba(255, 255, 255, 0.15) !important;
+                            transform: none !important;
+                        }
                         .fi-topbar-item:has(button[aria-expanded="true"]) .fi-topbar-item-label,
                         .fi-topbar-item:has(button[aria-expanded="true"]) .fi-topbar-item-icon,
                         .fi-topbar-item:has(button[aria-expanded="true"]) svg {
                             color: rgba(255, 255, 255, 0.9) !important;
                         }
-                        .fi-topbar-item.fi-active .fi-topbar-item-label,
-                        .fi-topbar-item.fi-active .fi-topbar-item-icon {
-                            color: #ffffff !important;
-                            font-weight: 700 !important;
+
+                        /* ── Group Agenda: highlight biru saat sub-halaman aktif ── */
+                        /* Filament menambahkan fi-active pada group item ketika ada child aktif */
+                        .fi-topbar-item.fi-active:has(.fi-topbar-group-label) {
+                            background: linear-gradient(135deg, #1E40AF, #1D4ED8) !important;
+                            box-shadow: 0 4px 14px -2px rgba(30, 64, 175, 0.6) !important;
+                            animation: fi-active-pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
                         }
+
+                        /* ════════════════════════════════════════════════════
+                           CHEVRON ROTASI — penanda dropdown terbuka/tutup
+                           Hanya .fi-topbar-group-toggle-icon yang berputar —
+                           ikon grup (queue-list, dll.) tidak ikut rotasi.
+                        ════════════════════════════════════════════════════ */
+                        .fi-topbar-item .fi-topbar-group-toggle-icon {
+                            transition: transform 0.18s ease-out !important;
+                            flex-shrink: 0;
+                        }
+                        .fi-topbar-item button[aria-expanded="true"] .fi-topbar-group-toggle-icon {
+                            transform: rotate(180deg) !important;
+                        }
+
+                        /* ════════════════════════════════════════════════════
+                           DROPDOWN PANEL NAVBAR — mode-aware (terang & gelap)
+                        ════════════════════════════════════════════════════ */
+
+                        /* CSS custom properties — satu definisi, dua mode */
+                        :root {
+                            /* MODE TERANG */
+                            --dcms-nav-panel-bg:          #ffffff;
+                            --dcms-nav-panel-border:      rgba(0, 0, 0, 0.08);
+                            --dcms-nav-panel-shadow:      0 8px 24px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.06);
+                            --dcms-nav-item-color:        #374151;
+                            --dcms-nav-item-hover-bg:     #f3f4f6;
+                            --dcms-nav-item-hover-color:  #111827;
+                            --dcms-nav-item-active-bg:    #eff6ff;
+                            --dcms-nav-item-active-color: #1d4ed8;
+                            --dcms-nav-item-active-border:#2563eb;
+                            --dcms-nav-icon-color:        #6b7280;
+                            --dcms-nav-icon-hover-color:  #1d4ed8;
+                            --dcms-nav-icon-active-color: #2563eb;
+                        }
+                        html.dark {
+                            /* MODE GELAP — pertahankan navy */
+                            --dcms-nav-panel-bg:          #112044;
+                            --dcms-nav-panel-border:      rgba(255, 255, 255, 0.12);
+                            --dcms-nav-panel-shadow:      0 12px 32px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.15);
+                            --dcms-nav-item-color:        rgba(255, 255, 255, 0.78);
+                            --dcms-nav-item-hover-bg:     rgba(255, 255, 255, 0.10);
+                            --dcms-nav-item-hover-color:  #ffffff;
+                            --dcms-nav-item-active-bg:    rgba(37, 99, 235, 0.35);
+                            --dcms-nav-item-active-color: #93c5fd;
+                            --dcms-nav-item-active-border:#60a5fa;
+                            --dcms-nav-icon-color:        rgba(255, 255, 255, 0.55);
+                            --dcms-nav-icon-hover-color:  #ffffff;
+                            --dcms-nav-icon-active-color: #93c5fd;
+                        }
+
+                        /* ── Panel utama ── */
+                        .fi-topbar .fi-dropdown-panel,
+                        .fi-topbar-item .fi-dropdown-panel {
+                            background-color: var(--dcms-nav-panel-bg) !important;
+                            background:       var(--dcms-nav-panel-bg) !important;
+                            border: 1px solid var(--dcms-nav-panel-border) !important;
+                            border-radius: 12px !important;
+                            box-shadow: var(--dcms-nav-panel-shadow) !important;
+                            z-index: 9999 !important;
+                            padding: 6px !important;
+                            min-width: 180px !important;
+                        }
+
+                        /* ── Entri animasi dropdown ── */
+                        @keyframes dcms-dropdown-in {
+                            from { opacity: 0; transform: translateY(-6px); }
+                            to   { opacity: 1; transform: translateY(0);    }
+                        }
+                        @keyframes dcms-dropdown-out {
+                            from { opacity: 1; transform: translateY(0);    }
+                            to   { opacity: 0; transform: translateY(-6px); }
+                        }
+                        .fi-topbar .fi-dropdown-panel:not([style*="display: none"]):not(.fi-opacity-0) {
+                            animation: dcms-dropdown-in 0.18s ease-out both !important;
+                        }
+
+                        /* ── Item di dalam dropdown navbar ── */
+                        .fi-topbar .fi-dropdown-panel .fi-dropdown-list-item > a,
+                        .fi-topbar .fi-dropdown-panel .fi-dropdown-list-item > button,
+                        .fi-topbar-item .fi-dropdown-panel .fi-dropdown-list-item > a,
+                        .fi-topbar-item .fi-dropdown-panel .fi-dropdown-list-item > button {
+                            border-radius: 8px !important;
+                            padding: 9px 12px !important;
+                            display: flex !important;
+                            align-items: center !important;
+                            gap: 10px !important;
+                            color: var(--dcms-nav-item-color) !important;
+                            font-size: 13.5px !important;
+                            font-weight: 500 !important;
+                            background: transparent !important;
+                            transition: background-color 0.18s ease-out, color 0.18s ease-out, transform 0.18s ease-out !important;
+                            text-decoration: none !important;
+                        }
+                        /* ── Hover ── */
+                        .fi-topbar .fi-dropdown-panel .fi-dropdown-list-item > a:hover,
+                        .fi-topbar .fi-dropdown-panel .fi-dropdown-list-item > button:hover,
+                        .fi-topbar-item .fi-dropdown-panel .fi-dropdown-list-item > a:hover,
+                        .fi-topbar-item .fi-dropdown-panel .fi-dropdown-list-item > button:hover {
+                            background-color: var(--dcms-nav-item-hover-bg) !important;
+                            color: var(--dcms-nav-item-hover-color) !important;
+                        }
+                        /* ── Item aktif: penanda tipis di kiri (mode terang) ── */
+                        .fi-topbar .fi-dropdown-panel .fi-dropdown-list-item.fi-active > a,
+                        .fi-topbar .fi-dropdown-panel .fi-dropdown-list-item.fi-active > button,
+                        .fi-topbar-item .fi-dropdown-panel .fi-dropdown-list-item.fi-active > a,
+                        .fi-topbar-item .fi-dropdown-panel .fi-dropdown-list-item.fi-active > button {
+                            background-color: var(--dcms-nav-item-active-bg) !important;
+                            color: var(--dcms-nav-item-active-color) !important;
+                            font-weight: 600 !important;
+                            box-shadow: inset 3px 0 0 var(--dcms-nav-item-active-border) !important;
+                        }
+                        /* ── Ikon item ── */
+                        .fi-topbar .fi-dropdown-panel .fi-dropdown-list-item svg,
+                        .fi-topbar-item .fi-dropdown-panel .fi-dropdown-list-item svg {
+                            color: var(--dcms-nav-icon-color) !important;
+                            transition: transform 0.18s ease-out, color 0.18s ease-out !important;
+                        }
+                        .fi-topbar .fi-dropdown-panel .fi-dropdown-list-item > a:hover svg,
+                        .fi-topbar .fi-dropdown-panel .fi-dropdown-list-item > button:hover svg,
+                        .fi-topbar-item .fi-dropdown-panel .fi-dropdown-list-item > a:hover svg,
+                        .fi-topbar-item .fi-dropdown-panel .fi-dropdown-list-item > button:hover svg {
+                            color: var(--dcms-nav-icon-hover-color) !important;
+                            transform: translateY(-1px) !important;
+                        }
+                        .fi-topbar .fi-dropdown-panel .fi-dropdown-list-item.fi-active svg,
+                        .fi-topbar-item .fi-dropdown-panel .fi-dropdown-list-item.fi-active svg {
+                            color: var(--dcms-nav-icon-active-color) !important;
+                        }
+                        /* ── Badge di dalam item dropdown ── */
+                        .fi-topbar .fi-dropdown-panel .fi-dropdown-list-item .fi-badge,
+                        .fi-topbar-item .fi-dropdown-panel .fi-dropdown-list-item .fi-badge {
+                            font-size: 11px !important;
+                            font-weight: 600 !important;
+                            min-width: 18px !important;
+                            height: 18px !important;
+                            padding: 0 5px !important;
+                        }
+
+                        /* ════════════════════════════════════════════════════
+                           REDUCED MOTION — hanya perubahan warna, tanpa gerak
+                        ════════════════════════════════════════════════════ */
+                        @media (prefers-reduced-motion: reduce) {
+                            .fi-topbar-item,
+                            .fi-sidebar-item,
+                            .fi-topbar-item:hover,
+                            .fi-topbar-item:active,
+                            .fi-topbar-item.fi-active,
+                            .fi-sidebar-item.fi-active {
+                                transform: none !important;
+                                animation: none !important;
+                                transition: background-color 0.18s ease-out, color 0.18s ease-out !important;
+                            }
+                            .fi-topbar-item:hover .fi-topbar-item-icon,
+                            .fi-topbar-item button .fi-topbar-group-chevron,
+                            .fi-topbar-item button[aria-expanded="true"] .fi-topbar-group-chevron,
+                            .fi-topbar-item button[aria-expanded="true"] svg:last-child {
+                                transform: none !important;
+                            }
+                            @keyframes dcms-dropdown-in { from { opacity: 0; } to { opacity: 1; } }
+                        }
+
 
                         /* ================================================
                            BUTTON MICRO-ANIMATIONS (All Action & Form Buttons)
@@ -505,7 +688,9 @@ class AdminPanelProvider extends PanelProvider
                         }
 
                         /* ================================================
-                           DROPDOWN PANELS (Visual Only)
+                           DROPDOWN PANELS — Panel di LUAR topbar (putih)
+                           Panel navbar sudah diatur di blok UNIFIED ANIMATIONS
+                           dengan spesifisitas lebih tinggi (.fi-topbar .fi-dropdown-panel).
                         ================================================ */
                         .fi-dropdown-panel {
                             background-color: #ffffff !important;
@@ -514,6 +699,7 @@ class AdminPanelProvider extends PanelProvider
                             border-radius: 12px !important;
                             z-index: 60 !important;
                         }
+
 
 
 
@@ -1117,6 +1303,20 @@ class AdminPanelProvider extends PanelProvider
                             isolation: isolate !important;
                             overflow: visible !important;
                         }
+                        /* Dropdown panel di topbar: warna diatur via CSS vars --dcms-nav-panel-*
+                           (lihat blok DROPDOWN PANEL NAVBAR di atas — mode-aware, html.dark) */
+                        .fi-topbar .fi-dropdown-panel,
+                        .fi-topbar-item .fi-dropdown-panel {
+                            background-color: var(--dcms-nav-panel-bg) !important;
+                            background:       var(--dcms-nav-panel-bg) !important;
+                            border: 1px solid var(--dcms-nav-panel-border) !important;
+                            box-shadow: var(--dcms-nav-panel-shadow) !important;
+                            border-radius: 12px !important;
+                            z-index: 9999 !important;
+                            padding: 6px !important;
+                            min-width: 180px !important;
+                        }
+
 
                         /* Table action dropdown — biarkan x-float atur posisi */
                         .fi-ta-actions .fi-dropdown {

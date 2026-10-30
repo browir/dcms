@@ -25,9 +25,9 @@ class MeetingResource extends Resource
 
     protected static ?string $navigationLabel = 'Rapat';
 
-    // Rapat tampil sebagai menu langsung di navbar (bukan dropdown);
+    // Rapat berada di dalam group dropdown "Agenda" di navbar.
     // Ruangan Rapat ada di Data Master.
-    protected static string|UnitEnum|null $navigationGroup = null;
+    protected static string|UnitEnum|null $navigationGroup = 'Agenda';
 
     protected static ?int $navigationSort = 1;
 
