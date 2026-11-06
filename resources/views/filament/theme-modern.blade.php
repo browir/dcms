@@ -367,4 +367,157 @@
     @media (prefers-reduced-motion: reduce) {
         .fi-page, .fi-ta, .fi-header { animation: none !important; }
     }
+
+    /* ── Form Konfirmasi 2FA ────────────────────────────────────────────────── */
+    .tfa-confirm-heading {
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.4;
+        color: var(--ui-ink);
+        margin: 0 0 4px;
+    }
+    .dark .tfa-confirm-heading { color: #f1f5f9; }
+
+    .tfa-confirm-desc {
+        font-size: 0.875rem;
+        line-height: 1.55;
+        color: var(--ui-muted);
+        margin: 0;
+    }
+    .tfa-confirm-desc strong {
+        font-weight: 600;
+        color: var(--ui-ink-2);
+    }
+    .dark .tfa-confirm-desc { color: #94a3b8; }
+    .dark .tfa-confirm-desc strong { color: #cbd5e1; }
+
+    .tfa-label {
+        display: block;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--ui-ink-2);
+        margin-bottom: 8px;
+    }
+    .dark .tfa-label { color: #cbd5e1; }
+
+    /* Single OTP input — centred, monospace, big */
+    .tfa-otp-input {
+        display: block;
+        width: 100%;
+        max-width: 272px;
+        height: 56px;
+        font-size: 1.5rem;
+        font-weight: 700;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        letter-spacing: 0.5em;
+        text-align: center;
+        padding: 0 1rem;
+        border-radius: var(--ui-radius-sm, 8px);
+        border: 1.5px solid var(--ui-line);
+        background: var(--ui-surface);
+        color: var(--ui-ink);
+        outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .tfa-otp-input::placeholder { color: var(--ui-faint); letter-spacing: 0.5em; }
+    .tfa-otp-input:hover { border-color: var(--ui-ink-2); }
+    .tfa-otp-input:focus {
+        border-color: var(--ui-primary);
+        box-shadow: 0 0 0 3px var(--ui-ring);
+    }
+    .tfa-otp-input:disabled { opacity: 0.5; cursor: not-allowed; }
+    .tfa-otp-input.tfa-otp-error {
+        border-color: rgb(239 68 68);
+        color: rgb(185 28 28);
+    }
+    .tfa-otp-input.tfa-otp-error:focus {
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+    }
+    .dark .tfa-otp-input {
+        background: #0f1729;
+        border-color: #2d3a52;
+        color: #f1f5f9;
+    }
+    .dark .tfa-otp-input:hover { border-color: #64748b; }
+    .dark .tfa-otp-input:focus {
+        border-color: var(--ui-primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+    }
+
+    /* Helper text ikon + teks sejajar */
+    .tfa-helper {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 8px;
+        font-size: 0.75rem;
+        color: var(--ui-muted);
+    }
+    .tfa-helper svg {
+        width: 14px;
+        height: 14px;
+        min-width: 14px;
+        min-height: 14px;
+        flex-shrink: 0;
+    }
+    .dark .tfa-helper { color: #64748b; }
+
+    /* Error alert inline 2FA */
+    .tfa-error-alert {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 14px;
+        border-radius: var(--ui-radius-sm, 8px);
+        border: 1px solid rgb(254 202 202);
+        background: rgb(254 242 242);
+        font-size: 0.875rem;
+        color: rgb(185 28 28);
+    }
+    .dark .tfa-error-alert {
+        border-color: rgba(239, 68, 68, 0.3);
+        background: rgba(239, 68, 68, 0.08);
+        color: rgb(252 165 165);
+    }
+    .tfa-error-alert-body {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+    }
+    .tfa-error-alert-body svg {
+        width: 18px;
+        height: 18px;
+        min-width: 18px;
+        flex-shrink: 0;
+        color: rgb(239 68 68);
+    }
+    .tfa-error-dismiss {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        border-radius: 6px;
+        cursor: pointer;
+        background: none;
+        border: none;
+        color: rgb(239 68 68);
+        transition: background 0.15s;
+        flex-shrink: 0;
+    }
+    .tfa-error-dismiss:hover { background: rgba(239, 68, 68, 0.1); }
+    .tfa-error-dismiss svg { width: 15px; height: 15px; }
+
+    /* Button row 2FA */
+    .tfa-btn-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        padding-top: 4px;
+    }
+
 </style>

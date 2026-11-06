@@ -17,6 +17,9 @@ class User extends Authenticatable implements Auditable, FilamentUser
 {
     use HasFactory, HasPushSubscriptions, HasRoles, Notifiable, \OwenIt\Auditing\Auditable;
 
+    // ── 2FA traits & helpers ─────────────────────────────────────────────────
+    use \App\Concerns\HasTwoFactor;
+
     protected $fillable = [
         'name',
         'email',
@@ -29,6 +32,9 @@ class User extends Authenticatable implements Auditable, FilamentUser
         'unit_id',
         'email_verified_at',
         'is_active',
+        'two_factor_enabled',
+        'two_factor_enabled_at',
+        'default_trust_days',
     ];
 
     /**
@@ -51,12 +57,15 @@ class User extends Authenticatable implements Auditable, FilamentUser
     ];
 
     protected $casts = [
-        'email_verified_at' => 'datetime',
-        'password' => 'hashed',
-        'is_active' => 'boolean',
-        'company_id' => 'integer',
-        'department_id' => 'integer',
-        'unit_id' => 'integer',
+        'email_verified_at'      => 'datetime',
+        'password'               => 'hashed',
+        'is_active'              => 'boolean',
+        'company_id'             => 'integer',
+        'department_id'          => 'integer',
+        'unit_id'                => 'integer',
+        'two_factor_enabled'     => 'boolean',
+        'two_factor_enabled_at'  => 'datetime',
+        'default_trust_days'     => 'integer',
     ];
 
     /**

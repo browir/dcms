@@ -21,6 +21,13 @@ Route::get('/', function () {
     return redirect('/admin');
 });
 
+// Halaman verifikasi kode 2FA — dapat diakses tanpa auth penuh
+// (user sudah lulus password, tapi belum masuk penuh)
+Route::get('/admin/two-factor-challenge', \App\Filament\Pages\Auth\TwoFactorChallenge::class)
+    ->name('filament.admin.auth.two-factor-challenge')
+    ->middleware(['web']);
+
+
 // Logo aplikasi — publik (dipakai di favicon & halaman login sebelum auth).
 // Disajikan langsung dari disk, tidak bergantung symlink public/storage.
 Route::get('/branding/logo', [BrandingController::class, 'logo'])->name('branding.logo');

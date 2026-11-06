@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Users\Tables;
 
+use App\Filament\Admin\Actions\ResetTwoFactorAction;
 use App\Models\User;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -68,6 +69,18 @@ class UsersTable
                     ->tooltip(fn (User $record): string => filled($record->keycloak_sub) ? 'Sudah tersambung akun SSO' : 'Belum pernah login lewat SSO')
                     ->alignCenter()
                     ->visibleFrom('lg'),
+                IconColumn::make('two_factor_enabled')
+                    ->label('2FA')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-shield-check')
+                    ->falseIcon('heroicon-o-shield-exclamation')
+                    ->trueColor('success')
+                    ->falseColor('gray')
+                    ->tooltip(fn (User $record): string => $record->two_factor_enabled
+                        ? 'Verifikasi dua faktor aktif'
+                        : 'Verifikasi dua faktor tidak aktif')
+                    ->alignCenter()
+                    ->visibleFrom('lg'),
                 IconColumn::make('is_active')
                     ->label('Aktif')
                     ->boolean()
@@ -123,11 +136,17 @@ class UsersTable
                     ->label('Belum ditempatkan di unit')
                     ->toggle()
                     ->query(fn (Builder $query) => $query->whereNull('unit_id')),
+                TernaryFilter::make('two_factor_enabled')
+                    ->label('Verifikasi 2FA')
+                    ->trueLabel('Aktif')
+                    ->falseLabel('Tidak aktif')
+                    ->native(false),
             ])
             ->recordActions([
                 ActionGroup::make([
                     ViewAction::make(),
                     EditAction::make(),
+                    ResetTwoFactorAction::makeTableAction(),
                     DeleteAction::make(),
                 ])->icon('heroicon-m-ellipsis-vertical')->tooltip('Aksi'),
             ])

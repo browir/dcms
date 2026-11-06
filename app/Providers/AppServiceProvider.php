@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Http\Responses\KeycloakLogoutResponse;
+use App\Policies\TwoFactorPolicy;
+use App\Services\TwoFactorService;
 use App\Support\Sso\KeycloakProvider;
 use App\Support\Sso\KeycloakUserSync;
 use Filament\Actions\Action;
@@ -12,7 +14,9 @@ use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 use NotificationChannels\WebPush\WebPushServiceProvider;
 use SocialiteProviders\Manager\SocialiteWasCalled;
 use Syifa\KeycloakSso\Events\KeycloakLoginSucceeded;
@@ -25,6 +29,9 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->register(WebPushServiceProvider::class);
+
+        // TwoFactorService sebagai singleton agar tidak dibuat ulang per request
+        $this->app->singleton(TwoFactorService::class);
     }
 
     /**
@@ -55,6 +62,12 @@ class AppServiceProvider extends ServiceProvider
 
         // SSO Keycloak: sinkron unit organisasi & role setiap login berhasil.
         Event::listen(KeycloakLoginSucceeded::class, KeycloakUserSync::class);
+
+        // Livewire component 2FA
+        Livewire::component('two-factor-settings', \App\Filament\Components\TwoFactorSettings::class);
+
+        // Policy 2FA: Gate::policy mengikat User model ke TwoFactorPolicy
+        Gate::define('resetTwoFactor', [TwoFactorPolicy::class, 'resetTwoFactor']);
 
         // Logout dari sesi SSO juga mengakhiri sesi di Keycloak (lihat KeycloakLogoutResponse).
         // Driver keycloak versi DCMS (simpan id_token) — didaftarkan setelah listener package, jadi menimpanya.

@@ -28,6 +28,15 @@ class EditProfile extends BaseEditProfile
         return Width::Full;
     }
 
+    // Nonaktifkan form actions bawaan Filament — tombol dirender manual
+    // di custom view, setelah card 2FA (paling bawah halaman).
+    protected function getFormActions(): array
+    {
+        return [];
+    }
+
+    // ── Form ──────────────────────────────────────────────────────────────────
+
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -151,8 +160,20 @@ class EditProfile extends BaseEditProfile
 
                                     return new \Illuminate\Support\HtmlString(
                                         $roles->map(function ($role) {
-                                            return '<span style="display:inline-block;padding:4px 12px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:0.3px;margin-right:6px;margin-bottom:4px;">'.e(ucwords(str_replace('_', ' ', $role))).'</span>';
-                                        })->implode(' ')
+                                            $label = e(ucwords(str_replace('_', ' ', $role)));
+
+                                            return '<span style="'
+                                                . 'display:inline-flex;align-items:center;'
+                                                . 'padding:2px 10px;'
+                                                . 'background:rgb(239 246 255);'
+                                                . 'color:rgb(29 78 216);'
+                                                . 'border:1px solid rgb(191 219 254);'
+                                                . 'border-radius:9999px;'
+                                                . 'font-size:12px;font-weight:600;'
+                                                . 'letter-spacing:0.01em;'
+                                                . 'margin-right:4px;margin-bottom:4px;'
+                                                . '">' . $label . '</span>';
+                                        })->implode('')
                                     );
                                 })
                                 ->extraAttributes(['class' => 'profile-roles-display'])
@@ -163,10 +184,34 @@ class EditProfile extends BaseEditProfile
                                 ->content(function () {
                                     $isActive = auth()->user()->is_active;
                                     if ($isActive) {
-                                        return new \Illuminate\Support\HtmlString('<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:#dcfce7;color:#15803d;border-radius:6px;font-size:12px;font-weight:700;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>Aktif</span>');
+                                        return new \Illuminate\Support\HtmlString(
+                                            '<span style="'
+                                            . 'display:inline-flex;align-items:center;gap:5px;'
+                                            . 'padding:2px 10px;'
+                                            . 'background:rgb(220 252 231);'
+                                            . 'color:rgb(21 128 61);'
+                                            . 'border:1px solid rgb(187 247 208);'
+                                            . 'border-radius:9999px;'
+                                            . 'font-size:12px;font-weight:600;'
+                                            . '">'
+                                            . '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
+                                            . 'Aktif</span>'
+                                        );
                                     }
 
-                                    return new \Illuminate\Support\HtmlString('<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:#fee2e2;color:#dc2626;border-radius:6px;font-size:12px;font-weight:700;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>Nonaktif</span>');
+                                    return new \Illuminate\Support\HtmlString(
+                                        '<span style="'
+                                        . 'display:inline-flex;align-items:center;gap:5px;'
+                                        . 'padding:2px 10px;'
+                                        . 'background:rgb(254 226 226);'
+                                        . 'color:rgb(185 28 28);'
+                                        . 'border:1px solid rgb(254 202 202);'
+                                        . 'border-radius:9999px;'
+                                        . 'font-size:12px;font-weight:600;'
+                                        . '">'
+                                        . '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
+                                        . 'Nonaktif</span>'
+                                    );
                                 })
                                 ->dehydrated(false),
 
