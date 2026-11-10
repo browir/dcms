@@ -56,6 +56,9 @@
         <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:6px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-family:ui-monospace,monospace;font-size:11px;font-weight:700;">
             {{ $code }}
         </span>
+        @if ($record->letterNumber?->isManual())
+            <span class="fi-badge rounded-md text-xs font-medium px-1.5 py-0.5 bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20" style="font-size: 0.65rem;">Manual</span>
+        @endif
         <span style="font-size:13px;font-weight:700;color:#1e293b;">
             {{ $record->title }}
         </span>

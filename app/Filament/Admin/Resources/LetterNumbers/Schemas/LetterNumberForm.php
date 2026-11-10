@@ -6,9 +6,11 @@ use App\Models\DocumentCategory;
 use App\Models\LetterNumber;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\LetterNumberManualService;
 use App\Services\LetterNumberService;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Field;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -23,6 +25,10 @@ use Illuminate\Support\HtmlString;
 /**
  * Form "Ambil Nomor Dokumen" — dipakai di halaman Nomor Dokumen dan langsung dari form
  * Tambah Dokumen (tombol + pada pilihan nomor dokumen).
+ *
+ * Mendukung dua mode:
+ *  - Otomatis (default): nomor dihasilkan sistem dari counter per (perusahaan, tahun).
+ *  - Manual: pengguna mengisi nomor sendiri; hanya untuk role tertentu.
  */
 class LetterNumberForm
 {
@@ -32,12 +38,51 @@ class LetterNumberForm
      */
     public static function components(?string $kelompok = null): array
     {
+        $canManual = LetterNumberManualService::canCreateManual(Auth::user());
+
         return [
+            // ── Mode pemilihan nomor ────────────────────────────────────────────
+            Radio::make('numbering_type')
+                ->label('Metode Penomoran')
+                ->options([
+                    LetterNumber::NUMBERING_AUTO   => 'Otomatis (Sistem)',
+                    LetterNumber::NUMBERING_MANUAL => 'Manual (Kustom)',
+                ])
+                ->default(LetterNumber::NUMBERING_AUTO)
+                ->inline()
+                ->live()
+                ->visible($canManual),
+
+            // ── Pratinjau nomor otomatis ────────────────────────────────────────
             Text::make(fn (Get $get): HtmlString => new HtmlString(
                 '<span style="font-size:.75rem;color:#64748b">Nomor yang akan terbit</span><br>'
                 .'<code style="font-size:1rem;font-weight:700;letter-spacing:.02em">'.e(self::preview($get)).'</code>'
-            )),
+            ))
+                ->visible(fn (Get $get): bool => ($get('numbering_type') ?? LetterNumber::NUMBERING_AUTO) === LetterNumber::NUMBERING_AUTO),
 
+            // ── Input nomor manual ──────────────────────────────────────────────
+            TextInput::make('nomor_manual')
+                ->label('Nomor Dokumen')
+                ->placeholder('Contoh: 001/SOP.2/SGG/VII/2026 atau format kustom')
+                ->required(fn (Get $get): bool => ($get('numbering_type') ?? LetterNumber::NUMBERING_AUTO) === LetterNumber::NUMBERING_MANUAL)
+                ->visible(fn (Get $get): bool => ($get('numbering_type') ?? LetterNumber::NUMBERING_AUTO) === LetterNumber::NUMBERING_MANUAL)
+                ->maxLength(255)
+                ->live(onBlur: true)
+                ->helperText(function (?string $state): HtmlString {
+                    if (blank($state)) {
+                        return new HtmlString('<span style="font-size:.75rem;color:#64748b">Format nomor bebas. Standar sistem: <code>{urut}/{jenis}.{unit}/{perusahaan}/{bulan_romawi}/{tahun}</code></span>');
+                    }
+
+                    $warning = LetterNumberManualService::getPatternWarning($state);
+
+                    if ($warning) {
+                        return new HtmlString('<span style="font-size:.75rem;color:#d97706;font-weight:500">⚠️ '.e($warning).'</span>');
+                    }
+
+                    return new HtmlString('<span style="font-size:.75rem;color:#16a34a;font-weight:500">✓ Format sesuai pola standar</span>');
+                }),
+
+            // ── Field-field bersama (auto & manual) ────────────────────────────
             Select::make('category_id')
                 ->label('Kategori Dokumen')
                 ->helperText('Kode kategori dipakai di nomor dokumen. Kategori diatur di Data Master → Kategori Dokumen.')
@@ -81,16 +126,45 @@ class LetterNumberForm
         ];
     }
 
-    /** Terbitkan nomor dari data form di atas. */
+    /**
+     * Terbitkan nomor dari data form di atas.
+     * Merutekan ke auto atau manual berdasarkan pilihan numbering_type.
+     */
     public static function issue(array $data): LetterNumber
     {
         /** @var User|null $user */
         $user = Auth::user();
+        $mode = $data['numbering_type'] ?? LetterNumber::NUMBERING_AUTO;
 
+        $unit     = Unit::query()->findOrFail($data['unit_id']);
+        $category = DocumentCategory::query()->findOrFail($data['category_id']);
+        $tanggal  = Carbon::parse($data['tanggal_surat']);
+
+        if ($mode === LetterNumber::NUMBERING_MANUAL) {
+            // Otorisasi ganda (defensive): visible() hanya menyembunyikan UI.
+            if (! LetterNumberManualService::canCreateManual($user)) {
+                throw new \Illuminate\Auth\Access\AuthorizationException(
+                    'Anda tidak memiliki hak akses untuk menerbitkan nomor dokumen manual.'
+                );
+            }
+
+            return LetterNumberManualService::issue(
+                unit: $unit,
+                jenis: $category,
+                tanggal: $tanggal,
+                nomorManual: $data['nomor_manual'] ?? '',
+                judul: $data['judul_surat'],
+                perihal: $data['perihal'] ?? null,
+                deskripsi: $data['deskripsi'] ?? null,
+                by: $user,
+            );
+        }
+
+        // Mode otomatis — perilaku identik dengan sebelum fitur ini ditambahkan.
         return app(LetterNumberService::class)->issue(
-            Unit::query()->findOrFail($data['unit_id']),
-            DocumentCategory::query()->findOrFail($data['category_id']),
-            Carbon::parse($data['tanggal_surat']),
+            $unit,
+            $category,
+            $tanggal,
             $data['judul_surat'],
             $data['perihal'] ?? null,
             $data['deskripsi'] ?? null,
@@ -143,7 +217,7 @@ class LetterNumberForm
     {
         /** @var User|null $user */
         $user = Auth::user();
-        $all = $user?->hasRole('super_admin') || $user?->can('view_all_companies_data');
+        $all  = $user?->hasRole('super_admin') || $user?->can('view_all_companies_data');
         $service = app(LetterNumberService::class);
 
         return Unit::query()

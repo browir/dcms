@@ -31,6 +31,9 @@ class LetterNumberService
     /**
      * Ambil nomor urut berikutnya dan kunci counter-nya.
      *
+     * Jika nomor yang dihasilkan sudah dipakai oleh nomor manual, counter di-increment lagi
+     * sampai nomor yang belum terpakai ditemukan. Ini mencegah crash tanpa menimpa data.
+     *
      * @return array{number: string, sequence: int}
      */
     public function generate(Company $company, JenisSurat|string $jenis, ?Unit $unit, Carbon $tanggal): array
@@ -45,20 +48,25 @@ class LetterNumberService
         DB::table('letter_number_counters')->insertOrIgnore([
             ...$key,
             'last_number' => 0,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'  => now(),
+            'updated_at'  => now(),
         ]);
 
-        $last = (int) DB::table('letter_number_counters')->where($key)->lockForUpdate()->value('last_number');
-        $sequence = $last + 1;
+        // Loop sampai nomor yang dihasilkan belum dipakai (collision dengan nomor manual).
+        do {
+            $last = (int) DB::table('letter_number_counters')->where($key)->lockForUpdate()->value('last_number');
+            $sequence = $last + 1;
 
-        DB::table('letter_number_counters')->where($key)->update([
-            'last_number' => $sequence,
-            'updated_at' => now(),
-        ]);
+            DB::table('letter_number_counters')->where($key)->update([
+                'last_number' => $sequence,
+                'updated_at'  => now(),
+            ]);
+
+            $number = $this->format($sequence, $jenis, $this->unitCode($unit), $this->companyCode($company), $tanggal);
+        } while (LetterNumber::query()->whereRaw('LOWER(nomor) = ?', [mb_strtolower($number)])->exists());
 
         return [
-            'number' => $this->format($sequence, $jenis, $this->unitCode($unit), $this->companyCode($company), $tanggal),
+            'number'   => $number,
             'sequence' => $sequence,
         ];
     }

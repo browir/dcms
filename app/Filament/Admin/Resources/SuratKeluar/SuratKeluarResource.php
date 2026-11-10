@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\SuratKeluar;
 use App\Filament\Admin\Resources\SuratKeluar\Pages\ListSuratKeluar;
 use App\Filament\Admin\Resources\SuratKeluar\Tables\SuratKeluarTable;
 use App\Models\Surat;
+use App\Services\NomorSuratManualService;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -62,7 +63,8 @@ class SuratKeluarResource extends Resource
 
     public static function canEdit(Model $record): bool
     {
-        return false;
+        /** @var Surat $record */
+        return NomorSuratManualService::canEditManual(auth()->user(), $record);
     }
 
     public static function canDelete(Model $record): bool

@@ -17,9 +17,13 @@ use Illuminate\Support\Facades\DB;
  */
 class LetterNumber extends Model
 {
+    public const NUMBERING_AUTO   = 'auto';
+    public const NUMBERING_MANUAL = 'manual';
+
     protected $fillable = [
         'nomor',
         'nomor_urut',
+        'numbering_type',
         'jenis_surat',
         'category_id',
         'company_id',
@@ -33,10 +37,22 @@ class LetterNumber extends Model
     ];
 
     protected $casts = [
-        'jenis_surat' => JenisSurat::class,
-        'tanggal_surat' => 'date',
-        'nomor_urut' => 'integer',
+        'jenis_surat'    => JenisSurat::class,
+        'tanggal_surat'  => 'date',
+        'nomor_urut'     => 'integer',
     ];
+
+    /** Nomor diterbitkan secara manual oleh pengguna. */
+    public function isManual(): bool
+    {
+        return $this->numbering_type === self::NUMBERING_MANUAL;
+    }
+
+    /** Nomor dihasilkan otomatis oleh sistem. */
+    public function isAuto(): bool
+    {
+        return $this->numbering_type === self::NUMBERING_AUTO || $this->numbering_type === null;
+    }
 
     public function company(): BelongsTo
     {

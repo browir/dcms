@@ -147,7 +147,7 @@ class NomorSuratService
      * @return positive-int Nomor urut baru
      * @throws RuntimeException jika LAST_INSERT_ID() mengembalikan 0
      */
-    protected static function incrementCounter(int $perusahaanId, int $tahun): int
+    public static function incrementCounter(int $perusahaanId, int $tahun): int
     {
         DB::statement(
             'INSERT INTO nomor_surat_counter (perusahaan_id, tahun, nomor_terakhir) '
@@ -284,6 +284,7 @@ class NomorSuratService
         $dataSurat = [
             'tipe_surat'       => 'keluar',
             'status'           => $data['status']        ?? 'Tersimpan',
+            'numbering_type'   => 'auto',
             'jenis'            => $jenis->value,
             'unit_id'          => $unit->id,
             'tanggal'          => $tanggal->format('Y-m-d'),
@@ -291,7 +292,7 @@ class NomorSuratService
             'perihal'          => $data['perihal']        ?? null,
             'deskripsi'        => $data['deskripsi']      ?? null,
             'dibuat_oleh_id'   => $data['dibuat_oleh_id'] ?? null,
-            'dibuat_oleh_nama' => $data['dibuat_oleh_nama'],
+            'dibuat_oleh_nama' => $data['dibuat_oleh_nama'] ?? 'Sistem',
             'legacy_id'        => $data['legacy_id']      ?? null,
         ];
 
@@ -304,24 +305,28 @@ class NomorSuratService
         ) {
             $transactionAttempts++;
 
-            // Langkah 3: Increment counter secara atomik (static:: untuk late binding)
-            $urut = static::incrementCounter($company->id, $tahun);
+            // Langkah 3 & 4: Increment counter dan format nomor.
+            // Edge case: Jika nomor yang dihasilkan sudah pernah dipakai (misal oleh nomor manual),
+            // lewati nomor tersebut dan ulangi increment sampai nomor yang belum terpakai ditemukan.
+            do {
+                $urut = static::incrementCounter($company->id, $tahun);
 
-            // Langkah 4: Format nomor surat
-            $nomor = self::formatNomor(
-                $urut,
-                $jenis->value,
-                $unit->kode,
-                $company->kode_surat,
-                $bulan,
-                $tahun,
-            );
+                $nomor = self::formatNomor(
+                    $urut,
+                    $jenis->value,
+                    $unit->kode,
+                    $company->kode_surat,
+                    $bulan,
+                    $tahun,
+                );
+            } while (Surat::withTrashed()->where('nomor', $nomor)->exists());
 
             // Langkah 5: Simpan surat (static:: untuk late binding)
             return static::persistSurat([
                 ...$dataSurat,
-                'nomor'      => $nomor,
-                'nomor_urut' => $urut,
+                'nomor'          => $nomor,
+                'nomor_urut'     => $urut,
+                'numbering_type' => 'auto',
             ]);
 
         }, 5); // 5 attempts: retry otomatis saat deadlock SQLSTATE 40001

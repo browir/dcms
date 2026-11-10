@@ -11,7 +11,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Unit extends Model
 {
-    protected $fillable = ['name', 'prefix', 'keycloak_code', 'whatsapp_group', 'department_id', 'is_active'];
+    protected $fillable = ['name', 'kode', 'company_id', 'legacy_id', 'prefix', 'keycloak_code', 'whatsapp_group', 'department_id', 'is_active'];
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
 
     public function department(): BelongsTo
     {

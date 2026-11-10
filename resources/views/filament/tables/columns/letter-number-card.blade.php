@@ -13,6 +13,9 @@
 {{-- Desktop: nomor --}}
 <div class="dcms-desktop-title-view">
     <span class="dcms-dtitle-main dcms-mono">{{ $record->nomor }}</span>
+    @if ($record->isManual())
+        <span class="fi-badge flex items-center justify-center gap-x-1 rounded-md text-xs font-medium ring-1 ring-inset px-1.5 py-0.5 fi-color-custom bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-400/10 dark:text-amber-400 dark:ring-amber-400/30" style="font-size: 0.7rem; line-height: 1rem; width: fit-content; display: inline-flex;">Manual</span>
+    @endif
 </div>
 
 {{-- Mobile: kartu --}}
@@ -21,7 +24,12 @@
         <div class="dcms-mcard-head">
             {!! \App\Filament\Admin\Resources\LetterNumbers\LetterNumberResource::jenisBadge($jenis) !!}
             <div class="dcms-mcard-heading">
-                <div class="dcms-mcard-title dcms-mono">{{ $record->nomor }}</div>
+                <div class="dcms-mcard-title dcms-mono">
+                    {{ $record->nomor }}
+                    @if ($record->isManual())
+                        <span class="fi-badge rounded-md text-xs font-medium px-1.5 py-0.5 bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20" style="font-size: 0.65rem;">Manual</span>
+                    @endif
+                </div>
                 <div class="dcms-mcard-sub">{{ $jenis->label() }}</div>
             </div>
             <span class="dcms-mcard-badge dcms-tone-{{ $used[1] }}">{{ $used[0] }}</span>

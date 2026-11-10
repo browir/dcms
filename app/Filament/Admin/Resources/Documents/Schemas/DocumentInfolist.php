@@ -114,6 +114,13 @@ class DocumentInfolist
                             ->copyMessage('Nomor kode disalin!')
                             ->copyMessageDuration(1500),
 
+                        TextEntry::make('letterNumber.numbering_type')
+                            ->label('Metode Penomoran')
+                            ->badge()
+                            ->formatStateUsing(fn ($state): string => $state === 'manual' ? 'Manual' : 'Otomatis')
+                            ->color(fn ($state): string => $state === 'manual' ? 'warning' : 'gray')
+                            ->visible(fn ($record): bool => filled($record?->letter_number_id)),
+
                         TextEntry::make('jenis_surat')
                             ->label('Kategori')
                             ->icon('heroicon-o-tag')

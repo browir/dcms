@@ -4,12 +4,15 @@ namespace App\Filament\Admin\Resources\SuratKeluar\Pages;
 
 use App\Enums\JenisSurat;
 use App\Filament\Admin\Resources\SuratKeluar\SuratKeluarResource;
+use App\Models\Surat;
 use App\Models\Unit;
+use App\Services\NomorSuratManualService;
 use App\Services\NomorSuratService;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -80,7 +83,7 @@ class ListSuratKeluar extends ListRecords
                 ->color('primary')
                 ->visible(fn (): bool => auth()->user()?->can('Create:SuratKeluar') ?? false)
                 ->modalHeading('Buat Nomor Surat Keluar')
-                ->modalDescription('Isi formulir di bawah. Nomor surat akan dibuat secara otomatis setelah Anda menyimpan.')
+                ->modalDescription('Isi formulir di bawah untuk menerbitkan nomor surat.')
                 ->modalWidth('xl')
                 ->modalSubmitActionLabel('Buat Nomor Surat')
                 ->form(function (): array {
@@ -94,8 +97,38 @@ class ListSuratKeluar extends ListRecords
                     )->toArray();
 
                     $adaUnit = ! empty($unitOptions);
+                    $canManual = NomorSuratManualService::canCreateManual(auth()->user());
 
                     return [
+                        Radio::make('mode_penomoran')
+                            ->label('Metode Penomoran')
+                            ->options([
+                                Surat::NUMBERING_AUTO   => 'Otomatis (Sistem)',
+                                Surat::NUMBERING_MANUAL => 'Manual (Kustom)',
+                            ])
+                            ->default(Surat::NUMBERING_AUTO)
+                            ->inline()
+                            ->live()
+                            ->visible(fn (): bool => $canManual),
+
+                        TextInput::make('nomor_manual')
+                            ->label('Nomor Surat Manual')
+                            ->placeholder('Contoh: 004/G.3C/SGG/IX/2025 atau format kustom')
+                            ->required(fn ($get) => $get('mode_penomoran') === Surat::NUMBERING_MANUAL)
+                            ->visible(fn ($get) => $get('mode_penomoran') === Surat::NUMBERING_MANUAL)
+                            ->maxLength(255)
+                            ->live(onBlur: true)
+                            ->helperText(function (?string $state): ?HtmlString {
+                                if (blank($state)) {
+                                    return new HtmlString('<span class="text-xs text-gray-500">Format nomor bebas. Standar sistem: <code>{urut}/{jenis}.{unit}/{perusahaan}/{bulan_romawi}/{tahun}</code></span>');
+                                }
+                                $warning = NomorSuratManualService::getPatternWarning($state);
+                                if ($warning) {
+                                    return new HtmlString('<span class="text-xs text-amber-600 font-medium">⚠️ ' . e($warning) . '</span>');
+                                }
+                                return new HtmlString('<span class="text-xs text-success-600 font-medium">✓ Format sesuai pola standar</span>');
+                            }),
+
                         Select::make('jenis_surat')
                             ->label('Jenis Surat')
                             ->helperText('Pilih jenis surat yang akan diterbitkan.')
@@ -151,9 +184,6 @@ class ListSuratKeluar extends ListRecords
                 })
                 ->action(function (array $data, Action $action): void {
                     // ── Pertahanan otorisasi (defensive authorization) ────────
-                    // visible() hanya menyembunyikan tombol di UI;
-                    // pemeriksaan ini memblokir eksekusi bahkan jika aksi dipanggil
-                    // langsung (misalnya lewat API Livewire atau tools eksternal).
                     if (! auth()->user()?->can('Create:SuratKeluar')) {
                         Notification::make()
                             ->title('Akses Ditolak')
@@ -166,7 +196,7 @@ class ListSuratKeluar extends ListRecords
                         return;
                     }
 
-                    // Cek unit_id tersedia (mungkin tidak ada karena tidak ada unit siap)
+                    // Cek unit_id tersedia
                     if (empty($data['unit_id'])) {
                         Notification::make()
                             ->title('Pilih unit pembuat terlebih dahulu')
@@ -183,7 +213,78 @@ class ListSuratKeluar extends ListRecords
                     $jenis   = JenisSurat::from($data['jenis_surat']);
                     $tanggal = Carbon::parse($data['tanggal']);
                     $user    = auth()->user();
+                    $mode    = $data['mode_penomoran'] ?? Surat::NUMBERING_AUTO;
 
+                    // ── Eksekusi mode manual ─────────────────────────────────
+                    if ($mode === Surat::NUMBERING_MANUAL) {
+                        if (! NomorSuratManualService::canCreateManual($user)) {
+                            Notification::make()
+                                ->title('Akses Ditolak')
+                                ->body('Anda tidak memiliki izin untuk membuat nomor surat manual.')
+                                ->danger()
+                                ->send();
+
+                            $action->halt();
+
+                            return;
+                        }
+
+                        try {
+                            $surat = NomorSuratManualService::create(
+                                unit: $unit,
+                                jenis: $jenis,
+                                tanggal: $tanggal,
+                                nomorManual: $data['nomor_manual'] ?? '',
+                                data: [
+                                    'judul_surat'      => $data['judul_surat'],
+                                    'perihal'          => $data['perihal']   ?? null,
+                                    'deskripsi'        => $data['deskripsi'] ?? null,
+                                    'dibuat_oleh_id'   => $user?->id,
+                                    'dibuat_oleh_nama' => $user?->name ?? 'Sistem',
+                                ],
+                                user: $user,
+                            );
+
+                            Notification::make()
+                                ->title('Nomor Surat Manual Berhasil Dibuat')
+                                ->body("**{$surat->nomor}** (Manual)")
+                                ->success()
+                                ->persistent()
+                                ->actions([
+                                    Action::make('salin-nomor')
+                                        ->label('Salin Nomor')
+                                        ->icon('heroicon-o-clipboard-document')
+                                        ->button()
+                                        ->color('gray')
+                                        ->alpineClickHandler(
+                                            'window.navigator.clipboard.writeText(' . Js::from($surat->nomor) . ')'
+                                        ),
+                                ])
+                                ->send();
+
+                        } catch (\Illuminate\Validation\ValidationException $e) {
+                            $firstError = collect($e->errors())->flatten()->first() ?? 'Nomor surat tidak valid.';
+                            Notification::make()
+                                ->title('Gagal Membuat Nomor Surat')
+                                ->body($firstError)
+                                ->danger()
+                                ->send();
+
+                            $action->halt();
+                        } catch (\Throwable $e) {
+                            Notification::make()
+                                ->title('Gagal Membuat Nomor Surat')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+
+                            $action->halt();
+                        }
+
+                        return;
+                    }
+
+                    // ── Eksekusi mode otomatis (perilaku lama tetap utuh) ─────
                     try {
                         $surat = NomorSuratService::generate($unit, $jenis, $tanggal, [
                             'judul_surat'      => $data['judul_surat'],
@@ -193,7 +294,6 @@ class ListSuratKeluar extends ListRecords
                             'dibuat_oleh_nama' => $user?->name ?? 'Sistem',
                         ]);
 
-                        // Tampilkan nomor hasil dengan tombol salin
                         Notification::make()
                             ->title('Nomor Surat Berhasil Dibuat')
                             ->body("**{$surat->nomor}**")
@@ -206,22 +306,18 @@ class ListSuratKeluar extends ListRecords
                                     ->button()
                                     ->color('gray')
                                     ->alpineClickHandler(
-                                        // Js::from() menjamin nomor di-encode JSON dengan benar,
-                                        // aman dari tanda kutip atau karakter khusus lainnya.
                                         'window.navigator.clipboard.writeText(' . Js::from($surat->nomor) . ')'
                                     ),
                             ])
                             ->send();
 
                     } catch (\RuntimeException $e) {
-                        // Tampilkan pesan galat yang ramah — tanpa stack trace
                         Notification::make()
                             ->title('Gagal Membuat Nomor Surat')
                             ->body($e->getMessage())
                             ->danger()
                             ->send();
 
-                        // Tahan modal agar user dapat melihat pesan dan mencoba lagi
                         $action->halt();
                     }
                 }),

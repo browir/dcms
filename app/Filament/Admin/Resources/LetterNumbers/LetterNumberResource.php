@@ -19,7 +19,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
 use UnitEnum;
-
 /**
  * Register nomor dokumen: nomor diambil dulu di sini, lalu dokumen resminya diisi ke nomor itu.
  */
@@ -72,6 +71,13 @@ class LetterNumberResource extends Resource
                     // Desktop: nomor; mobile: kartu ringkas (kolom lain disembunyikan di mobile)
                     ->view('filament.tables.columns.letter-number-card')
                     ->searchable(),
+
+                TextColumn::make('numbering_type')
+                    ->label('Metode')
+                    ->badge()
+                    ->formatStateUsing(fn ($state): string => $state === LetterNumber::NUMBERING_MANUAL ? 'Manual' : 'Otomatis')
+                    ->color(fn ($state): string => $state === LetterNumber::NUMBERING_MANUAL ? 'warning' : 'gray')
+                    ->visibleFrom('md'),
 
                 TextColumn::make('jenis_surat')
                     ->label('Kategori')
@@ -139,6 +145,12 @@ class LetterNumberResource extends Resource
                     ->label('Kelompok')
                     ->options(DocumentCategory::KELOMPOK)
                     ->query(fn (Builder $q, array $data) => $q->when($data['value'], fn (Builder $q, string $kelompok) => $q->whereHas('category', fn (Builder $c) => $c->where('kelompok', $kelompok)))),
+                SelectFilter::make('numbering_type')
+                    ->label('Metode Penomoran')
+                    ->options([
+                        LetterNumber::NUMBERING_AUTO   => 'Otomatis',
+                        LetterNumber::NUMBERING_MANUAL => 'Manual',
+                    ]),
                 SelectFilter::make('tahun')
                     ->label('Tahun')
                     ->options(fn () => collect(range(now()->year, now()->year - 4))->mapWithKeys(fn ($y) => [$y => $y])->all())

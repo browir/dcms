@@ -5,6 +5,9 @@ namespace App\Models;
 use App\Enums\JenisSurat;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * Model Surat.
@@ -15,17 +18,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * - Perusahaan TIDAK disimpan di tabel ini. Gunakan $surat->unit->company untuk
  *   mendapatkan perusahaan, atau eager-load: Surat::with('unit.company')->...
  * - Kolom 'nomor' memiliki UNIQUE constraint di DB sebagai pengaman kedua
- *   setelah transaksi SELECT FOR UPDATE di NomorSuratService.
- * - Jangan buat Surat secara langsung dengan new Surat() + save() untuk surat keluar.
- *   Selalu gunakan NomorSuratService::generate() agar nomor dibuat dengan benar.
+ *   setelah transaksi SELECT FOR UPDATE / INSERT ON DUPLICATE di NomorSuratService.
+ * - Untuk surat otomatis: gunakan NomorSuratService::generate().
+ * - Untuk surat manual: gunakan NomorSuratManualService::create().
  */
 class Surat extends Model
 {
+    use LogsActivity, SoftDeletes;
+
+    public const NUMBERING_AUTO = 'auto';
+    public const NUMBERING_MANUAL = 'manual';
+
     protected $table = 'surat';
 
     protected $fillable = [
         'legacy_id',
         'nomor',
+        'numbering_type',
         'tipe_surat',
         'status',
         'nomor_urut',
@@ -44,6 +53,34 @@ class Surat extends Model
         'nomor_urut' => 'integer',
         'jenis'      => JenisSurat::class,
     ];
+
+    public function isManual(): bool
+    {
+        return $this->numbering_type === self::NUMBERING_MANUAL;
+    }
+
+    public function isAuto(): bool
+    {
+        return $this->numbering_type !== self::NUMBERING_MANUAL;
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'nomor',
+                'numbering_type',
+                'judul_surat',
+                'perihal',
+                'deskripsi',
+                'tanggal',
+                'jenis',
+                'unit_id',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(fn (string $eventName) => "Surat '{$this->judul_surat}' ({$this->nomor}) {$eventName}");
+    }
 
     // ── Relasi ──────────────────────────────────────────────────────────────
 

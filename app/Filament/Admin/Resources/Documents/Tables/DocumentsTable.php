@@ -40,7 +40,7 @@ class DocumentsTable
         return $table
             // Relasi yang ditampilkan dimuat sekaligus (tanpa N+1), plus status bookmark user ini.
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
-                ->with(['category:id,name,prefix', 'department:id,name', 'unit:id,name', 'user:id,name', 'updatedByUser:id,name'])
+                ->with(['category:id,name,prefix', 'department:id,name', 'unit:id,name', 'user:id,name', 'updatedByUser:id,name', 'letterNumber:id,numbering_type'])
                 ->withExists('rejections')
                 ->withCount([
                     'bookmarks as is_bookmarked' => fn (Builder $bookmarkQuery): Builder => $bookmarkQuery
