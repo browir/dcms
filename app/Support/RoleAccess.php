@@ -100,6 +100,7 @@ class RoleAccess
 
         $roles = [
             config('keycloak-sso.dcms.default_role', 'pegawai') => self::PEGAWAI,
+            'user' => self::PEGAWAI,
             'kabid' => self::KABID,
             'direktur' => self::DIREKTUR,
         ];
