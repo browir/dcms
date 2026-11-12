@@ -97,13 +97,11 @@ class TwoFactorChallenge extends Component
         session()->forget(['2fa_pending_user_id', '2fa_remember']);
         session()->regenerate();
 
-        $response = redirect()->intended(filament()->getUrl());
-
         if ($cookie) {
-            $response->withCookie($cookie);
+            \Illuminate\Support\Facades\Cookie::queue($cookie);
         }
 
-        $this->redirect($response->getTargetUrl());
+        $this->redirectIntended(default: filament()->getUrl());
     }
 
     public function resend(): void
