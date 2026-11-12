@@ -21,9 +21,9 @@ class ResetTwoFactorAction
      * Atau lewat static helper:
      *   ResetTwoFactorAction::make()
      */
-    public static function makeTableAction(): \Filament\Tables\Actions\Action
+    public static function makeTableAction(): \Filament\Actions\Action
     {
-        return \Filament\Tables\Actions\Action::make('reset_2fa')
+        return \Filament\Actions\Action::make('reset_2fa')
             ->label('Reset 2FA')
             ->icon('heroicon-o-shield-exclamation')
             ->color('danger')
