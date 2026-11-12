@@ -76,6 +76,10 @@ class AdminPanelProvider extends PanelProvider
                 fn (): string => view('filament.theme-dark')->render()
             )
             ->renderHook(
+                'panels::scripts.after',
+                fn (): string => view('filament.theme-transition')->render()
+            )
+            ->renderHook(
                 'panels::body.start',
                 fn (): string => Blade::render('filament.loading-screen')
             )
