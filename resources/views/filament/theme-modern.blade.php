@@ -57,6 +57,61 @@
         z-index: 50 !important;
     }
 
+    /*
+     * FIX STACKING CONTEXT — dua sumber utama yang membuat navbar tertimpa konten:
+     *
+     * 1. .fi-layout { overflow-x: clip }
+     *    overflow:clip (berbeda dari overflow:hidden) menciptakan stacking context baru.
+     *    Ini mengurung .fi-topbar-ctn di dalam stacking context .fi-layout,
+     *    sehingga z-index navbar tidak bisa bersaing dengan elemen di luar.
+     *    Fix: ganti ke overflow-x:hidden (sama fungsinya, TIDAK menciptakan stacking context).
+     *
+     * 2. .fi-main-ctn { opacity:0; transition:all }
+     *    opacity < 1 pada elemen menciptakan stacking context.
+     *    transition:all berarti stacking context AKTIF selama animasi fade-in halaman.
+     *    Selama itu, konten tabel bisa berada di atas navbar.
+     *    Fix: gunakan visibility+opacity terbatas, atau nonaktifkan transition:all.
+     *
+     * Skala z-index yang konsisten untuk seluruh aplikasi:
+     *   --z-content     : 0      (konten biasa, default)
+     *   --z-sticky-th   : 10     (thead sticky tabel)
+     *   --z-topbar      : 50     (navbar, selalu di atas konten)
+     *   --z-dropdown    : 60     (dropdown menu navbar, di atas navbar)
+     *   --z-modal       : 70     (modal/dialog)
+     *   --z-toast       : 80     (notifikasi/toast, selalu paling atas)
+     */
+    :root {
+        --z-content:    0;
+        --z-sticky-th:  10;
+        --z-topbar:     50;
+        --z-dropdown:   60;
+        --z-modal:      70;
+        --z-toast:      80;
+    }
+
+    /* Fix #1: overflow-x:clip → overflow-x:hidden (tidak menciptakan stacking context) */
+    .fi-layout {
+        overflow-x: hidden !important;
+    }
+
+    /* Fix #2: nonaktifkan transition:all pada fi-main-ctn
+       (opacity transition menciptakan stacking context selama animasi berlangsung) */
+    .fi-main-ctn {
+        transition-property: opacity !important; /* hanya opacity, bukan 'all' */
+    }
+
+    /* Terapkan skala z-index konsisten */
+    .fi-topbar-ctn {
+        z-index: var(--z-topbar) !important;
+    }
+    .fi-dropdown-panel {
+        z-index: var(--z-dropdown) !important;
+    }
+    /* Sticky thead tabel — di bawah navbar */
+    .fi-ta-header-cell {
+        z-index: var(--z-sticky-th) !important;
+    }
+
     /* ── Header halaman: ringan, tanpa blok navy ── */
     .fi-header {
         background: transparent !important;
