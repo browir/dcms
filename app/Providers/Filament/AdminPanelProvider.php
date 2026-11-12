@@ -352,10 +352,12 @@ class AdminPanelProvider extends PanelProvider
                         }
 
                         /* Topbar sticky + latar gelap */
-                        .fi-topbar {
+                        .fi-topbar-ctn {
                             position: sticky !important;
                             top: 0 !important;
                             z-index: 1000 !important;
+                        }
+                        .fi-topbar {
                             background-color: #0B2545 !important;
                             border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
                         }

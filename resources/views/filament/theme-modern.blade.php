@@ -49,87 +49,6 @@
     }
     body { color: var(--ui-ink); background-color: var(--ui-bg) !important; }
 
-    /*
-     * Pastikan navbar selalu di atas semua konten halaman.
-     * Filament default: z-index:30 — kita naikkan ke 50 agar konsisten di semua halaman.
-     */
-    .fi-topbar-ctn {
-        z-index: 50 !important;
-    }
-
-    /*
-     * FIX STACKING CONTEXT — dua sumber utama yang membuat navbar tertimpa konten:
-     *
-     * 1. .fi-layout { overflow-x: clip }
-     *    overflow:clip (berbeda dari overflow:hidden) menciptakan stacking context baru.
-     *    Ini mengurung .fi-topbar-ctn di dalam stacking context .fi-layout,
-     *    sehingga z-index navbar tidak bisa bersaing dengan elemen di luar.
-     *    Fix: ganti ke overflow-x:hidden (sama fungsinya, TIDAK menciptakan stacking context).
-     *
-     * 2. .fi-main-ctn { opacity:0; transition:all }
-     *    opacity < 1 pada elemen menciptakan stacking context.
-     *    transition:all berarti stacking context AKTIF selama animasi fade-in halaman.
-     *    Selama itu, konten tabel bisa berada di atas navbar.
-     *    Fix: gunakan visibility+opacity terbatas, atau nonaktifkan transition:all.
-     *
-     * Skala z-index yang konsisten untuk seluruh aplikasi:
-     *   --z-content     : 0      (konten biasa, default)
-     *   --z-sticky-th   : 10     (thead sticky tabel)
-     *   --z-topbar      : 50     (navbar, selalu di atas konten)
-     *   --z-dropdown    : 60     (dropdown menu navbar, di atas navbar)
-     *   --z-modal       : 70     (modal/dialog)
-     *   --z-toast       : 80     (notifikasi/toast, selalu paling atas)
-     */
-    :root {
-        --z-content:    0;
-        --z-sticky-th:  10;
-        --z-topbar:     50;
-        --z-dropdown:   60;
-        --z-modal:      70;
-        --z-toast:      80;
-    }
-
-    /* Fix #1: overflow-x:clip → overflow-x:hidden (tidak menciptakan stacking context) */
-    .fi-layout {
-        overflow-x: hidden !important;
-    }
-
-    /*
-     * FIX UTAMA — Akar masalah sebenarnya:
-     *
-     * Filament layout/index.blade.php (vendor) meng-inject x-bind:style="opacity:1"
-     * hanya pada 3 kondisi: sidebar collapsible, sidebar fully-collapsible, atau
-     * bukan top-navigation dengan sidebar. Ketika $hasTopNavigation = true (seperti
-     * DCMS), TIDAK ADA kondisi yang match → .fi-main-ctn tidak mendapat inline
-     * style opacity:1 → tetap opacity:0 dari CSS Filament PERMANEN.
-     *
-     * opacity:0 menciptakan stacking context, dan karena .fi-main-ctn adalah wrapper
-     * besar yang membungkus semua konten halaman, stacking context-nya bersaing
-     * dengan .fi-topbar-ctn — dan karena keduanya di dalam .fi-layout tanpa z-index
-     * eksplisit pada .fi-main-ctn, urutan DOM (topbar lebih awal = di bawah konten
-     * yang datang belakangan dalam source order) membuat konten menang.
-     *
-     * Fix: set opacity:1 !important langsung di CSS kustom.
-     * Tidak perlu mengubah vendor file.
-     */
-    .fi-body-has-top-navigation .fi-main-ctn,
-    .fi-body:not(.fi-body-has-sidebar-collapsible-on-desktop):not(.fi-body-has-sidebar-fully-collapsible-on-desktop) .fi-main-ctn {
-        opacity: 1 !important;
-        transition-property: none !important; /* nonaktifkan semua transisi — tidak dibutuhkan */
-    }
-
-    /* Terapkan skala z-index konsisten */
-    .fi-topbar-ctn {
-        z-index: var(--z-topbar) !important;
-    }
-    .fi-dropdown-panel {
-        z-index: var(--z-dropdown) !important;
-    }
-    /* Sticky thead tabel — di bawah navbar */
-    .fi-ta-header-cell {
-        z-index: var(--z-sticky-th) !important;
-    }
-
     /* ── Header halaman: ringan, tanpa blok navy ── */
     .fi-header {
         background: transparent !important;
@@ -618,3 +537,4 @@
     }
 
 </style>
+
