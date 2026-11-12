@@ -1,14 +1,13 @@
 {{--
-    Animasi circular reveal saat toggle light/dark mode.
+    Animasi smooth fade saat toggle light/dark mode.
     Memakai View Transitions API (native browser) — tanpa dependency tambahan.
     Degradasi elegan: jika browser tidak mendukung, toggle tetap berfungsi normal.
 
     Cara kerja:
-    1. Mencegat event 'theme-changed' di window (fase capture).
-    2. Menyimpan posisi klik sebagai titik awal lingkaran (--dcms-vt-x, --dcms-vt-y).
-    3. Memanggil document.startViewTransition(), menerapkan perubahan tema di dalamnya.
-    4. CSS clip-path: circle() menganimasikan ekspansi dari titik klik ke seluruh layar.
-    5. Menghormati prefers-reduced-motion — animasi dinonaktifkan otomatis.
+    1. Mencegat event 'theme-changed' di window (fase capture, sebelum Alpine Filament).
+    2. Memanggil document.startViewTransition() lalu menerapkan perubahan tema di dalamnya.
+    3. CSS opacity cross-fade smooth antara snapshot lama dan tampilan baru.
+    4. Menghormati prefers-reduced-motion — animasi dinonaktifkan otomatis.
 
     Catatan teknis:
     - Filament menyimpan preferensi di localStorage key 'filament:theme:mode'.
@@ -19,33 +18,25 @@
 
 <style>
     /*
-     * View Transition: nonaktifkan animasi default browser,
-     * kita ganti sepenuhnya dengan clip-path circular reveal.
+     * View Transition: fade smooth antara tema lama dan baru.
+     * Durasi 350ms dengan easing ease-in-out untuk kesan premium.
      */
-    ::view-transition-old(root),
-    ::view-transition-new(root) {
-        animation: none;
-        mix-blend-mode: normal;
-    }
-
-    /* Lapisan BARU (tema yang akan muncul) mengembang dari titik klik */
-    ::view-transition-new(root) {
-        clip-path: circle(0% at var(--dcms-vt-x, 50%) var(--dcms-vt-y, 0%));
-        animation: dcms-vt-reveal 0.42s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-        z-index: 2;
-    }
-
-    /* Lapisan LAMA (tema sebelumnya) tetap di bawah, tidak bergerak */
     ::view-transition-old(root) {
-        animation: none;
-        z-index: 1;
+        animation: dcms-vt-fade-out 0.35s ease-in-out forwards;
     }
 
-    @keyframes dcms-vt-reveal {
-        to {
-            /* 150% memastikan lingkaran menutupi sudut terjauh layar */
-            clip-path: circle(150% at var(--dcms-vt-x, 50%) var(--dcms-vt-y, 0%));
-        }
+    ::view-transition-new(root) {
+        animation: dcms-vt-fade-in 0.35s ease-in-out forwards;
+    }
+
+    @keyframes dcms-vt-fade-out {
+        from { opacity: 1; }
+        to   { opacity: 0; }
+    }
+
+    @keyframes dcms-vt-fade-in {
+        from { opacity: 0; }
+        to   { opacity: 1; }
     }
 
     /* Hormati preferensi pengguna: kurangi gerakan jika diminta */
@@ -53,7 +44,6 @@
         ::view-transition-old(root),
         ::view-transition-new(root) {
             animation: none !important;
-            clip-path: none !important;
         }
     }
 </style>
@@ -61,15 +51,6 @@
 <script>
 (function () {
     'use strict';
-
-    /* Simpan posisi klik terakhir dari seluruh dokumen (untuk titik asal lingkaran) */
-    var _vtX = '50%';
-    var _vtY = '0%';
-
-    document.addEventListener('click', function (e) {
-        _vtX = e.clientX + 'px';
-        _vtY = e.clientY + 'px';
-    }, true /* capture: rekam sebelum handler lain berjalan */);
 
     /**
      * Jalankan View Transition yang membungkus callback perubahan tema.
@@ -82,11 +63,6 @@
             applyTheme();
             return;
         }
-
-        /* Set CSS custom property untuk posisi titik asal lingkaran */
-        document.documentElement.style.setProperty('--dcms-vt-x', _vtX);
-        document.documentElement.style.setProperty('--dcms-vt-y', _vtY);
-
         document.startViewTransition(applyTheme);
     }
 
@@ -114,16 +90,14 @@
     /**
      * Terapkan tema ke Filament secara manual:
      * 1. Simpan ke localStorage (key yang dipakai Filament: 'filament:theme:mode').
-     * 2. Terapkan/hapus class .dark di <html> (via Alpine effect jika tersedia).
-     * 3. Perbarui Alpine store agar ikon tombol toggle ikut berubah.
-     *
-     * Ini mereplikasi persis logika di app.js agar perilaku identik.
+     * 2. Update Alpine store agar ikon tombol toggle ikut berubah.
+     * 3. Fallback: terapkan class .dark ke <html> langsung jika Alpine belum siap.
      */
     function applyFilamentTheme(theme) {
         try {
             localStorage.setItem('filament:theme:mode', theme);
         } catch (err) {
-            /* localStorage tidak tersedia (mode privat ketat, dll.) — abaikan */
+            /* localStorage tidak tersedia — abaikan */
         }
 
         /* Resolusi 'system' ke dark/light berdasarkan preferensi OS */
@@ -138,7 +112,7 @@
         if (window.Alpine && typeof window.Alpine.store === 'function') {
             try {
                 window.Alpine.store('theme', resolvedTheme);
-                return; /* Alpine effect menangani classList, selesai */
+                return;
             } catch (err) {
                 /* Alpine store gagal — fallback manual di bawah */
             }
