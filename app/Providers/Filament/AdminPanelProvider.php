@@ -1288,13 +1288,12 @@ class AdminPanelProvider extends PanelProvider
                             white-space: nowrap !important;
                         }
 
-                        /* Elevate active table row above all other rows when its dropdown is open */
+                        /* Elevate active table row above other rows only when its dropdown is actually open */
                         tr.fi-ta-row:has(button[aria-expanded="true"]),
-                        tr.fi-ta-row:has(.fi-dropdown-panel:not(.fi-opacity-0)),
                         .fi-ta-cell:has(button[aria-expanded="true"]),
                         .fi-ta-actions:has(button[aria-expanded="true"]) {
                             position: relative !important;
-                            z-index: 99999 !important;
+                            z-index: 10 !important;
                         }
 
                         /* Ensure floating dropdown panels have smooth rounded corners and clean clipping */
