@@ -26,12 +26,36 @@
     }
 
     /* ── Latar: netral lembut, tanpa animasi ── */
+    /*
+     * FIX: background-attachment: fixed pada elemen non-root (fi-main, fi-layout)
+     * menciptakan stacking context baru di Chromium, menyebabkan z-index sticky navbar
+     * (.fi-topbar-ctn z-index:30) tidak efektif → konten halaman menimpa navbar saat scroll.
+     *
+     * Solusi: latar dipasang via html::before pseudo-element (position:fixed, bukan
+     * background-attachment:fixed) yang tidak menciptakan stacking context pada wrapper.
+     * body/.fi-main/.fi-layout hanya mewarisi warna bg tanpa background-attachment.
+     */
+    html::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background: radial-gradient(1100px 380px at 50% -140px, var(--ui-bg-glow), transparent 70%), var(--ui-bg);
+        pointer-events: none;
+    }
     body, .fi-main, .fi-layout {
-        background: radial-gradient(1100px 380px at 50% -140px, var(--ui-bg-glow), transparent 70%), var(--ui-bg) !important;
-        background-attachment: fixed !important;
+        background: transparent !important;
         animation: none !important;
     }
-    body { color: var(--ui-ink); }
+    body { color: var(--ui-ink); background-color: var(--ui-bg) !important; }
+
+    /*
+     * Pastikan navbar selalu di atas semua konten halaman.
+     * Filament default: z-index:30 — kita naikkan ke 50 agar konsisten di semua halaman.
+     */
+    .fi-topbar-ctn {
+        z-index: 50 !important;
+    }
 
     /* ── Header halaman: ringan, tanpa blok navy ── */
     .fi-header {

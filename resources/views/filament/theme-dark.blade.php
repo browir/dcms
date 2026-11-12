@@ -30,12 +30,19 @@
     html.dark .dms-icon { background: rgba(96, 165, 250, .14) !important; }
 
     /* ── Latar halaman ── */
+    /*
+     * FIX sama seperti theme-modern: background-attachment:fixed pada fi-main/fi-layout
+     * menciptakan stacking context → navbar tertimpa konten saat scroll.
+     * Latar dipasang via html.dark::before pseudo-element (position:fixed).
+     */
+    html.dark::before {
+        background: linear-gradient(160deg, #070d1a 0%, #0b1530 55%, #0e1b3d 100%);
+    }
     html.dark body,
     html.dark .fi-main,
     html.dark .fi-layout {
-        background: linear-gradient(160deg, #070d1a 0%, #0b1530 55%, #0e1b3d 100%) !important;
+        background: transparent !important;
         background-color: #070d1a !important;
-        background-attachment: fixed !important;
     }
 
     /* ── Token dashboard (Beranda) ── */
