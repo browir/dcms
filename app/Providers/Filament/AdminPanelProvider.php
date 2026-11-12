@@ -1297,6 +1297,9 @@ class AdminPanelProvider extends PanelProvider
                         }
 
                         /* Ensure floating dropdown panels have smooth rounded corners and clean clipping */
+                        .fi-ta-actions .fi-dropdown-panel {
+                            transition: none !important;
+                        }
                         .fi-dropdown-panel,
                         .fi-ta-actions .fi-dropdown-panel {
                             background-color: #ffffff !important;
