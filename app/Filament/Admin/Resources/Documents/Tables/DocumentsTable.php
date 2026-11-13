@@ -379,6 +379,7 @@ class DocumentsTable
                             return DocumentConversionService::downloadAsPdf($record);
                         }),
                 ])
+                    ->dropdownTeleport()
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->tooltip('Aksi lainnya')
                     ->extraAttributes(['class' => 'hidden md:inline-flex']),

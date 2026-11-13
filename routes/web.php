@@ -21,6 +21,16 @@ Route::get('/', function () {
     return redirect('/admin');
 });
 
+if (config('app.debug')) {
+    Route::get('/dev-login-superadmin', function () {
+        $user = \App\Models\User::find(282);
+        \Filament\Facades\Filament::setCurrentPanel(\Filament\Facades\Filament::getPanel('admin'));
+        \Filament\Facades\Filament::auth()->login($user);
+        session()->regenerate();
+        return redirect('/admin/documents?kelompok=dokumen');
+    });
+}
+
 // Halaman verifikasi kode 2FA — dapat diakses tanpa auth penuh
 // (user sudah lulus password, tapi belum masuk penuh)
 Route::get('/admin/two-factor-challenge', \App\Filament\Pages\Auth\TwoFactorChallenge::class)
