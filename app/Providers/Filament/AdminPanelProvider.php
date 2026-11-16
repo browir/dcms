@@ -110,6 +110,21 @@ class AdminPanelProvider extends PanelProvider
                         applyRolesBodyClass();
                         document.addEventListener("livewire:navigated", applyRolesBodyClass);
                         document.addEventListener("livewire:navigate", applyRolesBodyClass);
+
+                        // Tutup segera dropdown tabel lain saat tombol trigger baru diklik
+                        document.addEventListener("mousedown", function(e) {
+                            if (e.button !== 0) return;
+                            var trigger = e.target.closest(".fi-dropdown-trigger button, button.fi-ac-icon-btn-group, [aria-haspopup=\"menu\"]");
+                            if (!trigger) return;
+
+                            document.querySelectorAll(".fi-dropdown-panel").forEach(function(panel) {
+                                if (panel.trigger && panel.trigger !== trigger) {
+                                    if (typeof panel.close === "function") {
+                                        try { panel.close(); } catch (err) {}
+                                    }
+                                }
+                            });
+                        }, true);
                     })();
                 </script>')
             )
@@ -1288,26 +1303,18 @@ class AdminPanelProvider extends PanelProvider
                             white-space: nowrap !important;
                         }
 
-                        /* Elevate active table row above other rows only when its dropdown is actually open */
-                        tr.fi-ta-row:has(button[aria-expanded="true"]),
-                        .fi-ta-cell:has(button[aria-expanded="true"]),
-                        .fi-ta-actions:has(button[aria-expanded="true"]) {
-                            position: relative !important;
-                            z-index: 10 !important;
-                        }
-
                         /* Ensure floating dropdown panels have smooth rounded corners and clean clipping */
                         .fi-ta-actions .fi-dropdown-panel {
                             transition: none !important;
+                            z-index: 900 !important;
                         }
-                        .fi-dropdown-panel,
-                        .fi-ta-actions .fi-dropdown-panel {
+                        .fi-dropdown-panel {
                             background-color: #ffffff !important;
                             background: #ffffff !important;
                             border: 1px solid rgba(0, 0, 0, 0.08) !important;
                             border-radius: 14px !important;
                             box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.25), 0 4px 16px rgba(0, 0, 0, 0.1) !important;
-                            z-index: 2147483647 !important;
+                            z-index: 900 !important;
                             isolation: isolate !important;
                             overflow: visible !important;
                         }
