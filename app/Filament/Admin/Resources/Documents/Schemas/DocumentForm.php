@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Department;
 use App\Models\Document;
 use App\Models\DocumentCategory;
+use App\Models\DocumentTemplate;
 use App\Models\LetterNumber;
 use App\Models\Unit;
 use App\Models\User;
@@ -249,12 +250,56 @@ class DocumentForm
 
             /* ─── KONTEN FORMULIR ─── */
             Section::make('Konten Dokumen')
-                ->description('Tulis isi dokumen menggunakan editor teks kaya')
+                ->description('Tulis isi dokumen menggunakan editor teks kaya atau terapkan template surat resmi')
                 ->icon('heroicon-o-pencil-square')
                 ->iconColor('info')
                 ->columnSpanFull()
                 ->hidden(fn ($get) => $get('document_type') === 'file')
                 ->schema([
+                    Select::make('template_id')
+                        ->label('Pilih Template Surat')
+                        ->placeholder('Pilih template untuk mengisi otomatis format surat...')
+                        ->options(function (Get $get) {
+                            $companyId = $get('company_id') ?? Auth::user()?->company_id;
+
+                            return DocumentTemplate::query()
+                                ->active()
+                                ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
+                                ->pluck('name', 'id');
+                        })
+                        ->searchable()
+                        ->live()
+                        ->dehydrated(false)
+                        ->prefixIcon('heroicon-o-document-duplicate')
+                        ->helperText('Memilih template akan mengisi otomatis format surat ke editor di bawah.')
+                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                            if (! $state) {
+                                return;
+                            }
+                            $template = DocumentTemplate::find($state);
+                            if (! $template) {
+                                return;
+                            }
+
+                            $nomor = $get('code_number');
+                            if (! $nomor && $get('letter_number_id')) {
+                                $nomor = LetterNumber::find($get('letter_number_id'))?->nomor;
+                            }
+                            $nomor ??= '[NOMOR SURAT]';
+
+                            $tanggal = filled($get('published_at'))
+                                ? \Illuminate\Support\Carbon::parse($get('published_at'))->translatedFormat('d F Y')
+                                : now()->translatedFormat('d F Y');
+
+                            $content = str_replace(
+                                ['{nomor_surat}', '{nomor}', '{tanggal}', '{nama_direktur}', '{nip_direktur}'],
+                                [$nomor, $nomor, $tanggal, 'dr. Puga Sharaz Wangi, M.A.R.S.', '01042019232'],
+                                $template->template_content
+                            );
+
+                            $set('content', $content);
+                        }),
+
                     RichEditor::make('content')
                         ->hiddenLabel()
                         ->live(debounce: 900)
