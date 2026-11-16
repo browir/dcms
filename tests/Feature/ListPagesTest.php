@@ -6,6 +6,7 @@ use App\Enum\JenisSurat;
 use App\Filament\Admin\Resources\Agendas\Pages\ListAgendas;
 use App\Filament\Admin\Resources\Departments\Pages\ManageDepartments;
 use App\Filament\Admin\Resources\Documents\Pages\ListDocuments;
+use App\Filament\Admin\Resources\DocumentTemplates\Pages\ManageDocumentTemplates;
 use App\Filament\Admin\Resources\LetterNumbers\Pages\ListLetterNumbers;
 use App\Filament\Admin\Resources\Meetings\Pages\ListMeetings;
 use App\Filament\Admin\Resources\Units\Pages\ManageUnits;
@@ -110,11 +111,17 @@ class ListPagesTest extends TestCase
 
     public function test_daftar_lain_terbuka(): void
     {
-        foreach ([ListAgendas::class, ListLetterNumbers::class, ListUsers::class, ManageUnits::class, ManageDepartments::class] as $page) {
+        foreach ([ListAgendas::class, ListLetterNumbers::class, ListUsers::class, ManageUnits::class, ManageDepartments::class, ManageDocumentTemplates::class] as $page) {
             Livewire::test($page)->assertOk();
         }
 
         Livewire::test(ListUsers::class)->filterTable('sso', false)->assertCanSeeTableRecords([$this->admin]);
         Livewire::test(ManageUnits::class)->filterTable('tanpa_kode_hris', true)->assertCountTableRecords(1);
+    }
+
+    public function test_admin_dashboard_dan_sidebar_terbuka_tanpa_error(): void
+    {
+        $response = $this->get('/admin');
+        $response->assertOk();
     }
 }
