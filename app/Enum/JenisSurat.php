@@ -19,12 +19,21 @@ enum JenisSurat: string
     case SURAT_BALASAN = 'M';
     case SURAT_TANDA_TERIMA = 'N';
     case SURAT_PENGANTAR = 'O';
-    case SURAT_PERINGATAN = 'SP';
     case SURAT_REKOMENDASI = 'P';
+    case SURAT_KETERANGAN = 'Q';
+    case FORMULIR_R = 'R';
+    case PERMOHONAN_BARANG_JASA_S = 'S';
+    case POSTER_BROSUR = 'T';
+    case SURAT_PERINGATAN_U = 'U';
+    case SURAT_BALASAN_V = 'V';
+    case PERMOHONAN_PEMBAYARAN = 'W';
+    case SOMASI = 'X';
+    case SURAT_PERNYATAAN = 'Y';
+    case SERTIFIKAT_Z = 'Z';
+    case SURAT_PERINGATAN = 'SP';
     case MCU = 'MCU';
     case SOP = 'SOP';
     case FORMULIR = 'FRM';
-    case SURAT_KETERANGAN = 'Q';
     case PKWT = 'PKWT';
     case PKWTT = 'PKWTT';
     case CERT = 'CERT';
@@ -49,12 +58,21 @@ enum JenisSurat: string
             self::SURAT_BALASAN => 'Surat Balasan',
             self::SURAT_TANDA_TERIMA => 'Surat Tanda Terima',
             self::SURAT_PENGANTAR => 'Surat Pengantar',
-            self::SURAT_PERINGATAN => 'Surat Peringatan',
             self::SURAT_REKOMENDASI => 'Surat Rekomendasi',
+            self::SURAT_KETERANGAN => 'Surat Keterangan',
+            self::FORMULIR_R => 'Formulir-formulir',
+            self::PERMOHONAN_BARANG_JASA_S => 'Surat Permohonan Barang / Jasa',
+            self::POSTER_BROSUR => 'Poster / Brosur',
+            self::SURAT_PERINGATAN_U => 'Surat Peringatan',
+            self::SURAT_BALASAN_V => 'Surat Balasan',
+            self::PERMOHONAN_PEMBAYARAN => 'Surat Permohonan Pembayaran Tagihan',
+            self::SOMASI => 'Somasi',
+            self::SURAT_PERNYATAAN => 'Surat Pernyataan',
+            self::SERTIFIKAT_Z => 'Sertifikat',
+            self::SURAT_PERINGATAN => 'Surat Peringatan',
             self::MCU => 'Surat MCU',
             self::SOP => 'Standard Operational Procedure',
             self::FORMULIR => 'Formulir',
-            self::SURAT_KETERANGAN => 'Surat Keterangan',
             self::PKWT => 'Perjanjian Kerja Waktu Tertentu',
             self::PKWTT => 'Perjanjian Kerja Waktu Tidak Tentu',
             self::CERT => 'Sertifikat',
@@ -92,7 +110,9 @@ enum JenisSurat: string
             self::EDARAN_PENGUMUMAN, self::INTERNAL_MEMO, self::SURAT_PERINTAH, self::SURAT_TUGAS,
             self::SURAT_UNDANGAN, self::SURAT_KUASA, self::PERMOHONAN_BARANG_JASA, self::SURAT_BALASAN,
             self::SURAT_TANDA_TERIMA, self::SURAT_PENGANTAR, self::SURAT_PERINGATAN, self::SURAT_REKOMENDASI,
-            self::SURAT_KETERANGAN, self::SPKK, self::SKK => 'surat_keluar',
+            self::SURAT_KETERANGAN, self::SPKK, self::SKK,
+            self::PERMOHONAN_BARANG_JASA_S, self::SURAT_PERINGATAN_U, self::SURAT_BALASAN_V,
+            self::PERMOHONAN_PEMBAYARAN, self::SOMASI, self::SURAT_PERNYATAAN => 'surat_keluar',
             default => 'dokumen',
         };
     }

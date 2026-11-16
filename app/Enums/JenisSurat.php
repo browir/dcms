@@ -32,12 +32,21 @@ enum JenisSurat: string
     case M     = 'M';
     case N     = 'N';
     case O     = 'O';
-    case SP    = 'SP';
     case P     = 'P';
+    case Q     = 'Q';
+    case R     = 'R';
+    case S     = 'S';
+    case T     = 'T';
+    case U     = 'U';
+    case V     = 'V';
+    case W     = 'W';
+    case X     = 'X';
+    case Y     = 'Y';
+    case Z     = 'Z';
+    case SP    = 'SP';
     case MCU   = 'MCU';
     case SOP   = 'SOP';
     case FRM   = 'FRM';
-    case Q     = 'Q';
     case PKWT  = 'PKWT';
     case PKWTT = 'PKWTT';
     case CERT  = 'CERT';
@@ -63,12 +72,21 @@ enum JenisSurat: string
             self::M     => 'Surat Balasan',
             self::N     => 'Surat Tanda Terima',
             self::O     => 'Surat Pengantar',
-            self::SP    => 'Surat Peringatan',
             self::P     => 'Surat Rekomendasi',
+            self::Q     => 'Surat Keterangan',
+            self::R     => 'Formulir-formulir',
+            self::S     => 'Surat Permohonan Barang / Jasa',
+            self::T     => 'Poster / Brosur',
+            self::U     => 'Surat Peringatan',
+            self::V     => 'Surat Balasan',
+            self::W     => 'Surat Permohonan Pembayaran Tagihan',
+            self::X     => 'Somasi',
+            self::Y     => 'Surat Pernyataan',
+            self::Z     => 'Sertifikat',
+            self::SP    => 'Surat Peringatan',
             self::MCU   => 'Surat MCU',
             self::SOP   => 'Standard Operational Procedure',
             self::FRM   => 'Formulir',
-            self::Q     => 'Surat Keterangan',
             self::PKWT  => 'Perjanjian Kerja Waktu Tertentu',
             self::PKWTT => 'Perjanjian Kerja Waktu Tidak Tentu',
             self::CERT  => 'Sertifikat',
@@ -86,7 +104,7 @@ enum JenisSurat: string
     {
         return array_combine(
             array_column(self::cases(), 'value'),
-            array_map(fn (self $j) => $j->label(), self::cases()),
+            array_map(fn (self $j) => "{$j->value} — {$j->label()}", self::cases()),
         );
     }
 }

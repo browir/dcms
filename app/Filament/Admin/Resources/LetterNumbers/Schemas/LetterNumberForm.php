@@ -198,12 +198,19 @@ class LetterNumberForm
         $categories = DocumentCategory::query()
             ->usableFor($companyId)
             ->when($kelompok, fn (Builder $q) => $q->where('kelompok', $kelompok))
-            ->orderBy('kelompok')
-            ->orderBy('name')
+            ->orderByRaw('LENGTH(code), code ASC')
             ->get();
 
         if ($kelompok) {
             return $categories->mapWithKeys(fn (DocumentCategory $c) => [$c->id => $c->option_label])->all();
+        }
+
+        // Jika perusahaan memiliki kategori khusus kode A-Z (seperti RSUSM), tampilkan urut A..Z langsung agar mudah dicari
+        $hasCompanySpecific = $companyId && DocumentCategory::where('company_id', $companyId)->where('is_active', true)->whereNotNull('code')->exists();
+        if ($hasCompanySpecific) {
+            return $categories->mapWithKeys(fn (DocumentCategory $c) => [
+                $c->id => $c->option_label . ' (' . (DocumentCategory::KELOMPOK[$c->kelompok] ?? '') . ')',
+            ])->all();
         }
 
         return $categories
@@ -212,7 +219,7 @@ class LetterNumberForm
             ->all();
     }
 
-    /** Unit yang boleh dipilih: semua untuk admin global, selain itu unit di perusahaan user. */
+    /** Unit yang boleh dipilih: semua untuk admin global, selain itu unit di perusahaan user. Diurutkan berdasarkan kode. */
     private static function unitOptions(): array
     {
         /** @var User|null $user */
@@ -225,7 +232,7 @@ class LetterNumberForm
             ->where('is_active', true)
             ->whereHas('department', fn (Builder $q) => $q
                 ->when(! $all, fn (Builder $d) => $d->where('company_id', $user?->company_id)))
-            ->orderBy('name')
+            ->orderByRaw('company_id ASC, LENGTH(COALESCE(kode, prefix, name)), COALESCE(kode, prefix, name) ASC')
             ->get()
             ->mapWithKeys(fn (Unit $unit) => [
                 $unit->id => $service->companyCode($unit->department->company).' · '.$service->unitCode($unit).' — '.$unit->name,

@@ -47,12 +47,18 @@ class DocumentCategory extends Model
         return JenisSurat::tryFrom((string) $this->code);
     }
 
-    /** Kategori aktif yang bisa dipakai menomori dokumen perusahaan ini (milik perusahaan + umum). */
+    /** Kategori aktif yang bisa dipakai menomori dokumen perusahaan ini (milik perusahaan jika ada, selain itu umum). */
     public function scopeUsableFor(Builder $query, ?int $companyId): Builder
     {
+        $hasCompanyCategories = $companyId && static::query()->where('company_id', $companyId)->where('is_active', true)->whereNotNull('code')->exists();
+
         return $query->where('is_active', true)
             ->whereNotNull('code')
-            ->where(fn (Builder $q) => $q->whereNull('company_id')->when($companyId, fn (Builder $c) => $c->orWhere('company_id', $companyId)));
+            ->when(
+                $hasCompanyCategories,
+                fn (Builder $q) => $q->where('company_id', $companyId),
+                fn (Builder $q) => $q->whereNull('company_id')
+            );
     }
 
     /** Kategori untuk kode jenis tertentu; kategori milik perusahaan didahulukan dari yang umum. */
@@ -60,10 +66,20 @@ class DocumentCategory extends Model
     {
         $code = $code instanceof JenisSurat ? $code->value : $code;
 
+        if ($companyId) {
+            $companyCategory = static::query()
+                ->where('code', $code)
+                ->where('company_id', $companyId)
+                ->first();
+
+            if ($companyCategory) {
+                return $companyCategory;
+            }
+        }
+
         return static::query()
             ->where('code', $code)
-            ->where(fn (Builder $q) => $q->whereNull('company_id')->when($companyId, fn (Builder $c) => $c->orWhere('company_id', $companyId)))
-            ->orderByRaw('company_id is null')
+            ->whereNull('company_id')
             ->first();
     }
 

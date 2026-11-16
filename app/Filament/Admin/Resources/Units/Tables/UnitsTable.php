@@ -19,6 +19,7 @@ class UnitsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->defaultSort(fn (Builder $query) => $query->orderByRaw('LENGTH(COALESCE(kode, prefix, name)), COALESCE(kode, prefix, name) ASC'))
             ->columns([
                 // Mobile card
                 TextColumn::make('name')

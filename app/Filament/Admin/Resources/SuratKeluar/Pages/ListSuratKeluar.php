@@ -69,7 +69,7 @@ class ListSuratKeluar extends ListRecords
                 fn (Builder $q) => $q->whereNotNull('kode_surat')->where('kode_surat', '<>', '')
             )
             ->with('company')
-            ->orderBy('name');
+            ->orderByRaw('company_id ASC, LENGTH(kode), kode ASC');
     }
 
     // ── Header actions ────────────────────────────────────────────────────────

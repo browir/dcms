@@ -75,7 +75,7 @@ class DocumentsTable
                     ->label('Kategori')
                     ->formatStateUsing(fn (?JenisSurat $state): HtmlString|string => $state ? LetterNumberResource::jenisBadge($state) : '—')
                     ->html()
-                    ->tooltip(fn (Document $record): ?string => $record->jenis_surat?->label() ?? $record->category?->name)
+                    ->tooltip(fn (Document $record): ?string => $record->category?->name ?? $record->jenis_surat?->label())
                     ->placeholder('—')
                     ->visibleFrom('lg'),
 

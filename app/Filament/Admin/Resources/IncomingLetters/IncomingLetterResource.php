@@ -273,9 +273,9 @@ class IncomingLetterResource extends Resource
             ->with('department.company')
             ->where('is_active', true)
             ->whereHas('department', fn (Builder $q) => $q->when(! $all, fn (Builder $d) => $d->where('company_id', $user?->company_id)))
-            ->orderBy('name')
+            ->orderByRaw('company_id ASC, LENGTH(COALESCE(kode, prefix, name)), COALESCE(kode, prefix, name) ASC')
             ->get()
-            ->mapWithKeys(fn (Unit $unit) => [$unit->id => $unit->name.' — '.($unit->department?->name ?? '')])
+            ->mapWithKeys(fn (Unit $unit) => [$unit->id => ($unit->kode ? "{$unit->kode} — " : '') . $unit->name.' — '.($unit->department?->name ?? '')])
             ->all();
     }
 

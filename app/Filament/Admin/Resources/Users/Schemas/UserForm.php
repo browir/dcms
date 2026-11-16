@@ -60,11 +60,16 @@ class UserForm
                 ->label('Unit')
                 ->options(function (callable $get) {
                     $departmentId = $get('department_id');
-                    if (! $departmentId) {
-                        return Unit::where('is_active', true)->pluck('name', 'id');
-                    }
 
-                    return Unit::where('department_id', $departmentId)->where('is_active', true)->pluck('name', 'id');
+                    return Unit::query()
+                        ->where('is_active', true)
+                        ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId))
+                        ->orderByRaw('LENGTH(COALESCE(kode, prefix, name)), COALESCE(kode, prefix, name) ASC')
+                        ->get()
+                        ->mapWithKeys(fn (Unit $u) => [
+                            $u->id => ($u->kode ? "{$u->kode} — " : '') . $u->name,
+                        ])
+                        ->all();
                 })
                 ->searchable()
                 ->preload()
