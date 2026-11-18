@@ -44,7 +44,7 @@ class ListPagesTest extends TestCase
         Notification::fake();
         Role::findOrCreate('kabid', 'web');
         $role = Role::findOrCreate('super_admin', 'web');
-        $role->givePermissionTo(collect(['Document', 'Meeting', 'User', 'Unit', 'Department'])
+        $role->givePermissionTo(collect(['Document', 'Meeting', 'User', 'Unit', 'Department', 'LetterNumber', 'DocumentTemplate'])
             ->flatMap(fn ($model) => ["ViewAny:{$model}", "View:{$model}", "Create:{$model}", "Update:{$model}", "Delete:{$model}"])
             ->map(fn ($name) => Permission::findOrCreate($name, 'web')));
 

@@ -114,7 +114,10 @@ class DocumentForm
                     Select::make('letter_number_id')
                         ->label('Nomor Dokumen')
                         ->helperText('Dokumen diisi ke nomor dokumen yang sudah diambil. Belum punya nomor? Klik tombol + untuk mengambil nomor baru.')
-                        ->options(fn ($livewire): array => self::letterNumberOptions(data_get($livewire, 'kelompok')))
+                        ->options(fn ($livewire, Get $get): array => self::letterNumberOptions(
+                            data_get($livewire, 'kelompok'),
+                            $get('company_id') ?? Auth::user()?->company_id,
+                        ))
                         ->searchable()
                         ->native(false)
                         ->live()
@@ -127,7 +130,8 @@ class DocumentForm
                         ->createOptionAction(fn (Action $action) => $action
                             ->modalHeading('Ambil Nomor Dokumen')
                             ->modalSubmitActionLabel('Terbitkan Nomor')
-                            ->modalWidth('lg'))
+                            ->modalWidth('lg')
+                            ->visible(fn () => Auth::user()?->can('create', LetterNumber::class) ?? false))
                         ->afterStateUpdated(function ($state, Set $set, Get $get): void {
                             foreach (self::letterNumberState($state, $get('title')) as $field => $value) {
                                 $set($field, $value);
@@ -726,11 +730,14 @@ class DocumentForm
     }
 
     /** Nomor dokumen yang belum diisi dokumen; nomor yang diambil user sendiri tampil lebih dulu. */
-    private static function letterNumberOptions(?string $kelompok = null): array
+    private static function letterNumberOptions(?string $kelompok = null, ?int $companyId = null): array
     {
+        $companyId ??= Auth::user()?->company_id;
+
         return LetterNumber::query()
             ->access()
             ->available()
+            ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
             ->when(isset(DocumentCategory::KELOMPOK[$kelompok]), fn ($q) => $q->whereHas('category', fn ($c) => $c->where('kelompok', $kelompok)))
             ->orderByRaw('created_by = ? desc', [Auth::id()])
             ->orderByDesc('tanggal_surat')

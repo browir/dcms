@@ -35,6 +35,7 @@ class SuratKeluarTable
     {
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query
+                ->access()
                 ->with(['unit.company'])
                 ->where('tipe_surat', 'keluar')
                 ->orderBy('tanggal', 'desc')

@@ -85,7 +85,7 @@ class LetterNumberService
         ?User $by = null,
     ): LetterNumber {
         $department = $unit->department;
-        $company = $department?->company;
+        $company = $unit->company ?? $department?->company;
 
         if (! $company) {
             throw new InvalidArgumentException("Unit {$unit->name} belum terhubung ke perusahaan.");

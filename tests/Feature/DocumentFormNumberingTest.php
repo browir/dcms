@@ -41,9 +41,9 @@ class DocumentFormNumberingTest extends TestCase
 
         Role::firstOrCreate(['name' => 'kabid']);
         Role::firstOrCreate(['name' => 'super_admin']);
-        // Staf biasa: hanya izin dokumen — izin nomor surat mengikuti izin membuat dokumen.
+        // Staf dengan izin penomoran dan dokumen
         $role = Role::firstOrCreate(['name' => 'staf']);
-        $role->givePermissionTo(collect(['ViewAny:Document', 'Create:Document'])
+        $role->givePermissionTo(collect(['ViewAny:Document', 'Create:Document', 'ViewAny:LetterNumber', 'Create:LetterNumber'])
             ->map(fn ($name) => Permission::firstOrCreate(['name' => $name])));
 
         $company = Company::create(['name' => 'PT Syifa Global Group', 'code' => 'SYIFA', 'kode_surat' => 'SGG']);

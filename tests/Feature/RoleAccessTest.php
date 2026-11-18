@@ -98,10 +98,10 @@ class RoleAccessTest extends TestCase
     public static function roles(): array
     {
         return [
-            'pegawai' => ['pegawai', ['DocumentResource' => true, 'MeetingResource' => true, 'LetterNumberResource' => true, 'UserResource' => false, 'RoleResource' => false, 'AuditTrail' => false]],
+            'pegawai' => ['pegawai', ['DocumentResource' => true, 'MeetingResource' => true, 'LetterNumberResource' => false, 'UserResource' => false, 'RoleResource' => false, 'AuditTrail' => false]],
             'kabid' => ['kabid', ['DocumentResource' => true, 'MeetingResource' => true, 'AuditTrail' => true, 'UserResource' => false, 'AppSettings' => false]],
             'direktur' => ['direktur', ['DocumentResource' => true, 'RecycleBin' => true, 'AppSettings' => false]],
-            'super_admin' => ['super_admin', ['DocumentResource' => true, 'UserResource' => true, 'RoleResource' => true, 'AppSettings' => true]],
+            'super_admin' => ['super_admin', ['DocumentResource' => true, 'UserResource' => true, 'RoleResource' => true, 'AppSettings' => true, 'LetterNumberResource' => true]],
             'tanpa role' => [null, ['DocumentResource' => false, 'MeetingResource' => false, 'UserResource' => false]],
         ];
     }

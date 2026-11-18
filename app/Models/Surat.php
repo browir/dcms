@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Enums\JenisSurat;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -101,5 +103,28 @@ class Surat extends Model
     public function dibuatOleh(): BelongsTo
     {
         return $this->belongsTo(User::class, 'dibuat_oleh_id');
+    }
+
+    /**
+     * Filter surat berdasarkan perusahaan akun yang login.
+     * Super Admin dan user dengan permission view_all_companies_data melihat semua.
+     */
+    public function scopeAccess(Builder $query): Builder
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        if (! $user || $user->hasRole('super_admin') || $user->can('view_all_companies_data')) {
+            return $query;
+        }
+
+        if ($user->company_id) {
+            return $query->whereHas('unit', fn (Builder $q) => $q->where(function (Builder $sub) use ($user) {
+                $sub->where('company_id', $user->company_id)
+                    ->orWhereHas('department', fn ($d) => $d->where('company_id', $user->company_id));
+            }));
+        }
+
+        return $query;
     }
 }

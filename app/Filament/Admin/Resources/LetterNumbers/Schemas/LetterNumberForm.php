@@ -96,7 +96,7 @@ class LetterNumberForm
                 ->label('Unit')
                 ->helperText('Perusahaan penerbit mengikuti unit.')
                 ->options(fn () => self::unitOptions())
-                ->default(fn () => Auth::user()?->unit_id)
+                ->default(fn () => Auth::user()?->unit_id ?? self::defaultUnitId())
                 ->searchable()
                 ->native(false)
                 ->required()
@@ -134,6 +134,14 @@ class LetterNumberForm
     {
         /** @var User|null $user */
         $user = Auth::user();
+
+        // Otorisasi fitur penomoran dokumen
+        if ($user && ! $user->can('create', LetterNumber::class)) {
+            throw new \Illuminate\Auth\Access\AuthorizationException(
+                'Anda tidak memiliki hak akses untuk menerbitkan nomor dokumen.'
+            );
+        }
+
         $mode = $data['numbering_type'] ?? LetterNumber::NUMBERING_AUTO;
 
         $unit     = Unit::query()->findOrFail($data['unit_id']);
@@ -174,10 +182,12 @@ class LetterNumberForm
 
     private static function preview(Get $get): string
     {
-        $unit = Unit::query()->with('department.company')->find($get('unit_id'));
+        $unitId = $get('unit_id') ?: self::defaultUnitId();
+        $unit = $unitId ? Unit::query()->with(['company', 'department.company'])->find($unitId) : null;
+        $company = $unit?->company ?? $unit?->department?->company ?? Auth::user()?->company;
 
         return app(LetterNumberService::class)->preview(
-            $unit?->department?->company,
+            $company,
             DocumentCategory::query()->find($get('category_id'))?->code,
             $unit,
             filled($get('tanggal_surat')) ? Carbon::parse($get('tanggal_surat')) : today(),
@@ -192,7 +202,10 @@ class LetterNumberForm
      */
     public static function categoryOptions(mixed $unitId, ?string $kelompok = null): array
     {
-        $companyId = Unit::query()->with('department')->find($unitId)?->department?->company_id
+        $unitId = $unitId ?: self::defaultUnitId();
+        $unit = $unitId ? Unit::query()->with(['company', 'department.company'])->find($unitId) : null;
+        $companyId = $unit?->company_id
+            ?? $unit?->department?->company_id
             ?? Auth::user()?->company_id;
 
         $categories = DocumentCategory::query()
@@ -219,24 +232,54 @@ class LetterNumberForm
             ->all();
     }
 
-    /** Unit yang boleh dipilih: semua untuk admin global, selain itu unit di perusahaan user. Diurutkan berdasarkan kode. */
-    private static function unitOptions(): array
+    /** Unit default berdasarkan profil user atau unit pertama dari perusahaan user */
+    public static function defaultUnitId(): ?int
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        if ($user?->unit_id) {
+            return $user->unit_id;
+        }
+
+        if ($user?->company_id) {
+            return Unit::query()
+                ->where('is_active', true)
+                ->where(function (Builder $q) use ($user) {
+                    $q->where('company_id', $user->company_id)
+                        ->orWhereHas('department', fn ($d) => $d->where('company_id', $user->company_id));
+                })
+                ->orderByRaw('LENGTH(COALESCE(kode, prefix, name)), COALESCE(kode, prefix, name) ASC')
+                ->value('id');
+        }
+
+        return null;
+    }
+
+    /** Unit yang boleh dipilih: disaring berdasarkan perusahaan bawaan akun */
+    public static function unitOptions(): array
     {
         /** @var User|null $user */
         $user = Auth::user();
         $all  = $user?->hasRole('super_admin') || $user?->can('view_all_companies_data');
         $service = app(LetterNumberService::class);
+        $userCompanyId = $user?->company_id;
 
         return Unit::query()
-            ->with('department.company')
+            ->with(['company', 'department.company'])
             ->where('is_active', true)
-            ->whereHas('department', fn (Builder $q) => $q
-                ->when(! $all, fn (Builder $d) => $d->where('company_id', $user?->company_id)))
+            ->when(! $all && $userCompanyId, fn (Builder $q) => $q->where(function (Builder $sub) use ($userCompanyId) {
+                $sub->where('company_id', $userCompanyId)
+                    ->orWhereHas('department', fn ($d) => $d->where('company_id', $userCompanyId));
+            }))
+            ->when($all && $userCompanyId, fn (Builder $q) => $q->orderByRaw('CASE WHEN company_id = ? THEN 0 ELSE 1 END', [$userCompanyId]))
             ->orderByRaw('company_id ASC, LENGTH(COALESCE(kode, prefix, name)), COALESCE(kode, prefix, name) ASC')
             ->get()
-            ->mapWithKeys(fn (Unit $unit) => [
-                $unit->id => $service->companyCode($unit->department->company).' · '.$service->unitCode($unit).' — '.$unit->name,
-            ])
+            ->mapWithKeys(function (Unit $unit) use ($service) {
+                $comp = $unit->company ?? $unit->department?->company;
+                $compCode = $comp ? $service->companyCode($comp) : '-';
+                return [$unit->id => "{$compCode} · {$service->unitCode($unit)} — {$unit->name}"];
+            })
             ->all();
     }
 }

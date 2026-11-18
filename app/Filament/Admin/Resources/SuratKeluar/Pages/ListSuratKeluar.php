@@ -6,6 +6,7 @@ use App\Enums\JenisSurat;
 use App\Filament\Admin\Resources\SuratKeluar\SuratKeluarResource;
 use App\Models\Surat;
 use App\Models\Unit;
+use App\Models\User;
 use App\Services\NomorSuratManualService;
 use App\Services\NomorSuratService;
 use Carbon\Carbon;
@@ -58,8 +59,12 @@ class ListSuratKeluar extends ListRecords
      * Method ini dapat digunakan oleh test untuk memverifikasi logika filter.
      * PENTING: Jangan ubah kondisi ini tanpa sepengetahuan penulis tes.
      */
-    public static function queryUnitSiap(): Builder
+    public static function queryUnitSiap(?User $user = null): Builder
     {
+        $user ??= auth()->user();
+        $all = $user?->hasRole('super_admin') || $user?->can('view_all_companies_data');
+        $userCompanyId = $user?->company_id;
+
         return Unit::query()
             ->whereNotNull('kode')
             ->where('kode', '<>', '')
@@ -68,6 +73,8 @@ class ListSuratKeluar extends ListRecords
                 'company',
                 fn (Builder $q) => $q->whereNotNull('kode_surat')->where('kode_surat', '<>', '')
             )
+            ->when(! $all && $userCompanyId, fn (Builder $q) => $q->where('company_id', $userCompanyId))
+            ->when($all && $userCompanyId, fn (Builder $q) => $q->orderByRaw('CASE WHEN company_id = ? THEN 0 ELSE 1 END', [$userCompanyId]))
             ->with('company')
             ->orderByRaw('company_id ASC, LENGTH(kode), kode ASC');
     }
@@ -142,6 +149,7 @@ class ListSuratKeluar extends ListRecords
                                 ->label('Unit Pembuat')
                                 ->helperText('Perusahaan akan mengikuti unit yang dipilih.')
                                 ->options($unitOptions)
+                                ->default(fn () => auth()->user()?->unit_id ?? static::queryUnitSiap()->value('id'))
                                 ->required()
                                 ->native(false)
                                 ->searchable()
