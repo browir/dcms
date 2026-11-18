@@ -94,9 +94,13 @@ class LetterNumberForm
 
             Select::make('unit_id')
                 ->label('Unit')
-                ->helperText('Perusahaan penerbit mengikuti unit.')
+                ->helperText(fn () => ! Auth::user()?->hasRole(['super_admin', 'direktur', 'Sekretaris']) && filled(Auth::user()?->unit_id)
+                    ? 'Unit terkunci sesuai unit kerja bawaan akun Anda.'
+                    : 'Perusahaan penerbit mengikuti unit.')
                 ->options(fn () => self::unitOptions())
                 ->default(fn () => Auth::user()?->unit_id ?? self::defaultUnitId())
+                ->disabled(fn () => ! Auth::user()?->hasRole(['super_admin', 'direktur', 'Sekretaris']) && filled(Auth::user()?->unit_id))
+                ->dehydrated()
                 ->searchable()
                 ->native(false)
                 ->required()
@@ -140,6 +144,11 @@ class LetterNumberForm
             throw new \Illuminate\Auth\Access\AuthorizationException(
                 'Anda tidak memiliki hak akses untuk menerbitkan nomor dokumen.'
             );
+        }
+
+        // Kunci unit ke unit bawaan akun untuk user biasa (mencegah manipulasi input)
+        if ($user && ! $user->hasRole(['super_admin', 'direktur', 'Sekretaris']) && $user->unit_id) {
+            $data['unit_id'] = $user->unit_id;
         }
 
         $mode = $data['numbering_type'] ?? LetterNumber::NUMBERING_AUTO;

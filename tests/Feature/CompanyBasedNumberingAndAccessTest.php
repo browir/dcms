@@ -246,5 +246,38 @@ class CompanyBasedNumberingAndAccessTest extends TestCase
         $this->assertNotContains($this->unitBjb->id, $unitsBrb);
         $this->assertNotContains($this->unitSgg->id, $unitsBrb);
     }
+
+    public function test_user_biasa_tidak_bisa_mengubah_unit_dan_terkunci_ke_unit_akun(): void
+    {
+        $this->actingAs($this->userBjb);
+        $this->userBjb->givePermissionTo(['ViewAny:LetterNumber', 'Create:LetterNumber']);
+
+        // Komponen form: cek apakah unit_id dinonaktifkan (disabled)
+        $components = LetterNumberForm::components();
+        $unitSelect = collect($components)->first(fn ($c) => method_exists($c, 'getName') && $c->getName() === 'unit_id');
+
+        $this->assertNotNull($unitSelect);
+        $this->assertTrue($unitSelect->isDisabled());
+
+        // Jika user mencoba memanipulasi pengiriman unit_id ke unit SGG, backend memaksanya tetap unit Banjarbaru
+        $catBjb = DocumentCategory::create([
+            'company_id' => $this->rsusmBjb->id,
+            'name' => 'SPO Banjarbaru',
+            'prefix' => 'C',
+            'code' => 'C',
+            'is_active' => true,
+        ]);
+
+        $letter = LetterNumberForm::issue([
+            'unit_id' => $this->unitSgg->id, // Mencoba manipulasi kirim unit lain
+            'category_id' => $catBjb->id,
+            'tanggal_surat' => '2026-11-18',
+            'judul_surat' => 'Tes Kunci Unit',
+        ]);
+
+        // Tetap unit Banjarbaru (16), bukan SGG
+        $this->assertSame($this->unitBjb->id, $letter->unit_id);
+        $this->assertStringContainsString('RSUSM', $letter->nomor);
+    }
 }
 

@@ -147,9 +147,13 @@ class ListSuratKeluar extends ListRecords
                         $adaUnit
                             ? Select::make('unit_id')
                                 ->label('Unit Pembuat')
-                                ->helperText('Perusahaan akan mengikuti unit yang dipilih.')
+                                ->helperText(fn () => ! auth()->user()?->hasRole(['super_admin', 'direktur', 'Sekretaris']) && filled(auth()->user()?->unit_id)
+                                    ? 'Unit terkunci sesuai unit kerja bawaan akun Anda.'
+                                    : 'Perusahaan akan mengikuti unit yang dipilih.')
                                 ->options($unitOptions)
                                 ->default(fn () => auth()->user()?->unit_id ?? static::queryUnitSiap()->value('id'))
+                                ->disabled(fn () => ! auth()->user()?->hasRole(['super_admin', 'direktur', 'Sekretaris']) && filled(auth()->user()?->unit_id))
+                                ->dehydrated()
                                 ->required()
                                 ->native(false)
                                 ->searchable()
@@ -202,6 +206,13 @@ class ListSuratKeluar extends ListRecords
                         $action->halt();
 
                         return;
+                    }
+
+                    $user    = auth()->user();
+
+                    // Kunci unit ke unit bawaan akun untuk user biasa
+                    if ($user && ! $user->hasRole(['super_admin', 'direktur', 'Sekretaris']) && $user->unit_id) {
+                        $data['unit_id'] = $user->unit_id;
                     }
 
                     // Cek unit_id tersedia
