@@ -24,6 +24,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('nomor_surat_counter')) {
+            return;
+        }
+
         Schema::create('nomor_surat_counter', function (Blueprint $table) {
             // Composite PK — tidak pakai $table->id()
             $table->foreignId('perusahaan_id')->constrained('companies')->cascadeOnDelete();

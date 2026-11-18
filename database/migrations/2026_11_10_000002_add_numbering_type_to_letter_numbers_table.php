@@ -19,14 +19,18 @@ return new class extends Migration
     {
         Schema::table('letter_numbers', function (Blueprint $table) {
             // Tambahkan setelah kolom nomor_urut.
-            $table->enum('numbering_type', ['auto', 'manual'])
-                ->default('auto')
-                ->after('nomor_urut');
+            if (! Schema::hasColumn('letter_numbers', 'numbering_type')) {
+                $table->enum('numbering_type', ['auto', 'manual'])
+                    ->default('auto')
+                    ->after('nomor_urut');
+            }
 
             // Jadikan nomor_urut nullable untuk nomor manual yang tidak memiliki counter
             $table->unsignedInteger('nomor_urut')->nullable()->change();
 
-            $table->index('numbering_type');
+            if (! Schema::hasIndex('letter_numbers', 'letter_numbers_numbering_type_index')) {
+                $table->index('numbering_type');
+            }
         });
 
         // Data lama sudah benar (default 'auto'), tapi pastikan secara eksplisit.

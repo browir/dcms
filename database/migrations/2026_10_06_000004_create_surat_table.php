@@ -22,6 +22,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('surat')) {
+            return;
+        }
+
         Schema::create('surat', function (Blueprint $table) {
             $table->id();
 

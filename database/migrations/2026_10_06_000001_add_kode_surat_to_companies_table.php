@@ -19,9 +19,23 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Idempoten: kode_surat bisa sudah dibuat oleh 2026_10_19_000003_add_letter_numbering.
         Schema::table('companies', function (Blueprint $table) {
-            $table->string('kode_surat', 20)->nullable()->unique()->after('code');
-            $table->unsignedBigInteger('legacy_id')->nullable()->unique()->after('kode_surat');
+            if (! Schema::hasColumn('companies', 'kode_surat')) {
+                $table->string('kode_surat', 20)->nullable()->after('code');
+            }
+            if (! Schema::hasColumn('companies', 'legacy_id')) {
+                $table->unsignedBigInteger('legacy_id')->nullable()->after('kode_surat');
+            }
+        });
+
+        Schema::table('companies', function (Blueprint $table) {
+            if (! Schema::hasIndex('companies', 'companies_kode_surat_unique')) {
+                $table->unique('kode_surat');
+            }
+            if (! Schema::hasIndex('companies', 'companies_legacy_id_unique')) {
+                $table->unique('legacy_id');
+            }
         });
     }
 

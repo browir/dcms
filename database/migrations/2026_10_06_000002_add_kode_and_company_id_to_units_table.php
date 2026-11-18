@@ -30,17 +30,28 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Idempoten: di server sebagian kolom bisa sudah ada sebelum migrasi ini.
         Schema::table('units', function (Blueprint $table) {
-            $table->string('kode', 20)->nullable()->after('name');
-            $table->foreignId('company_id')
-                ->nullable()
-                ->after('kode')
-                ->constrained('companies')
-                ->nullOnDelete();
-            $table->unsignedBigInteger('legacy_id')->nullable()->after('company_id');
+            if (! Schema::hasColumn('units', 'kode')) {
+                $table->string('kode', 20)->nullable()->after('name');
+            }
+            if (! Schema::hasColumn('units', 'company_id')) {
+                $table->foreignId('company_id')
+                    ->nullable()
+                    ->after('kode')
+                    ->constrained('companies')
+                    ->nullOnDelete();
+            }
+            if (! Schema::hasColumn('units', 'legacy_id')) {
+                $table->unsignedBigInteger('legacy_id')->nullable()->after('company_id');
+            }
+        });
 
+        Schema::table('units', function (Blueprint $table) {
             // UNIQUE(company_id, legacy_id) — null tidak melanggar unique di MySQL
-            $table->unique(['company_id', 'legacy_id'], 'units_company_id_legacy_id_unique');
+            if (! Schema::hasIndex('units', 'units_company_id_legacy_id_unique')) {
+                $table->unique(['company_id', 'legacy_id'], 'units_company_id_legacy_id_unique');
+            }
         });
     }
 
