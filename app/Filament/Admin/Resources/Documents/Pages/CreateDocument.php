@@ -7,7 +7,6 @@ use App\Filament\Admin\Resources\Documents\Schemas\DocumentForm;
 use App\Models\Document;
 use App\Models\DocumentCategory;
 use App\Models\User;
-use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Url;
@@ -23,22 +22,6 @@ class CreateDocument extends CreateRecord
     public function getTitle(): string
     {
         return $this->kelompok === DocumentCategory::KELOMPOK_SURAT_KELUAR ? 'Buat Surat Keluar' : 'Buat Dokumen';
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            Action::make('guide')
-                ->label('Panduan Tambah Dokumen')
-                ->icon('heroicon-o-information-circle')
-                ->color('info')
-                ->modalHeading('Panduan Cara Menambahkan Dokumen')
-                ->modalIcon('heroicon-o-information-circle')
-                ->modalWidth('3xl')
-                ->modalContent(view('filament.admin.resources.documents.partials.create-document-guide-modal'))
-                ->modalSubmitAction(false)
-                ->modalCancelActionLabel('Tutup'),
-        ];
     }
 
     /**

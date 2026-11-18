@@ -5,7 +5,10 @@ namespace App\Filament\Admin\Resources\Documents\Pages;
 use App\Filament\Admin\Resources\Documents\DocumentResource;
 use App\Models\DocumentChangeRequest;
 use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ForceDeleteAction;
+use Filament\Actions\RestoreAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
@@ -120,6 +123,19 @@ class ViewDocument extends ViewRecord
                 ->label('Edit Dokumen')
                 ->icon('heroicon-o-pencil-square')
                 ->color('primary'),
+
+            /* ── Hapus ── */
+            DeleteAction::make()
+                ->label('Hapus')
+                ->icon('heroicon-o-trash'),
+
+            RestoreAction::make()
+                ->label('Pulihkan')
+                ->icon('heroicon-o-arrow-uturn-left'),
+
+            ForceDeleteAction::make()
+                ->label('Hapus Permanen')
+                ->icon('heroicon-o-trash'),
 
         ];
     }

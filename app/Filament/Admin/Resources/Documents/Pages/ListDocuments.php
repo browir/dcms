@@ -44,14 +44,14 @@ class ListDocuments extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('guide')
-                ->label('Panduan Manajemen Dokumen')
-                ->icon('heroicon-o-information-circle')
+            Action::make('panduan_buat')
+                ->label('Panduan Buat Dokumen')
+                ->icon('heroicon-o-play-circle')
                 ->color('info')
-                ->modalHeading('Panduan Manajemen Dokumen')
-                ->modalIcon('heroicon-o-document-text')
-                ->modalWidth('3xl')
-                ->modalContent(view('filament.admin.resources.documents.partials.document-management-guide-modal'))
+                ->outlined()
+                ->modalHeading('Panduan Cara Menambahkan Dokumen Baru')
+                ->modalWidth('4xl')
+                ->modalContent(view('filament.admin.resources.documents.partials.create-document-guide-modal'))
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Tutup'),
             CreateAction::make()

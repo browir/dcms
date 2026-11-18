@@ -95,26 +95,55 @@ class DocumentPolicy
 
     public function delete(AuthUser $authUser, Document $document): bool
     {
+        if ($authUser->hasRole('super_admin')) {
+            return true;
+        }
+
         return $authUser->can('Delete:Document');
+    }
+
+    public function deleteAny(AuthUser $authUser): bool
+    {
+        if ($authUser->hasRole('super_admin')) {
+            return true;
+        }
+
+        return $authUser->can('Delete:Document') || $authUser->can('DeleteAny:Document');
     }
 
     public function restore(AuthUser $authUser, Document $document): bool
     {
+        if ($authUser->hasRole('super_admin')) {
+            return true;
+        }
+
         return $authUser->can('Restore:Document');
     }
 
     public function forceDelete(AuthUser $authUser, Document $document): bool
     {
+        if ($authUser->hasRole('super_admin')) {
+            return true;
+        }
+
         return $authUser->can('ForceDelete:Document');
     }
 
     public function forceDeleteAny(AuthUser $authUser): bool
     {
+        if ($authUser->hasRole('super_admin')) {
+            return true;
+        }
+
         return $authUser->can('ForceDeleteAny:Document');
     }
 
     public function restoreAny(AuthUser $authUser): bool
     {
+        if ($authUser->hasRole('super_admin')) {
+            return true;
+        }
+
         return $authUser->can('RestoreAny:Document');
     }
 

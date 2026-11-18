@@ -19,6 +19,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Grid;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Js;
@@ -103,7 +104,7 @@ class ListSuratKeluar extends ListRecords
                 ->visible(fn (): bool => auth()->user()?->can('Create:SuratKeluar') ?? false)
                 ->modalHeading('Buat Nomor Surat Keluar')
                 ->modalDescription('Isi formulir di bawah untuk menerbitkan nomor surat.')
-                ->modalWidth('xl')
+                ->modalWidth('2xl')
                 ->modalSubmitActionLabel('Buat Nomor Surat')
                 ->form(function (): array {
                     // Query unit yang siap — dijalankan saat modal dibuka.
@@ -148,52 +149,54 @@ class ListSuratKeluar extends ListRecords
                                 return new HtmlString('<span class="text-xs text-success-600 font-medium">✓ Format sesuai pola standar</span>');
                             }),
 
-                        Select::make('jenis_surat')
-                            ->label('Jenis Surat')
-                            ->helperText('Pilih jenis surat yang akan diterbitkan.')
-                            ->options(JenisSurat::options())
-                            ->required()
-                            ->native(false)
-                            ->searchable(),
-
-                        $adaUnit
-                            ? Select::make('unit_id')
-                                ->label('Unit Pembuat')
-                                ->helperText(fn () => ! auth()->user()?->hasRole(['super_admin', 'direktur', 'Sekretaris']) && filled(auth()->user()?->unit_id)
-                                    ? 'Unit terkunci sesuai unit kerja bawaan akun Anda.'
-                                    : 'Perusahaan akan mengikuti unit yang dipilih.')
-                                ->options($unitOptions)
-                                ->default(fn () => auth()->user()?->unit_id ?? static::queryUnitSiap()->value('id'))
-                                ->disabled(fn () => ! auth()->user()?->hasRole(['super_admin', 'direktur', 'Sekretaris']) && filled(auth()->user()?->unit_id))
-                                ->dehydrated()
+                        Grid::make(2)->schema([
+                            Select::make('jenis_surat')
+                                ->label('Jenis Surat')
+                                ->helperText('Pilih jenis surat yang akan diterbitkan.')
+                                ->options(JenisSurat::options())
                                 ->required()
                                 ->native(false)
-                                ->searchable()
-                            : Placeholder::make('tidak_ada_unit')
-                                ->label('Unit Pembuat')
-                                ->content(new HtmlString(
-                                    '<div class="rounded-lg border border-warning-300 bg-warning-50 px-4 py-3 text-sm text-warning-700">'
-                                    . '<strong>⚠️ Belum ada unit yang siap digunakan.</strong><br>'
-                                    . 'Unit harus memiliki <code class="rounded bg-warning-100 px-1">kode</code>, '
-                                    . '<code class="rounded bg-warning-100 px-1">company_id</code> terisi, '
-                                    . 'dan perusahaannya memiliki '
-                                    . '<code class="rounded bg-warning-100 px-1">kode_surat</code>.'
-                                    . '</div>'
-                                )),
+                                ->searchable(),
 
-                        DatePicker::make('tanggal')
-                            ->label('Tanggal Surat')
-                            ->helperText('Tahun dan bulan tanggal ini yang menentukan format nomor.')
-                            ->required()
-                            ->native(false)
-                            ->displayFormat('d/m/Y')
-                            ->default(today()->toDateString()),
+                            $adaUnit
+                                ? Select::make('unit_id')
+                                    ->label('Unit Pembuat')
+                                    ->helperText(fn () => ! auth()->user()?->hasRole(['super_admin', 'direktur', 'Sekretaris']) && filled(auth()->user()?->unit_id)
+                                        ? 'Unit terkunci sesuai unit kerja bawaan akun Anda.'
+                                        : 'Perusahaan akan mengikuti unit yang dipilih.')
+                                    ->options($unitOptions)
+                                    ->default(fn () => auth()->user()?->unit_id ?? static::queryUnitSiap()->value('id'))
+                                    ->disabled(fn () => ! auth()->user()?->hasRole(['super_admin', 'direktur', 'Sekretaris']) && filled(auth()->user()?->unit_id))
+                                    ->dehydrated()
+                                    ->required()
+                                    ->native(false)
+                                    ->searchable()
+                                : Placeholder::make('tidak_ada_unit')
+                                    ->label('Unit Pembuat')
+                                    ->content(new HtmlString(
+                                        '<div class="rounded-lg border border-warning-300 bg-warning-50 px-4 py-3 text-sm text-warning-700">'
+                                        . '<strong>⚠️ Belum ada unit yang siap digunakan.</strong><br>'
+                                        . 'Unit harus memiliki <code class="rounded bg-warning-100 px-1">kode</code>, '
+                                        . '<code class="rounded bg-warning-100 px-1">company_id</code> terisi, '
+                                        . 'dan perusahaannya memiliki '
+                                        . '<code class="rounded bg-warning-100 px-1">kode_surat</code>.'
+                                        . '</div>'
+                                    )),
 
-                        TextInput::make('judul_surat')
-                            ->label('Judul Surat')
-                            ->required()
-                            ->maxLength(255)
-                            ->placeholder('Contoh: Surat Tugas Perjalanan Dinas'),
+                            DatePicker::make('tanggal')
+                                ->label('Tanggal Surat')
+                                ->helperText('Tahun dan bulan tanggal ini yang menentukan format nomor.')
+                                ->required()
+                                ->native(false)
+                                ->displayFormat('d/m/Y')
+                                ->default(today()->toDateString()),
+
+                            TextInput::make('judul_surat')
+                                ->label('Judul Surat')
+                                ->required()
+                                ->maxLength(255)
+                                ->placeholder('Contoh: Surat Tugas Perjalanan Dinas'),
+                        ]),
 
                         TextInput::make('perihal')
                             ->label('Perihal')

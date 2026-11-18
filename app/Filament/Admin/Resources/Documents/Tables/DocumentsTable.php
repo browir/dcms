@@ -12,9 +12,12 @@ use App\Services\DocumentConversionService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
@@ -308,6 +311,15 @@ class DocumentsTable
                 ActionGroup::make([
                     ViewAction::make()->label('Lihat detail'),
                     EditAction::make()->label('Edit'),
+                    DeleteAction::make()
+                        ->label('Hapus')
+                        ->icon('heroicon-o-trash'),
+                    RestoreAction::make()
+                        ->label('Pulihkan')
+                        ->icon('heroicon-o-arrow-uturn-left'),
+                    ForceDeleteAction::make()
+                        ->label('Hapus permanen')
+                        ->icon('heroicon-o-trash'),
 
                     Action::make('toggle_bookmark')
                         ->icon(fn (Document $record): string => (int) ($record->is_bookmarked ?? 0) > 0

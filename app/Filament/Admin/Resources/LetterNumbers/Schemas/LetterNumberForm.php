@@ -15,6 +15,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Database\Eloquent\Builder;
@@ -82,51 +83,54 @@ class LetterNumberForm
                     return new HtmlString('<span style="font-size:.75rem;color:#16a34a;font-weight:500">✓ Format sesuai pola standar</span>');
                 }),
 
-            // ── Field-field bersama (auto & manual) ────────────────────────────
-            Select::make('category_id')
-                ->label('Kategori Dokumen')
-                ->helperText('Kode kategori dipakai di nomor dokumen. Kategori diatur di Data Master → Kategori Dokumen.')
-                ->options(fn (Get $get): array => self::categoryOptions($get('unit_id'), $kelompok))
-                ->searchable()
-                ->native(false)
-                ->required()
-                ->live(),
+            // ── Field-field bersama (auto & manual) — layout 2 kolom ───────────
+            Grid::make(2)
+                ->schema([
+                    Select::make('category_id')
+                        ->label('Kategori Dokumen')
+                        ->helperText('Kode kategori dipakai di nomor dokumen.')
+                        ->options(fn (Get $get): array => self::categoryOptions($get('unit_id'), $kelompok))
+                        ->searchable()
+                        ->native(false)
+                        ->required()
+                        ->live(),
 
-            Select::make('unit_id')
-                ->label('Unit')
-                ->helperText(fn () => ! Auth::user()?->hasRole(['super_admin', 'direktur', 'Sekretaris']) && filled(Auth::user()?->unit_id)
-                    ? 'Unit terkunci sesuai unit kerja bawaan akun Anda.'
-                    : 'Perusahaan penerbit mengikuti unit.')
-                ->options(fn () => self::unitOptions())
-                ->default(fn () => Auth::user()?->unit_id ?? self::defaultUnitId())
-                ->disabled(fn () => ! Auth::user()?->hasRole(['super_admin', 'direktur', 'Sekretaris']) && filled(Auth::user()?->unit_id))
-                ->dehydrated()
-                ->searchable()
-                ->native(false)
-                ->required()
-                ->live(),
+                    Select::make('unit_id')
+                        ->label('Unit')
+                        ->helperText(fn () => ! Auth::user()?->hasRole(['super_admin', 'direktur', 'Sekretaris']) && filled(Auth::user()?->unit_id)
+                            ? 'Unit terkunci sesuai unit kerja bawaan akun Anda.'
+                            : 'Perusahaan penerbit mengikuti unit.')
+                        ->options(fn () => self::unitOptions())
+                        ->default(fn () => Auth::user()?->unit_id ?? self::defaultUnitId())
+                        ->disabled(fn () => ! Auth::user()?->hasRole(['super_admin', 'direktur', 'Sekretaris']) && filled(Auth::user()?->unit_id))
+                        ->dehydrated()
+                        ->searchable()
+                        ->native(false)
+                        ->required()
+                        ->live(),
 
-            DatePicker::make('tanggal_surat')
-                ->label('Tanggal Dokumen')
-                ->helperText('Menentukan bulan & tahun di nomor dan urutan counter tahun tersebut.')
-                ->native(false)
-                ->displayFormat('d M Y')
-                ->default(fn () => today())
-                ->required()
-                ->live(),
+                    DatePicker::make('tanggal_surat')
+                        ->label('Tanggal Dokumen')
+                        ->helperText('Menentukan bulan & tahun di nomor.')
+                        ->native(false)
+                        ->displayFormat('d M Y')
+                        ->default(fn () => today())
+                        ->required()
+                        ->live(),
 
-            TextInput::make('judul_surat')
-                ->label('Judul')
-                ->required()
-                ->maxLength(255),
+                    TextInput::make('judul_surat')
+                        ->label('Judul')
+                        ->required()
+                        ->maxLength(255),
 
-            TextInput::make('perihal')
-                ->label('Perihal')
-                ->maxLength(255),
+                    TextInput::make('perihal')
+                        ->label('Perihal')
+                        ->maxLength(255),
 
-            Textarea::make('deskripsi')
-                ->label('Deskripsi')
-                ->rows(2),
+                    Textarea::make('deskripsi')
+                        ->label('Deskripsi')
+                        ->rows(1),
+                ]),
         ];
     }
 

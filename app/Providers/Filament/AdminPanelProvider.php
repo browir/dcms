@@ -1181,17 +1181,28 @@ class AdminPanelProvider extends PanelProvider
                         /* ================================================
                            MODAL DIALOG POP ANIMATIONS
                         ================================================ */
+                        @keyframes fi-modal-pop {
+                            0%   { opacity: 0; transform: scale(0.95) translateY(6px); }
+                            100% { opacity: 1; transform: scale(1) translateY(0); }
+                        }
+
+                        /* Modal overlay posisi di bawah topbar */
+                        .fi-modal-overlay {
+                            top: 4.5rem !important;
+                            height: calc(100dvh - 4.5rem) !important;
+                            padding: 1rem !important;
+                            align-items: flex-start !important;
+                            overflow-y: auto !important;
+                        }
+
                         .fi-modal-window {
-                            margin: auto !important;
                             border-radius: 20px !important;
                             box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25) !important;
                             border: 1px solid rgba(0,0,0,0.06) !important;
                             animation: fi-modal-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
-                        }
-
-                        @keyframes fi-modal-pop {
-                            0%   { opacity: 0; transform: scale(0.92) translateY(10px); }
-                            100% { opacity: 1; transform: scale(1) translateY(0); }
+                            max-height: calc(100dvh - 7rem) !important;
+                            overflow-y: auto !important;
+                            margin: auto !important;
                         }
 
                         .fi-modal-header {
