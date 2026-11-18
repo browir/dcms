@@ -39,6 +39,18 @@ class ListLetterNumbers extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('panduan')
+                ->label('Panduan Penomoran')
+                ->icon('heroicon-o-play-circle')
+                ->color('info')
+                ->outlined()
+                ->modalHeading('Panduan Pengambilan Nomor Dokumen')
+                ->modalWidth('4xl')
+                ->modalContent(view('filament.components.video-tutorial-modal', [
+                    'videoUrl' => asset('videos/panduan-penomoran-dokumen.mp4'),
+                ]))
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Tutup'),
             CreateAction::make()
                 ->label('Ambil Nomor Dokumen')
                 ->icon('heroicon-o-hashtag')

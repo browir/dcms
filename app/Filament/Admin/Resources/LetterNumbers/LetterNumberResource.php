@@ -11,12 +11,14 @@ use App\Models\DocumentCategory;
 use App\Models\LetterNumber;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Resource;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 use UnitEnum;
 /**
@@ -176,6 +178,31 @@ class LetterNumberResource extends Resource
                     ->color('gray')
                     ->visible(fn (LetterNumber $record): bool => $record->agenda !== null)
                     ->url(fn (LetterNumber $record): string => AgendaResource::getUrl('view', ['record' => $record->agenda])),
+                DeleteAction::make()
+                    ->label('Hapus')
+                    ->modalHeading('Hapus Nomor Dokumen')
+                    ->modalDescription(fn (LetterNumber $record) => "Apakah Anda yakin ingin menghapus nomor dokumen {$record->nomor}? Nomor ini belum digunakan oleh dokumen apa pun.")
+                    ->modalSubmitActionLabel('Ya, Hapus Nomor')
+                    ->visible(fn (LetterNumber $record): bool => auth()->user()?->can('delete', $record) ?? false)
+                    ->before(function (LetterNumber $record): void {
+                        if ($record->nomor_urut) {
+                            $year = $record->tanggal_surat ? $record->tanggal_surat->year : now()->year;
+                            $maxRemaining = LetterNumber::query()
+                                ->where('company_id', $record->company_id)
+                                ->whereYear('tanggal_surat', $year)
+                                ->where('id', '!=', $record->id)
+                                ->max('nomor_urut') ?? 0;
+
+                            DB::table('letter_number_counters')
+                                ->where('company_id', $record->company_id)
+                                ->where('year', $year)
+                                ->update([
+                                    'last_number' => $maxRemaining,
+                                    'updated_at'  => now(),
+                                ]);
+                        }
+                    })
+                    ->successNotificationTitle('Nomor dokumen berhasil dihapus'),
             ])
             ->emptyStateHeading('Belum ada nomor dokumen')
             ->emptyStateDescription('Ambil nomor dokumen dulu, lalu isi dokumen resminya ke nomor tersebut.');

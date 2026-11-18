@@ -132,6 +132,19 @@ class DocumentForm
                             ->modalSubmitActionLabel('Terbitkan Nomor')
                             ->modalWidth('lg')
                             ->visible(fn () => Auth::user()?->can('create', LetterNumber::class) ?? false))
+                        ->suffixAction(
+                            Action::make('panduan_nomor')
+                                ->icon('heroicon-m-question-mark-circle')
+                                ->tooltip('Video Panduan Pengambilan Nomor')
+                                ->color('info')
+                                ->modalHeading('Panduan Pengambilan Nomor Dokumen')
+                                ->modalWidth('4xl')
+                                ->modalContent(fn () => view('filament.components.video-tutorial-modal', [
+                                    'videoUrl' => asset('videos/panduan-penomoran-dokumen.mp4'),
+                                ]))
+                                ->modalSubmitAction(false)
+                                ->modalCancelActionLabel('Tutup')
+                        )
                         ->afterStateUpdated(function ($state, Set $set, Get $get): void {
                             foreach (self::letterNumberState($state, $get('title')) as $field => $value) {
                                 $set($field, $value);

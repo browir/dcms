@@ -22,6 +22,11 @@ class LetterNumberPolicy
     public function before(AuthUser $authUser, string $ability): ?bool
     {
         if (method_exists($authUser, 'hasRole') && $authUser->hasRole('super_admin')) {
+            // Evaluasi khusus delete agar nomor yang sudah dipakai dokumen tidak terhapus
+            if ($ability === 'delete') {
+                return null;
+            }
+
             return true;
         }
 
@@ -52,6 +57,12 @@ class LetterNumberPolicy
 
     public function delete(AuthUser $authUser, LetterNumber $letterNumber): bool
     {
-        return false;
+        // Nomor yang sudah diisi ke dokumen atau kegiatan rapat tidak boleh dihapus
+        if ($letterNumber->document !== null || $letterNumber->agenda !== null) {
+            return false;
+        }
+
+        return $authUser->can('Delete:LetterNumber')
+            || (method_exists($authUser, 'hasRole') && $authUser->hasRole('super_admin'));
     }
 }

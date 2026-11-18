@@ -279,5 +279,105 @@ class CompanyBasedNumberingAndAccessTest extends TestCase
         $this->assertSame($this->unitBjb->id, $letter->unit_id);
         $this->assertStringContainsString('RSUSM', $letter->nomor);
     }
+
+    public function test_super_admin_bisa_menghapus_nomor_belum_diisi_dan_counter_menyesuaikan(): void
+    {
+        $superAdmin = User::create([
+            'name' => 'Super Admin',
+            'username' => 'superadmin_test',
+            'email' => 'super@test.com',
+            'password' => 'password',
+            'company_id' => $this->sgg->id,
+            'is_active' => true,
+        ]);
+        $superRole = Role::firstOrCreate(['name' => 'super_admin']);
+        $superAdmin->assignRole($superRole);
+
+        $catSgg = DocumentCategory::create([
+            'company_id' => $this->sgg->id,
+            'name' => 'Memo SGG',
+            'prefix' => 'D',
+            'code' => 'D',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($superAdmin);
+
+        $letter1 = LetterNumberForm::issue([
+            'unit_id' => $this->unitSgg->id,
+            'category_id' => $catSgg->id,
+            'tanggal_surat' => '2026-11-18',
+            'judul_surat' => 'Surat 1',
+        ]);
+
+        $letter2 = LetterNumberForm::issue([
+            'unit_id' => $this->unitSgg->id,
+            'category_id' => $catSgg->id,
+            'tanggal_surat' => '2026-11-18',
+            'judul_surat' => 'Surat 2',
+        ]);
+
+        $this->assertSame(2, \Illuminate\Support\Facades\DB::table('letter_number_counters')->where('company_id', $this->sgg->id)->value('last_number'));
+
+        // Super Admin boleh menghapus nomor 2 yang belum diisi
+        $this->assertTrue($superAdmin->can('delete', $letter2));
+
+        // Jalankan aksi hapus melalui Livewire Table
+        \Livewire\Livewire::test(\App\Filament\Admin\Resources\LetterNumbers\Pages\ListLetterNumbers::class)
+            ->callTableAction('delete', $letter2);
+
+        $this->assertDatabaseMissing('letter_numbers', ['id' => $letter2->id]);
+        $this->assertSame(1, \Illuminate\Support\Facades\DB::table('letter_number_counters')->where('company_id', $this->sgg->id)->value('last_number'));
+    }
+
+    public function test_nomor_yang_sudah_dipakai_dokumen_tidak_bisa_dihapus(): void
+    {
+        Role::firstOrCreate(['name' => 'super_admin']);
+        $superAdmin = User::create([
+            'name' => 'Super Admin 2',
+            'username' => 'superadmin_test2',
+            'email' => 'super2@test.com',
+            'password' => 'password',
+            'company_id' => $this->sgg->id,
+            'is_active' => true,
+        ]);
+        $superAdmin->assignRole('super_admin');
+
+        $catSgg = DocumentCategory::create([
+            'company_id' => $this->sgg->id,
+            'name' => 'Memo SGG 2',
+            'prefix' => 'D',
+            'code' => 'D',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($superAdmin);
+
+        $letter = LetterNumberForm::issue([
+            'unit_id' => $this->unitSgg->id,
+            'category_id' => $catSgg->id,
+            'tanggal_surat' => '2026-11-18',
+            'judul_surat' => 'Surat Dokumen',
+        ]);
+
+        // Hubungkan ke dokumen
+        \App\Models\Document::create([
+            'title' => 'Dokumen Terpakai',
+            'status' => \App\Models\Document::STATUS_APPROVED,
+            'company_id' => $this->sgg->id,
+            'department_id' => $this->unitSgg->department_id,
+            'unit_id' => $this->unitSgg->id,
+            'category_id' => $catSgg->id,
+            'user_id' => $superAdmin->id,
+            'document_type' => 'file',
+            'letter_number_id' => $letter->id,
+            'code_number' => $letter->nomor,
+            'tanggal_surat' => '2026-11-18',
+        ]);
+
+        // Nomor yang sudah ada dokumennya TIDAK boleh dihapus oleh siapapun
+        $letter->refresh();
+        $this->assertFalse($superAdmin->can('delete', $letter));
+    }
 }
 

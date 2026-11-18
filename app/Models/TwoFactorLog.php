@@ -23,7 +23,7 @@ class TwoFactorLog extends Model
         'created_at' => 'datetime',
     ];
 
-    // Konstanta event
+    
     public const EVENT_CODE_SENT      = 'code_sent';
     public const EVENT_VERIFIED       = 'verified';
     public const EVENT_FAILED         = 'failed';
@@ -34,7 +34,7 @@ class TwoFactorLog extends Model
     public const EVENT_2FA_DISABLED   = '2fa_disabled';
     public const EVENT_ADMIN_RESET    = 'admin_reset';
 
-    // ── Relations ─────────────────────────────────────────────────────────────
+   
 
     public function user(): BelongsTo
     {

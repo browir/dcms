@@ -84,6 +84,18 @@ class ListSuratKeluar extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('panduan')
+                ->label('Panduan Penomoran')
+                ->icon('heroicon-o-play-circle')
+                ->color('info')
+                ->outlined()
+                ->modalHeading('Panduan Penomoran Surat Keluar')
+                ->modalWidth('4xl')
+                ->modalContent(view('filament.components.video-tutorial-modal', [
+                    'videoUrl' => asset('videos/panduan-penomoran-dokumen.mp4'),
+                ]))
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Tutup'),
             Action::make('buat-nomor-surat')
                 ->label('Buat Nomor Surat')
                 ->icon('heroicon-o-document-plus')
