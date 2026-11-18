@@ -372,6 +372,16 @@ class AdminPanelProvider extends PanelProvider
                             top: 0 !important;
                             z-index: 1000 !important;
                         }
+                        /* Pastikan toast notifikasi tidak tertimpa/tertutup oleh sticky navbar */
+                        .fi-no,
+                        .fi-no.fi-vertical-align-top {
+                            z-index: 99999 !important;
+                            top: 4.75rem !important;
+                        }
+                        .fi-no-notification {
+                            z-index: 99999 !important;
+                            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25) !important;
+                        }
                         .fi-topbar {
                             background-color: #0B2545 !important;
                             border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;

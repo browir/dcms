@@ -536,5 +536,16 @@
         padding-top: 4px;
     }
 
+    /* ── Filament Toast Notifications Container (mencegah tertutup navbar sticky) ── */
+    .fi-no,
+    .fi-no.fi-vertical-align-top {
+        z-index: 99999 !important;
+        top: 4.75rem !important;
+    }
+    .fi-no-notification {
+        z-index: 99999 !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25) !important;
+    }
+
 </style>
 
