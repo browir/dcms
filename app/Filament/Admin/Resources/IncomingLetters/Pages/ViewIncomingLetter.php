@@ -25,6 +25,20 @@ class ViewIncomingLetter extends ViewRecord
         $letter = $this->getRecord();
         // Dibuka anggota unit tujuan → status "Sudah dibaca".
         $letter->markReadBy($user);
+
+        // ── Catat aktivitas melihat surat masuk ke audit log ─────────────────
+        activity('surat_masuk')
+            ->performedOn($letter)
+            ->causedBy($user)
+            ->withProperties([
+                'nomor_agenda' => $letter->nomor_agenda,
+                'perihal'      => $letter->perihal,
+                'pengirim'     => $letter->pengirim,
+                'ip'           => request()->ip(),
+                'user_agent'   => request()->userAgent(),
+            ])
+            ->event('viewed')
+            ->log('Melihat surat masuk');
     }
 
     public function getTitle(): string

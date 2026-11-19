@@ -19,6 +19,24 @@ class ViewDocument extends ViewRecord
 {
     protected static string $resource = DocumentResource::class;
 
+    // ── Catat aktivitas "melihat" dokumen ke audit log ────────────────────────
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+
+        activity('dokumen')
+            ->performedOn($this->record)
+            ->causedBy(Auth::user())
+            ->withProperties([
+                'nomor_surat' => $this->record->nomor_surat,
+                'judul'       => $this->record->judul,
+                'ip'          => request()->ip(),
+                'user_agent'  => request()->userAgent(),
+            ])
+            ->event('viewed')
+            ->log('Melihat dokumen');
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -32,6 +50,20 @@ class ViewDocument extends ViewRecord
                 ->action(function () {
                     $path = $this->record->file_path;
                     if (Storage::disk('documents')->exists($path)) {
+                        // Catat aktivitas unduh ke audit log
+                        activity('dokumen')
+                            ->performedOn($this->record)
+                            ->causedBy(Auth::user())
+                            ->withProperties([
+                                'nomor_surat' => $this->record->nomor_surat,
+                                'judul'       => $this->record->judul,
+                                'file'        => basename($path),
+                                'ip'          => request()->ip(),
+                                'user_agent'  => request()->userAgent(),
+                            ])
+                            ->event('downloaded')
+                            ->log('Mengunduh berkas dokumen');
+
                         return Storage::disk('documents')->download($path);
                     }
                     Notification::make()

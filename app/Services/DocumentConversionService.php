@@ -24,6 +24,38 @@ class DocumentConversionService
         $title = str()->slug($document->title ?: 'document');
 
         try {
+            $result = self::generatePdfResponse($document, $type, $title);
+
+            if ($result !== null) {
+                // Catat aktivitas unduh PDF ke audit log
+                activity('dokumen')
+                    ->performedOn($document)
+                    ->causedBy(auth()->user())
+                    ->withProperties([
+                        'nomor_surat' => $document->nomor_surat,
+                        'judul'       => $document->judul,
+                        'format'      => 'PDF',
+                        'ip'          => request()->ip(),
+                    ])
+                    ->event('downloaded')
+                    ->log('Mengunduh dokumen sebagai PDF');
+            }
+
+            return $result;
+        } catch (Exception $e) {
+            Log::error('DocumentConversionService (PDF) Error: '.$e->getMessage());
+            Notification::make()
+                ->title('Terjadi Kesalahan Server')
+                ->body('Gagal memproses dokumen: '.$e->getMessage())
+                ->danger()
+                ->send();
+
+            return null;
+        }
+    }
+
+    private static function generatePdfResponse(Document $document, string $type, string $title)
+    {
             // 1. Jika dokumen berbasis Form atau Hybrid (punya content HTML)
             if (in_array($type, ['form', 'hybrid']) && $document->content) {
                 $html = self::buildHtmlForPdf($document);
@@ -133,6 +165,19 @@ class DocumentConversionService
                 // Body content (HTML to Word)
                 Html::addHtml($section, $document->content, false, false);
 
+                // Catat aktivitas unduh Word ke audit log
+                activity('dokumen')
+                    ->performedOn($document)
+                    ->causedBy(auth()->user())
+                    ->withProperties([
+                        'nomor_surat' => $document->nomor_surat,
+                        'judul'       => $document->judul,
+                        'format'      => 'Word (DOCX)',
+                        'ip'          => request()->ip(),
+                    ])
+                    ->event('downloaded')
+                    ->log('Mengunduh dokumen sebagai Word');
+
                 return response()->streamDownload(function () use ($phpWord) {
                     $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
                     $objWriter->save('php://output');
@@ -150,6 +195,19 @@ class DocumentConversionService
 
                 $ext = strtolower(pathinfo($document->file_path, PATHINFO_EXTENSION));
                 if (in_array($ext, ['doc', 'docx'])) {
+                    // Catat aktivitas unduh Word ke audit log
+                    activity('dokumen')
+                        ->performedOn($document)
+                        ->causedBy(auth()->user())
+                        ->withProperties([
+                            'nomor_surat' => $document->nomor_surat,
+                            'judul'       => $document->judul,
+                            'format'      => 'Word (DOCX)',
+                            'ip'          => request()->ip(),
+                        ])
+                        ->event('downloaded')
+                        ->log('Mengunduh dokumen sebagai Word');
+
                     return response()->download($disk->path($document->file_path), "{$title}.{$ext}");
                 }
             }

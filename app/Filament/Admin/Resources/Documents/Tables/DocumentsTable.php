@@ -343,13 +343,29 @@ class DocumentsTable
                     Action::make('download')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->label('Unduh berkas asli')
-                        ->url(function (Document $record): string {
+                        ->action(function (Document $record): mixed {
                             /** @var FilesystemAdapter $disk */
                             $disk = Storage::disk('documents');
 
-                            return $disk->url((string) $record->file_path);
+                            if (! $disk->exists((string) $record->file_path)) {
+                                return null;
+                            }
+
+                            // Catat aktivitas unduh ke audit log
+                            activity('dokumen')
+                                ->performedOn($record)
+                                ->causedBy(auth()->user())
+                                ->withProperties([
+                                    'nomor_surat' => $record->nomor_surat,
+                                    'judul'       => $record->judul,
+                                    'file'        => basename($record->file_path),
+                                    'ip'          => request()->ip(),
+                                ])
+                                ->event('downloaded')
+                                ->log('Mengunduh berkas dokumen');
+
+                            return $disk->download((string) $record->file_path);
                         })
-                        ->openUrlInNewTab()
                         ->visible(fn (Document $record) => ! empty($record->file_path)),
 
                     Action::make('convert')

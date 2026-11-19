@@ -45,18 +45,24 @@ class AuditTrail extends Page implements HasTable
                     ->label('Tindakan')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'created' => 'Dibuat',
-                        'updated' => 'Diperbarui',
-                        'deleted' => 'Dihapus',
-                        'restored' => 'Dipulihkan',
-                        default => ucfirst($state),
+                        'created'     => 'Dibuat',
+                        'updated'     => 'Diperbarui',
+                        'deleted'     => 'Dihapus',
+                        'restored'    => 'Dipulihkan',
+                        'viewed'      => 'Dilihat',
+                        'downloaded'  => 'Diunduh',
+                        'file_viewed' => 'Buka Berkas',
+                        default       => ucfirst($state),
                     })
                     ->color(fn (string $state): string => match ($state) {
-                        'created' => 'success',
-                        'updated' => 'warning',
-                        'deleted' => 'danger',
-                        'restored' => 'info',
-                        default => 'gray',
+                        'created'     => 'success',
+                        'updated'     => 'warning',
+                        'deleted'     => 'danger',
+                        'restored'    => 'info',
+                        'viewed'      => 'gray',
+                        'downloaded'  => 'primary',
+                        'file_viewed' => 'indigo',
+                        default       => 'gray',
                     })
                     ->visibleFrom('md'),
                 TextColumn::make('description')
@@ -66,12 +72,26 @@ class AuditTrail extends Page implements HasTable
                     ->visibleFrom('md'),
                 TextColumn::make('subject_type')
                     ->label('Modul')
-                    ->formatStateUsing(function ($state) {
-                        return class_basename($state);
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'App\\Models\\Document'       => 'Dokumen',
+                        'App\\Models\\IncomingLetter' => 'Surat Masuk',
+                        null                          => '—',
+                        default                       => class_basename($state),
                     })
                     ->searchable()
                     ->sortable()
                     ->visibleFrom('md'),
+                TextColumn::make('log_name')
+                    ->label('Kategori')
+                    ->badge()
+                    ->color('gray')
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'dokumen'     => 'Dokumen',
+                        'surat_masuk' => 'Surat Masuk',
+                        'default'     => 'Sistem',
+                        default       => ucfirst(str_replace('_', ' ', $state ?? 'Sistem')),
+                    })
+                    ->visibleFrom('lg'),
                 TextColumn::make('created_at')
                     ->label('Waktu')
                     ->dateTime('d M Y H:i:s')
@@ -82,10 +102,20 @@ class AuditTrail extends Page implements HasTable
                 SelectFilter::make('event')
                     ->label('Tindakan')
                     ->options([
-                        'created' => 'Dibuat',
-                        'updated' => 'Diperbarui',
-                        'deleted' => 'Dihapus',
-                        'restored' => 'Dipulihkan',
+                        'created'     => 'Dibuat',
+                        'updated'     => 'Diperbarui',
+                        'deleted'     => 'Dihapus',
+                        'restored'    => 'Dipulihkan',
+                        'viewed'      => 'Dilihat',
+                        'downloaded'  => 'Diunduh',
+                        'file_viewed' => 'Buka Berkas',
+                    ]),
+                SelectFilter::make('log_name')
+                    ->label('Kategori')
+                    ->options([
+                        'dokumen'     => 'Dokumen',
+                        'surat_masuk' => 'Surat Masuk',
+                        'default'     => 'Sistem (Spatie)',
                     ]),
                 Filter::make('created_at')
                     ->form([

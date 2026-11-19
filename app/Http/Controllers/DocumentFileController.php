@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Document;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -18,6 +19,20 @@ class DocumentFileController extends Controller
         $document = $this->findDocument($path, fn ($query) => $query->access());
 
         abort_unless($document && auth()->user()->can('view', $document), 404);
+
+        // ── Catat aktivitas membuka/pratinjau berkas dokumen ──────────────────
+        activity('dokumen')
+            ->performedOn($document)
+            ->causedBy(Auth::user())
+            ->withProperties([
+                'nomor_surat' => $document->nomor_surat,
+                'judul'       => $document->judul,
+                'file'        => basename($path),
+                'ip'          => request()->ip(),
+                'user_agent'  => request()->userAgent(),
+            ])
+            ->event('file_viewed')
+            ->log('Membuka berkas dokumen');
 
         return $this->serve($path);
     }
@@ -46,9 +61,9 @@ class DocumentFileController extends Controller
         $mimeType = $disk->mimeType($path) ?: 'application/octet-stream';
 
         $response = $disk->response($path, basename($path), [
-            'Content-Type' => $mimeType,
+            'Content-Type'           => $mimeType,
             'X-Content-Type-Options' => 'nosniff',
-            'Cache-Control' => 'private, no-store',
+            'Cache-Control'          => 'private, no-store',
         ], 'inline');
 
         // HTML hasil generate dibuka tanpa izin menjalankan skrip (cegah XSS dari isi dokumen).
