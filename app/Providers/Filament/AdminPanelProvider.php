@@ -1186,13 +1186,13 @@ class AdminPanelProvider extends PanelProvider
                             100% { opacity: 1; transform: scale(1) translateY(0); }
                         }
 
-                        /* Modal overlay posisi di bawah topbar */
-                        .fi-modal-overlay {
-                            top: 4.5rem !important;
-                            height: calc(100dvh - 4.5rem) !important;
-                            padding: 1rem !important;
-                            align-items: flex-start !important;
-                            overflow-y: auto !important;
+                        /* Modal container: beri jarak aman dari navbar (top: 4.5rem) agar modal tidak pernah menyentuh/tertutup navbar */
+                        .fi-modal-window-ctn {
+                            padding-top: calc(4.5rem + 1.25rem) !important;
+                            padding-bottom: 2rem !important;
+                            padding-left: 1rem !important;
+                            padding-right: 1rem !important;
+                            box-sizing: border-box !important;
                         }
 
                         .fi-modal-window {
@@ -1200,9 +1200,9 @@ class AdminPanelProvider extends PanelProvider
                             box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25) !important;
                             border: 1px solid rgba(0,0,0,0.06) !important;
                             animation: fi-modal-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
-                            max-height: calc(100dvh - 7rem) !important;
+                            max-height: calc(100dvh - 8rem) !important;
                             overflow-y: auto !important;
-                            margin: auto !important;
+                            margin: 0 auto !important;
                         }
 
                         .fi-modal-header {
@@ -1931,7 +1931,7 @@ class AdminPanelProvider extends PanelProvider
                 fn (): string => Auth::check() ? Blade::render('@livewire(\'notification-bell\')') : ''
             )
             ->spa()
-            ->globalSearch()
+            ->globalSearch(false)
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\Filament\Admin\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\Filament\Admin\Pages')
             ->pages([

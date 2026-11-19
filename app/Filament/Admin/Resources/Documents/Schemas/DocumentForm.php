@@ -130,7 +130,7 @@ class DocumentForm
                         ->createOptionAction(fn (Action $action) => $action
                             ->modalHeading('Ambil Nomor Dokumen')
                             ->modalSubmitActionLabel('Terbitkan Nomor')
-                            ->modalWidth('2xl')
+                            ->modalWidth('3xl')
                             ->visible(fn () => Auth::user()?->can('create', LetterNumber::class) ?? false))
                         ->suffixAction(
                             Action::make('panduan_nomor')

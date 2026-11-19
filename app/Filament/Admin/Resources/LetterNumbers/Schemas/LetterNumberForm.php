@@ -83,7 +83,7 @@ class LetterNumberForm
                     return new HtmlString('<span style="font-size:.75rem;color:#16a34a;font-weight:500">✓ Format sesuai pola standar</span>');
                 }),
 
-            // ── Field-field bersama (auto & manual) — layout 2 kolom ───────────
+            // ── Field-field bersama (auto & manual) — layout 2 kolom persis Foto 2 ───────────
             Grid::make(2)
                 ->schema([
                     Select::make('category_id')
@@ -129,7 +129,7 @@ class LetterNumberForm
 
                     Textarea::make('deskripsi')
                         ->label('Deskripsi')
-                        ->rows(1),
+                        ->rows(2),
                 ]),
         ];
     }

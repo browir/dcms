@@ -22,22 +22,7 @@
 <div class="fi-global-search-ctn">
     {{ FilamentView::renderHook(PanelsRenderHook::GLOBAL_SEARCH_START) }}
 
-    {{-- Icon-only trigger (Explicit JS State Approach) --}}
-    <button
-        type="button"
-        @click="$dispatch('dcms-open-search'); $nextTick(() => document.getElementById('{{ $id }}-input')?.focus())"
-        class="dcms-search-icon-btn"
-        aria-label="Cari"
-        title="Cari"
-    >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="m21 21-4.35-4.35"/>
-        </svg>
-    </button>
-
-    {{-- Search field: always in DOM, controlled via CSS :focus-within --}}
-
+    {{-- Search field: always visible and stationary --}}
     <div
         x-data="filamentGlobalSearch({
                     loadingMessage: @js(__('filament-panels::global-search.loading_message')),
@@ -82,8 +67,8 @@
                     aria-describedby="{{ $id }}-instructions"
                     x-ref="input"
                     wire:model.live.debounce.{{ $debounce }}="search"
-                    x-mousetrap.global.{{ collect($keyBindings)->map(fn (string $keyBinding): string => str_replace('+', '-', $keyBinding))->implode('.') }}="$dispatch('dcms-open-search'); $nextTick(() => $refs.input?.focus())"
-                    x-on:keydown.escape="$dispatch('dcms-close-search'); $el.blur()"
+                    x-mousetrap.global.{{ collect($keyBindings)->map(fn (string $keyBinding): string => str_replace('+', '-', $keyBinding))->implode('.') }}="$refs.input?.focus()"
+                    x-on:keydown.escape="$el.blur()"
                     class="fi-input fi-input-has-inline-prefix"
                 />
             </x-filament::input.wrapper>

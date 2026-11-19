@@ -58,332 +58,63 @@
         }
 
         /* ============================================================
-           SEARCH EXPAND + NAV TEXT↔ICON SWAP
-           Orchestrated: everything synced to 280ms, sequenced via delay
+           DESKTOP NAVBAR: CLEAN & STABLE
         ============================================================ */
-
-        /* ── GLOBAL: Shared timing constants (via CSS vars) ── */
-        :root {
-            --dcms-anim-ease:  cubic-bezier(0.4, 0, 0.2, 1);
-
-            /* ── OPEN: text collapses first, then icon+search expand ── */
-            --dcms-open-text-dur:       150ms;   /* text wipes away quickly       */
-            --dcms-open-text-delay:     0ms;     /* starts immediately             */
-            --dcms-open-icon-dur:       220ms;   /* icon fades in                 */
-            --dcms-open-icon-delay:     80ms;    /* after text finishes (~80%)    */
-            --dcms-open-search-dur:     280ms;   /* search expands                */
-            --dcms-open-search-delay:   60ms;    /* slightly after text starts    */
-
-            /* ── CLOSE: search+icon collapse first, then text wipe-reveals ── */
-            --dcms-close-icon-dur:      150ms;   /* icon fades out fast           */
-            --dcms-close-icon-delay:    0ms;     /* immediately                   */
-            --dcms-close-search-dur:    280ms;   /* search shrinks                */
-            --dcms-close-search-delay:  0ms;     /* immediately                   */
-            --dcms-close-text-dur:      300ms;   /* wipe reveal duration          */
-            --dcms-close-text-delay:    80ms;    /* wait for search to free space */
-        }
-
         @media (min-width: 768px) {
-
-            /* ── Safety: prevent nav wrap during any transition phase ── */
             .fi-topbar-nav-groups {
                 flex-wrap: nowrap !important;
             }
-            /* The topbar-end (search + icons) must not wrap either */
             .fi-topbar-end {
-                flex-shrink: 0;
+                flex-shrink: 0 !important;
                 flex-wrap: nowrap !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                gap: 0.5rem !important;
             }
-            /* Whole inner container: never wrap */
             .dcms-topbar-inner {
                 flex-wrap: nowrap !important;
             }
-
-            /* ── 1. Search container ── */
-            .fi-global-search-ctn {
-                display: inline-flex;
-                align-items: center;
-                flex-shrink: 0;
-                position: relative;
-            }
-
-            /* ── 2. Search icon trigger button (ABSOLUTE, ALWAYS VISIBLE) ── */
-            .dcms-search-icon-btn {
-                display: inline-flex !important;
-                align-items: center;
-                justify-content: center;
-                width: 36px;
-                height: 36px;
-                border-radius: 8px;
-                background: transparent;
-                color: #94a3b8;
-                cursor: pointer;
-                position: absolute;
-                left: 0;
-                top: 50%;
-                transform: translateY(-50%);
-                z-index: 10;
-                transition: color 0.18s ease, background 0.18s ease;
-            }
-            .dcms-search-icon-btn:hover {
-                background: rgba(30, 64, 175, 0.10);
-                color: #1e40af;
-            }
-            .dcms-search-active .dcms-search-icon-btn {
-                pointer-events: none;
-                background: transparent !important;
-                color: #64748b; /* Normal prefix icon color */
-            }
-
-            /* ── 3. Search field ── */
-            .fi-global-search {
-                display: block !important;
-                overflow: hidden !important;
-                visibility: visible !important;
-                width: 36px; /* CLOSED state: fits the absolute icon */
-                opacity: 1;
-                pointer-events: auto;
-                transition:
-                    width var(--dcms-close-search-dur) var(--dcms-anim-ease) 0ms;
-            }
-            .dcms-search-active .fi-global-search {
-                width: 260px;
-                transition:
-                    width var(--dcms-open-search-dur) var(--dcms-anim-ease) 0ms;
-            }
-
-            /* Hide Filament's default prefix icon because we placed .dcms-search-icon-btn exactly on top of it */
-            .fi-global-search [class*="prefix"], .fi-global-search svg {
-                opacity: 0 !important;
-            }
-            .dcms-search-icon-btn svg {
-                opacity: 1 !important; /* Keep our trigger icon visible */
-            }
-
-            /* Make the search wrapper transparent when closed to look like a plain button */
-            .fi-global-search > div > div {
-                transition: background 0.2s, box-shadow 0.2s, border-color 0.2s;
-            }
-            .dcms-topbar-inner:not(.dcms-search-active) .fi-global-search > div > div {
-                background: transparent !important;
-                box-shadow: none !important;
-                border-color: transparent !important;
-                --tw-ring-color: transparent !important;
-            }
-            .dcms-topbar-inner:not(.dcms-search-active) .fi-global-search input {
-                opacity: 0;
-                pointer-events: none;
-            }
-
-            /* ── Prevent Right Side Shifting & Clipping ── */
-            .fi-topbar-end > :not(.fi-global-search-ctn) {
+            .fi-topbar-end > * {
                 flex-shrink: 0 !important;
-                overflow: visible !important;
             }
-
-            /* ── 4. Nav item button ── */
             .fi-topbar-nav-groups .fi-topbar-item-btn {
                 min-width: 0;
-                overflow: hidden;
             }
-
-            /* ── 5. Icon wrapper ──
-               Always visible (icon + text when closed, icon-only when search is open)
-            ── */
             .fi-topbar-nav-groups .dcms-nav-icon-wrap {
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                overflow: hidden;
                 flex-shrink: 0;
-                max-width: 26px;
                 opacity: 1;
             }
-
-            /* ── 6a. Label OUTER — layout space controller ── */
             .fi-topbar-nav-groups .dcms-label-outer {
                 display: inline-block;
-                overflow: hidden;
-                white-space: nowrap;
-                min-width: 0;
-                vertical-align: middle;
-                max-width: var(--dcms-label-w, 200px);  /* CLOSED: full width */
-                /* CLOSE: expand smoothly in sync with search shrinking */
-                transition: max-width var(--dcms-close-search-dur) var(--dcms-anim-ease) 0ms;
+                max-width: none !important;
+                overflow: visible !important;
             }
-            .dcms-search-active .fi-topbar-nav-groups .dcms-label-outer {
-                max-width: 0 !important;
-                /* OPEN: shrink smoothly in sync with search expanding */
-                transition: max-width var(--dcms-open-search-dur) var(--dcms-anim-ease) 0ms !important;
-            }
-
-            /* ── 6b. Label INNER — No extra clip-path needed, max-width on outer acts as wipe ── */
             .fi-topbar-nav-groups .fi-topbar-item-label {
                 display: inline-block;
-                overflow: visible;
-                white-space: nowrap;
+                max-width: none !important;
+                overflow: visible !important;
+                opacity: 1 !important;
             }
-
-            /* ── 7. Chevron: always visible ── */
             .fi-topbar-nav-groups .fi-topbar-group-toggle-icon {
                 display: inline-flex !important;
                 opacity: 1 !important;
                 flex-shrink: 0;
             }
-
-            /* ── 8. Tooltip on icon-only state ── */
-            .dcms-search-active .fi-topbar-nav-groups .fi-topbar-item-btn {
-                position: relative;
-            }
-            .dcms-search-active .fi-topbar-nav-groups .fi-topbar-item-btn::after {
-                content: attr(data-dcms-label);
-                position: absolute;
-                top: calc(100% + 6px);
-                left: 50%;
-                transform: translateX(-50%);
-                background: #1e293b;
-                color: #f8fafc;
-                font-size: 11px;
-                font-weight: 500;
-                white-space: nowrap;
-                padding: 4px 8px;
-                border-radius: 6px;
-                pointer-events: none;
-                opacity: 0;
-                transition: opacity 0.15s ease;
-                z-index: 9999;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-            }
-            .dcms-search-active .fi-topbar-nav-groups .fi-topbar-item-btn:hover::after {
-                opacity: 1;
-            }
         }
 
-        /* ── Mobile: no icon/text swap, search always visible ── */
+        /* ── Mobile ── */
         @media (max-width: 767.98px) {
-            .dcms-search-icon-btn { display: none !important; }
-            .fi-global-search {
-                width: auto !important;
-                opacity: 1 !important;
-                overflow: visible !important;
-                pointer-events: auto !important;
-                transition: none !important;
-            }
-            .fi-topbar-nav-groups .fi-topbar-item-label {
-                clip-path: none !important;
-                transition: none !important;
-            }
             .fi-topbar-nav-groups .dcms-label-outer {
                 max-width: none !important;
-                overflow: visible !important;
-                transition: none !important;
-            }
-            .fi-topbar-nav-groups .dcms-nav-icon-wrap {
-                max-width: 0 !important;
-                opacity: 0 !important;
-                pointer-events: none !important;
-            }
-        }
-        /* ── Reduced Motion: disable layout shifts, keep minimal opacity fade ── */
-        @media (prefers-reduced-motion: reduce) {
-            :root {
-                --dcms-open-text-dur:       0ms;
-                --dcms-open-icon-dur:       150ms;
-                --dcms-open-search-dur:     0ms;
-                --dcms-close-icon-dur:      150ms;
-                --dcms-close-search-dur:    0ms;
-                --dcms-close-text-dur:      0ms;
-            }
-            /* No width animation — instant snap */
-            .fi-global-search,
-            .fi-topbar-nav-groups .dcms-label-outer {
-                transition: opacity 150ms ease-out !important;
-            }
-            .dcms-search-active .fi-global-search,
-            .dcms-search-active .fi-topbar-nav-groups .dcms-label-outer {
-                transition: opacity 150ms ease-out !important;
-            }
-            /* Label: fade out instead of wipe */
-            .fi-topbar-nav-groups .fi-topbar-item-label {
-                transition: opacity 150ms ease-out !important;
-            }
-            .dcms-search-active .fi-topbar-nav-groups .fi-topbar-item-label {
-                opacity: 0 !important;
             }
         }
     </style>
 
     <nav class="fi-topbar">
-        <div class="dcms-topbar-inner"
-            x-data="{ isSearchOpen: false }"
-            x-bind:class="{ 'dcms-search-active': isSearchOpen }"
-            @dcms-open-search.window="isSearchOpen = true"
-            @dcms-close-search.window="isSearchOpen = false"
-            x-on:keydown.escape.window="isSearchOpen = false"
-            x-on:resize.window.debounce.100ms="if (isSearchOpen) { isSearchOpen = false }"
-            @click.outside="isSearchOpen = false"
-            x-init="
-                // ── LABEL WIDTH MEASUREMENT ──
-                // Measures each label's true scrollWidth so clip-path reveal
-                // has the exact space it needs. Sets --dcms-label-w on .dcms-label-outer.
-                //
-                // RACE CONDITIONS HANDLED:
-                // 1. CSS transitions disabled during measurement (prevents mid-flight reads)
-                // 2. +8px safety buffer (sub-pixel rounding + kerning variation)
-                // 3. Re-measured after document.fonts.ready (FOUT fix)
-                // 4. Outer max-width temporarily set to 'none' to allow natural text size
-
-                const measureLabels = () => {
-                    const outers = document.querySelectorAll('.fi-topbar-nav-groups .dcms-label-outer');
-                    outers.forEach(outer => {
-                        const inner = outer.querySelector('.fi-topbar-item-label');
-                        if (!inner) return;
-
-                        // 1. Freeze all transitions on both elements during measurement
-                        const outerOrigTrans = outer.style.transition;
-                        const innerOrigTrans = inner.style.transition;
-                        outer.style.transition = 'none';
-                        inner.style.transition = 'none';
-
-                        // 2. Force both to natural width so scrollWidth is accurate
-                        const outerOrigMax = outer.style.maxWidth;
-                        const innerOrigClip = inner.style.clipPath;
-                        outer.style.maxWidth = 'none';
-                        inner.style.clipPath = 'none';  // remove any clip in progress
-
-                        // 3. Force a layout flush so browser recalculates
-                        void outer.offsetWidth;
-
-                        // 4. Read the TRUE natural text width
-                        const w = inner.scrollWidth;
-
-                        // 5. Restore previous states
-                        outer.style.maxWidth = outerOrigMax;
-                        inner.style.clipPath = innerOrigClip;
-
-                        // 6. Re-enable transitions (in next frame so restore doesn't animate)
-                        requestAnimationFrame(() => {
-                            outer.style.transition = outerOrigTrans;
-                            inner.style.transition = innerOrigTrans;
-                        });
-
-                        // 7. Store measured width + 8px safety buffer on outer
-                        //    CSS var cascades from outer → inner automatically
-                        outer.style.setProperty('--dcms-label-w', (w + 8) + 'px');
-                    });
-                };
-
-                $nextTick(() => measureLabels());
-
-                // Re-measure once fonts are guaranteed loaded (avoids FOUT)
-                if (document.fonts && document.fonts.ready) {
-                    document.fonts.ready.then(() => {
-                        // Only re-measure if values may have changed (font swap)
-                        $nextTick(() => measureLabels());
-                    });
-                }
-            "
-        >
+        <div class="dcms-topbar-inner">
         {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::TOPBAR_START) }}
 
         @if ($hasNavigation)
