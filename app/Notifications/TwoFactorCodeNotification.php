@@ -46,7 +46,7 @@ class TwoFactorCodeNotification extends Notification
             ->line('')
             ->line("Kode ini berlaku selama **{$ttl} menit** dan hanya dapat digunakan satu kali.")
             ->line('')
-            ->line('> ⚠️ **Jangan bagikan kode ini kepada siapa pun**, termasuk tim dukungan DCMS.')
+            ->line('>  **Jangan bagikan kode ini kepada siapa pun**, termasuk tim dukungan DCMS.')
             ->line('')
             ->line('**Detail permintaan:**')
             ->line("- Waktu: {$time}")

@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Users\Schemas;
 use App\Models\Company;
 use App\Models\Department;
 use App\Models\Unit;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -15,6 +16,16 @@ class UserForm
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
+            FileUpload::make('avatar_url')
+                ->label('Foto Profil')
+                ->avatar()
+                ->image()
+                ->imageEditor()
+                ->circleCropper()
+                ->disk('public')
+                ->directory('avatars')
+                ->visibility('public')
+                ->maxSize(2048),
             TextInput::make('name')->required(),
             TextInput::make('email')->label('Alamat Email')->email()->required(),
             TextInput::make('username')->required()->maxLength(255),

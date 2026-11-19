@@ -25,8 +25,13 @@
 </style>
 
 {{-- TAMPILAN DESKTOP --}}
-<div class="dcms-desktop-title-view hidden md:flex flex-col gap-0.5 py-0.5">
-    <span style="font-size:13px;font-weight:700;color:#0f172a;">{{ $name }}</span>
+<div class="dcms-desktop-title-view hidden md:flex items-center gap-2.5 py-0.5">
+    @if($record->avatar_url)
+        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($record->avatar_url) }}" alt="{{ $name }}" style="width:32px;height:32px;border-radius:9999px;object-fit:cover;flex-shrink:0;border:1px solid rgba(226, 232, 240, 0.8);">
+    @else
+        <div style="width:32px;height:32px;border-radius:9999px;background:{{ $avatarBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-size:11px;font-weight:700;">{{ $avatarInitials }}</div>
+    @endif
+    <span style="font-size:13px;font-weight:700;color:inherit;">{{ $name }}</span>
 </div>
 
 {{-- TAMPILAN MOBILE --}}
@@ -35,7 +40,11 @@
 
         {{-- Header: Avatar + Nama + Status --}}
         <div style="padding:11px 14px;display:flex;align-items:center;gap:12px;">
-            <div style="width:38px;height:38px;border-radius:8px;background:{{ $avatarBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-size:13px;font-weight:700;letter-spacing:0.5px;">{{ $avatarInitials }}</div>
+            @if($record->avatar_url)
+                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($record->avatar_url) }}" alt="{{ $name }}" style="width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+            @else
+                <div style="width:38px;height:38px;border-radius:8px;background:{{ $avatarBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-size:13px;font-weight:700;letter-spacing:0.5px;">{{ $avatarInitials }}</div>
+            @endif
             <div style="flex:1;min-width:0;">
                 <div style="font-size:13px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $name }}</div>
                 <div style="font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">{{ $email }}</div>

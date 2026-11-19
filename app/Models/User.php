@@ -3,17 +3,19 @@
 namespace App\Models;
 
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasAvatar;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 use OwenIt\Auditing\Contracts\Auditable;
 use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable implements Auditable, FilamentUser
+class User extends Authenticatable implements Auditable, FilamentUser, HasAvatar
 {
     use HasFactory, HasPushSubscriptions, HasRoles, Notifiable, \OwenIt\Auditing\Auditable;
 
@@ -23,6 +25,7 @@ class User extends Authenticatable implements Auditable, FilamentUser
     protected $fillable = [
         'name',
         'email',
+        'avatar_url',
         'phone',
         'username',
         'nip',
@@ -36,6 +39,14 @@ class User extends Authenticatable implements Auditable, FilamentUser
         'two_factor_enabled_at',
         'default_trust_days',
     ];
+
+    /**
+     * URL Avatar untuk Filament Navbar & Profile.
+     */
+    public function getFilamentAvatarUrl(): ?string
+    {
+        return $this->avatar_url ? Storage::disk('public')->url($this->avatar_url) : null;
+    }
 
     /**
      * Nomor tujuan untuk channel notifikasi WhatsApp via n8n.

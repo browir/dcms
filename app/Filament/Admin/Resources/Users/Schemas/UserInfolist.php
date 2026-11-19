@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\Users\Schemas;
 
 use App\Models\User;
 use Filament\Infolists\Components\IconEntry;
+use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -23,6 +24,12 @@ class UserInfolist
                     ->columnSpan(1)
                     ->extraAttributes(['style' => 'height: 100%; display: flex; flex-direction: column;'])
                     ->schema([
+                        ImageEntry::make('avatar_url')
+                            ->label('Foto Profil')
+                            ->circular()
+                            ->disk('public')
+                            ->defaultImageUrl(fn (User $record): string => filament()->getUserAvatarUrl($record)),
+
                         TextEntry::make('name')
                             ->label('Nama Lengkap')
                             ->icon('heroicon-o-user')

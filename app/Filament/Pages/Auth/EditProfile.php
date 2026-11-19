@@ -6,10 +6,12 @@ use App\Models\Company;
 use App\Models\Department;
 use App\Models\Unit;
 use Filament\Auth\Pages\EditProfile as BaseEditProfile;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
@@ -46,31 +48,51 @@ class EditProfile extends BaseEditProfile
                     ->iconColor('primary')
                     ->description('Data identitas dan kredensial akun Anda')
                     ->schema([
-                        Grid::make(2)->schema([
-                            $this->getNameFormComponent()
-                                ->label('Nama Lengkap')
-                                ->placeholder('Masukkan nama lengkap'),
+                        // ── Avatar kiri (1 col) + field formulir kanan (3 col) ──
+                        Grid::make(['default' => 1, 'md' => 4])->schema([
+                            FileUpload::make('avatar_url')
+                                ->label('Foto Profil')
+                                ->avatar()
+                                ->image()
+                                ->imageEditor()
+                                ->circleCropper()
+                                ->disk('public')
+                                ->directory('avatars')
+                                ->visibility('public')
+                                ->maxSize(2048)
+                                ->helperText('JPG/PNG/WEBP · maks. 2 MB')
+                                ->columnSpan(1),
 
-                            TextInput::make('username')
-                                ->label('Nama Pengguna')
-                                ->required()
-                                ->unique('users', 'username', ignoreRecord: true)
-                                ->minLength(3)
-                                ->maxLength(255)
-                                ->autocomplete('username')
-                                ->placeholder('Masukkan nama pengguna'),
-                        ]),
+                            Group::make()
+                                ->schema([
+                                    Grid::make(2)->schema([
+                                        $this->getNameFormComponent()
+                                            ->label('Nama Lengkap')
+                                            ->placeholder('Masukkan nama lengkap'),
 
-                        Grid::make(2)->schema([
-                            $this->getEmailFormComponent()
-                                ->label('Alamat Email')
-                                ->placeholder('Masukkan alamat email'),
+                                        TextInput::make('username')
+                                            ->label('Nama Pengguna')
+                                            ->required()
+                                            ->unique('users', 'username', ignoreRecord: true)
+                                            ->minLength(3)
+                                            ->maxLength(255)
+                                            ->autocomplete('username')
+                                            ->placeholder('Masukkan nama pengguna'),
+                                    ]),
 
-                            TextInput::make('phone')
-                                ->label('No. Telepon / WhatsApp')
-                                ->tel()
-                                ->placeholder('contoh: 08123456789')
-                                ->maxLength(20),
+                                    Grid::make(2)->schema([
+                                        $this->getEmailFormComponent()
+                                            ->label('Alamat Email')
+                                            ->placeholder('Masukkan alamat email'),
+
+                                        TextInput::make('phone')
+                                            ->label('No. Telepon / WhatsApp')
+                                            ->tel()
+                                            ->placeholder('contoh: 08123456789')
+                                            ->maxLength(20),
+                                    ]),
+                                ])
+                                ->columnSpan(['default' => 1, 'md' => 3]),
                         ]),
                     ]),
 
