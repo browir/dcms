@@ -45,24 +45,30 @@ class AuditTrail extends Page implements HasTable
                     ->label('Tindakan')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'created'     => 'Dibuat',
-                        'updated'     => 'Diperbarui',
-                        'deleted'     => 'Dihapus',
-                        'restored'    => 'Dipulihkan',
-                        'viewed'      => 'Dilihat',
-                        'downloaded'  => 'Diunduh',
-                        'file_viewed' => 'Buka Berkas',
-                        default       => ucfirst($state),
+                        'created'            => 'Dibuat',
+                        'updated'            => 'Diperbarui',
+                        'deleted'            => 'Dihapus',
+                        'restored'           => 'Dipulihkan',
+                        'viewed'             => 'Dilihat',
+                        'downloaded'         => 'Diunduh',
+                        'file_viewed'        => 'Buka Berkas',
+                        'sessions_revoked'   => 'Sesi Dicabut',
+                        'session_terminated' => 'Sesi Diakhiri',
+                        'new_device_login'   => 'Login Baru',
+                        default              => ucfirst(str_replace('_', ' ', $state)),
                     })
                     ->color(fn (string $state): string => match ($state) {
-                        'created'     => 'success',
-                        'updated'     => 'warning',
-                        'deleted'     => 'danger',
-                        'restored'    => 'info',
-                        'viewed'      => 'gray',
-                        'downloaded'  => 'primary',
-                        'file_viewed' => 'indigo',
-                        default       => 'gray',
+                        'created'            => 'success',
+                        'updated'            => 'warning',
+                        'deleted'            => 'danger',
+                        'restored'           => 'info',
+                        'viewed'             => 'gray',
+                        'downloaded'         => 'primary',
+                        'file_viewed'        => 'indigo',
+                        'sessions_revoked'   => 'danger',
+                        'session_terminated' => 'warning',
+                        'new_device_login'   => 'warning',
+                        default              => 'gray',
                     })
                     ->visibleFrom('md'),
                 TextColumn::make('description')
@@ -102,19 +108,23 @@ class AuditTrail extends Page implements HasTable
                 SelectFilter::make('event')
                     ->label('Tindakan')
                     ->options([
-                        'created'     => 'Dibuat',
-                        'updated'     => 'Diperbarui',
-                        'deleted'     => 'Dihapus',
-                        'restored'    => 'Dipulihkan',
-                        'viewed'      => 'Dilihat',
-                        'downloaded'  => 'Diunduh',
-                        'file_viewed' => 'Buka Berkas',
+                        'created'            => 'Dibuat',
+                        'updated'            => 'Diperbarui',
+                        'deleted'            => 'Dihapus',
+                        'restored'           => 'Dipulihkan',
+                        'viewed'             => 'Dilihat',
+                        'downloaded'         => 'Diunduh',
+                        'file_viewed'        => 'Buka Berkas',
+                        'sessions_revoked'   => 'Sesi Dicabut',
+                        'session_terminated' => 'Sesi Diakhiri',
+                        'new_device_login'   => 'Login Baru',
                     ]),
                 SelectFilter::make('log_name')
                     ->label('Kategori')
                     ->options([
                         'dokumen'     => 'Dokumen',
                         'surat_masuk' => 'Surat Masuk',
+                        'keamanan'    => 'Keamanan',
                         'default'     => 'Sistem (Spatie)',
                     ]),
                 Filter::make('created_at')

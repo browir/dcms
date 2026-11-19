@@ -150,10 +150,20 @@ class EditProfile extends BaseEditProfile
                         ]),
                     ]),
 
-                Section::make('Keamanan')
+                Section::make('Keamanan & Kata Sandi')
                     ->icon('heroicon-o-lock-closed')
                     ->iconColor('danger')
-                    ->description('Perbarui kata sandi Anda. Kosongkan jika tidak ingin mengubah.')
+                    ->description(function () {
+                        $user = auth()->user();
+                        $desc = 'Perbarui kata sandi Anda. Kosongkan jika tidak ingin mengubah.';
+                        if ($user->password_changed_at) {
+                            $desc .= ' (Terakhir diperbarui: ' . $user->password_changed_at->translatedFormat('d M Y') . ' · ' . $user->password_changed_at->diffForHumans() . ').';
+                        }
+                        if ($user->isPasswordRotationRecommended()) {
+                            $desc .= ' ⚠️ Kata sandi sudah lebih dari 90 hari, disarankan untuk diganti.';
+                        }
+                        return $desc;
+                    })
                     ->schema([
                         Grid::make(2)->schema([
                             $this->getPasswordFormComponent()
@@ -245,6 +255,14 @@ class EditProfile extends BaseEditProfile
                     ]),
             ])
             ->statePath('data');
+    }
+
+    protected function getPasswordFormComponent(): \Filament\Schemas\Components\Component
+    {
+        return parent::getPasswordFormComponent()
+            ->rule(\Illuminate\Validation\Rules\Password::min(8)->letters()->mixedCase()->numbers())
+            ->rule(new \App\Rules\NotPreviousPassword(auth()->user(), 3))
+            ->helperText('Minimal 8 karakter, kombinasi huruf besar, huruf kecil, dan angka. Tidak boleh sama dengan 3 kata sandi terakhir.');
     }
 
     protected function getForms(): array

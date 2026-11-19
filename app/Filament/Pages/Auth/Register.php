@@ -40,6 +40,13 @@ class Register extends BaseRegister
         return $user;
     }
 
+    protected function getPasswordFormComponent(): \Filament\Schemas\Components\Component
+    {
+        return parent::getPasswordFormComponent()
+            ->rule(\Illuminate\Validation\Rules\Password::min(8)->letters()->mixedCase()->numbers())
+            ->helperText('Minimal 8 karakter, kombinasi huruf besar, kecil, dan angka.');
+    }
+
     protected function getUsernameFormComponent(): TextInput
     {
         return TextInput::make('username')

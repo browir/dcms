@@ -36,6 +36,8 @@ class UserForm
                 ->unique(ignoreRecord: true),
             TextInput::make('password')
                 ->password()
+                ->rule(\Illuminate\Validation\Rules\Password::min(8)->letters()->mixedCase()->numbers())
+                ->helperText('Minimal 8 karakter, kombinasi huruf besar, huruf kecil, dan angka.')
                 ->dehydrateStateUsing(fn($state) => filled($state) ? bcrypt($state) : null)
                 ->dehydrated(fn($state) => filled($state))
                 ->required(fn(string $context): bool => $context === 'create'),

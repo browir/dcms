@@ -5,6 +5,9 @@
     {{-- Pengaturan Verifikasi Dua Faktor — card terpisah --}}
     @livewire('two-factor-settings')
 
+    {{-- Manajemen Sesi & Perangkat Aktif --}}
+    @livewire('active-sessions')
+
     {{-- ── Action bar: selalu di PALING BAWAH, setelah semua card ──────────── --}}
     {{-- wire:click="save" memanggil method save() di class EditProfile (Livewire),
          identik dengan form submit sebelumnya. --}}

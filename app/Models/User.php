@@ -30,6 +30,7 @@ class User extends Authenticatable implements Auditable, FilamentUser, HasAvatar
         'username',
         'nip',
         'password',
+        'password_changed_at',
         'company_id',
         'department_id',
         'unit_id',
@@ -77,7 +78,64 @@ class User extends Authenticatable implements Auditable, FilamentUser, HasAvatar
         'two_factor_enabled'     => 'boolean',
         'two_factor_enabled_at'  => 'datetime',
         'default_trust_days'     => 'integer',
+        'password_changed_at'    => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::updating(function (User $user) {
+            if ($user->isDirty('password')) {
+                $user->password_changed_at = now();
+
+                // Arsipkan kata sandi lama ke riwayat jika ada
+                if ($user->getOriginal('password')) {
+                    \App\Models\PasswordHistory::create([
+                        'user_id'    => $user->id,
+                        'password'   => $user->getOriginal('password'),
+                        'created_at' => now(),
+                    ]);
+                }
+            }
+        });
+
+        static::created(function (User $user) {
+            if ($user->password && ! $user->password_changed_at) {
+                $user->password_changed_at = now();
+            }
+        });
+    }
+
+    public function passwordHistories(): HasMany
+    {
+        return $this->hasMany(\App\Models\PasswordHistory::class);
+    }
+
+    public function loginHistories(): HasMany
+    {
+        return $this->hasMany(\App\Models\UserLoginHistory::class);
+    }
+
+    /**
+     * Berapa hari sejak kata sandi terakhir diubah.
+     */
+    public function passwordAgeDays(): ?int
+    {
+        if (! $this->password_changed_at) {
+            return null;
+        }
+
+        return (int) $this->password_changed_at->diffInDays(now());
+    }
+
+    /**
+     * Apakah disarankan untuk rotasi kata sandi (> 90 hari).
+     */
+    public function isPasswordRotationRecommended(): bool
+    {
+        $age = $this->passwordAgeDays();
+
+        return $age !== null && $age >= 90;
+    }
 
     /**
      * Filament Panel Access

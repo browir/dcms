@@ -63,8 +63,12 @@ class AppServiceProvider extends ServiceProvider
         // SSO Keycloak: sinkron unit organisasi & role setiap login berhasil.
         Event::listen(KeycloakLoginSucceeded::class, KeycloakUserSync::class);
 
-        // Livewire component 2FA
+        // Catat riwayat login & deteksi login dari perangkat/IP baru
+        Event::listen(\Illuminate\Auth\Events\Login::class, \App\Listeners\RecordLoginHistory::class);
+
+        // Livewire component 2FA & Active Sessions
         Livewire::component('two-factor-settings', \App\Filament\Components\TwoFactorSettings::class);
+        Livewire::component('active-sessions', \App\Filament\Components\ActiveSessions::class);
 
         // Policy 2FA: Gate::policy mengikat User model ke TwoFactorPolicy
         Gate::define('resetTwoFactor', [TwoFactorPolicy::class, 'resetTwoFactor']);
