@@ -11,6 +11,7 @@ use Filament\Infolists\Components\ViewEntry;
 use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\FontWeight;
 
 class DocumentInfolist
 {
@@ -180,6 +181,102 @@ class DocumentInfolist
                                 return $record->expires_at->format('d M Y');
                             })
                             ->placeholder('Tidak ada batas waktu'),
+                    ]),
+
+                /* ─── NOMOR SURAT ─── */
+                Section::make('Informasi Nomor Surat')
+                    ->icon('heroicon-o-hashtag')
+                    ->iconColor('success')
+                    ->description('Detail nomor surat resmi yang terdaftar di register')
+                    ->columnSpanFull()
+                    ->visible(fn (Document $record): bool => filled($record->letter_number_id))
+                    ->columns(3)
+                    ->schema([
+                        TextEntry::make('letterNumber.nomor')
+                            ->label('Nomor Surat')
+                            ->icon('heroicon-o-hashtag')
+                            ->iconColor('success')
+                            ->weight('bold')
+                            ->size('lg')
+                            ->copyable()
+                            ->copyMessage('Nomor surat disalin!')
+                            ->copyMessageDuration(1500)
+                            ->placeholder('—'),
+
+                        TextEntry::make('letterNumber.tanggal_surat')
+                            ->label('Tanggal Surat')
+                            ->icon('heroicon-o-calendar')
+                            ->iconColor('primary')
+                            ->date('d F Y')
+                            ->placeholder('—'),
+
+                        TextEntry::make('letterNumber.numbering_type')
+                            ->label('Jenis Penomoran')
+                            ->badge()
+                            ->formatStateUsing(fn ($state): string => match ($state) {
+                                'manual' => 'Manual',
+                                'auto'   => 'Otomatis',
+                                default  => 'Otomatis',
+                            })
+                            ->color(fn ($state): string => $state === 'manual' ? 'warning' : 'success')
+                            ->icon(fn ($state): string => $state === 'manual' ? 'heroicon-o-pencil' : 'heroicon-o-cog-6-tooth'),
+
+                        TextEntry::make('letterNumber.judul_surat')
+                            ->label('Judul / Perihal Surat')
+                            ->icon('heroicon-o-document-text')
+                            ->iconColor('gray')
+                            ->columnSpan(2)
+                            ->placeholder('—'),
+
+                        TextEntry::make('letterNumber.jenis_surat')
+                            ->label('Jenis Surat')
+                            ->icon('heroicon-o-tag')
+                            ->badge()
+                            ->formatStateUsing(fn ($state): string => $state
+                                ? (is_object($state) ? "{$state->value} — {$state->label()}" : $state)
+                                : '—')
+                            ->color('gray')
+                            ->placeholder('—'),
+
+                        TextEntry::make('letterNumber.category.name')
+                            ->label('Kategori Surat')
+                            ->icon('heroicon-o-folder')
+                            ->iconColor('warning')
+                            ->badge()
+                            ->color('warning')
+                            ->placeholder('—'),
+
+                        TextEntry::make('letterNumber.department.name')
+                            ->label('Departemen Penerbit')
+                            ->icon('heroicon-o-building-office-2')
+                            ->iconColor('indigo')
+                            ->placeholder('—'),
+
+                        TextEntry::make('letterNumber.unit.name')
+                            ->label('Unit Penerbit')
+                            ->icon('heroicon-o-user-group')
+                            ->iconColor('gray')
+                            ->placeholder('—'),
+
+                        TextEntry::make('letterNumber.creator.name')
+                            ->label('Diterbitkan Oleh')
+                            ->icon('heroicon-o-user-circle')
+                            ->iconColor('primary')
+                            ->placeholder('—'),
+
+                        TextEntry::make('letterNumber.perihal')
+                            ->label('Perihal')
+                            ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                            ->columnSpanFull()
+                            ->placeholder('Tidak ada keterangan perihal')
+                            ->visible(fn (Document $record): bool => filled($record->letterNumber?->perihal)),
+
+                        TextEntry::make('letterNumber.created_at')
+                            ->label('Nomor Diterbitkan Pada')
+                            ->icon('heroicon-o-clock')
+                            ->iconColor('gray')
+                            ->dateTime('d F Y, H:i')
+                            ->placeholder('—'),
                     ]),
 
                 /* ─── BERKAS ─── */
