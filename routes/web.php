@@ -71,4 +71,9 @@ Route::middleware([Authenticate::class])->group(function () {
     Route::get('/storage/documents/{path}', [DocumentFileController::class, 'show'])
         ->where('path', '.*')
         ->name('documents.serve');
+
+    // Unduh & pratinjau PDF / Word dokumen resmi
+    Route::get('/documents/{document}/pdf', [DocumentFileController::class, 'downloadPdf'])->name('documents.pdf.download');
+    Route::get('/documents/{document}/stream-pdf', [DocumentFileController::class, 'streamPdf'])->name('documents.pdf.stream');
+    Route::get('/documents/{document}/word', [DocumentFileController::class, 'downloadWord'])->name('documents.word.download');
 });

@@ -20,14 +20,27 @@ class DocumentConversionService
      */
     public static function downloadAsPdf(Document $document)
     {
+        return self::handlePdfResponse($document, inline: false);
+    }
+
+    /**
+     * Stream document as PDF for inline viewing / printing in browser
+     */
+    public static function streamPdf(Document $document)
+    {
+        return self::handlePdfResponse($document, inline: true);
+    }
+
+    private static function handlePdfResponse(Document $document, bool $inline = false)
+    {
         $type = $document->document_type;
         $title = str()->slug($document->title ?: 'document');
 
         try {
-            $result = self::generatePdfResponse($document, $type, $title);
+            $result = self::generatePdfResponse($document, $type, $title, $inline);
 
             if ($result !== null) {
-                // Catat aktivitas unduh PDF ke audit log
+                // Catat aktivitas unduh/lihat PDF ke audit log
                 activity('dokumen')
                     ->performedOn($document)
                     ->causedBy(auth()->user())
@@ -35,10 +48,11 @@ class DocumentConversionService
                         'nomor_surat' => $document->nomor_surat,
                         'judul'       => $document->judul,
                         'format'      => 'PDF',
+                        'mode'        => $inline ? 'inline' : 'attachment',
                         'ip'          => request()->ip(),
                     ])
-                    ->event('downloaded')
-                    ->log('Mengunduh dokumen sebagai PDF');
+                    ->event($inline ? 'viewed' : 'downloaded')
+                    ->log($inline ? 'Melihat pratinjau PDF dokumen' : 'Mengunduh dokumen sebagai PDF');
             }
 
             return $result;
@@ -54,12 +68,18 @@ class DocumentConversionService
         }
     }
 
-    private static function generatePdfResponse(Document $document, string $type, string $title)
+    private static function generatePdfResponse(Document $document, string $type, string $title, bool $inline = false)
     {
+        try {
             // 1. Jika dokumen berbasis Form atau Hybrid (punya content HTML)
             if (in_array($type, ['form', 'hybrid']) && $document->content) {
                 $html = self::buildHtmlForPdf($document);
                 $pdf = Pdf::loadHTML($html);
+                $pdf->setPaper('A4', 'portrait');
+
+                if ($inline) {
+                    return $pdf->stream("{$title}.pdf");
+                }
 
                 return response()->streamDownload(function () use ($pdf) {
                     echo $pdf->output();
@@ -76,8 +96,14 @@ class DocumentConversionService
                 $path = $disk->path($document->file_path);
                 $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
-                // Jika sudah PDF, langsung download
+                // Jika sudah PDF, langsung sajikan
                 if ($ext === 'pdf') {
+                    if ($inline) {
+                        return response()->file($path, [
+                            'Content-Type' => 'application/pdf',
+                            'Content-Disposition' => 'inline; filename="'.$title.'.pdf"',
+                        ]);
+                    }
                     return response()->download($path, "{$title}.pdf");
                 }
 
@@ -108,6 +134,10 @@ class DocumentConversionService
                     $html = "<html><body style='margin:0;padding:0;text-align:center;'><img src='{$src}' style='max-width:100%;'></body></html>";
                     $pdf = Pdf::loadHTML($html);
                     $pdf->setPaper('A4', 'portrait');
+
+                    if ($inline) {
+                        return $pdf->stream("{$title}.pdf");
+                    }
 
                     return response()->streamDownload(function () use ($pdf) {
                         echo $pdf->output();
@@ -232,39 +262,167 @@ class DocumentConversionService
     }
 
     /**
-     * Membangun HTML template sederhana untuk DomPDF
+     * Resolves letterhead assets (kop surat, watermark, footer waves) as base64 data URIs.
      */
-    private static function buildHtmlForPdf(Document $document): string
+    public static function getLetterheadAssets(?int $companyId = null): array
     {
-        $title = htmlspecialchars($document->title ?? 'Tanpa Judul');
+        $logoKopPath = public_path('images/logo-rsusm.png');
+        $watermarkPath = public_path('images/letter-watermark.png');
+        $footerPath = public_path('images/letter-footer.png');
+
+        $kopBase64 = is_file($logoKopPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($logoKopPath)) : null;
+        $watermarkBase64 = is_file($watermarkPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($watermarkPath)) : null;
+        $footerBase64 = is_file($footerPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($footerPath)) : null;
+
+        return [
+            'kop' => $kopBase64,
+            'watermark' => $watermarkBase64,
+            'footer' => $footerBase64,
+        ];
+    }
+
+    /**
+     * Membangun HTML surat resmi berstandar rumah sakit (kop, watermark, gelombang footer)
+     */
+    public static function buildHtmlForPdf(Document $document): string
+    {
+        $assets = self::getLetterheadAssets($document->company_id);
+        $title = htmlspecialchars($document->title ?? 'Surat Resmi');
         $code = htmlspecialchars($document->code_number ?? '-');
-        $date = $document->created_at ? $document->created_at->format('d M Y') : '-';
-        $version = htmlspecialchars($document->version ?? '1.0');
+
+        // Ganti placeholder template yang belum terisi jika ada
+        $content = $document->content ?? '';
+        $tanggalSurat = $document->tanggal_surat
+            ? $document->tanggal_surat->locale('id')->isoFormat('D MMMM YYYY')
+            : now()->locale('id')->isoFormat('D MMMM YYYY');
+
+        $content = str_replace(
+            ['{nomor_surat}', '{nomor}', '{tanggal}', '{nama_direktur}', '{nip_direktur}'],
+            [$code, $code, $tanggalSurat, 'dr. Puga Sharaz Wangi, M.A.R.S.', '01042019232'],
+            $content
+        );
+
+        $hasOfficialLetterHeader = str_contains($content, 'SURAT')
+            || str_contains($content, 'KEPUTUSAN')
+            || str_contains($content, 'Nomor:')
+            || str_contains($content, 'Yth.');
+
+        $optionalHeading = '';
+        if (! $hasOfficialLetterHeader) {
+            $optionalHeading = "
+                <div style='text-align: center; margin-bottom: 24px;'>
+                    <h2 style='font-size: 14pt; font-weight: bold; margin: 0; text-transform: uppercase; text-decoration: underline;'>{$title}</h2>
+                    <p style='font-size: 10.5pt; margin: 4px 0 0;'>Nomor: {$code}</p>
+                </div>
+            ";
+        }
+
+        $kopHtml = $assets['kop']
+            ? "<div class='header-kop'><img src='{$assets['kop']}' alt='Kop Surat RSU Syifa Medika'/></div><div class='header-line'></div>"
+            : '';
+
+        $footerHtml = $assets['footer']
+            ? "<div class='footer-waves'><img src='{$assets['footer']}' alt='Footer Graphic'/></div>"
+            : '';
+
+        $watermarkHtml = $assets['watermark']
+            ? "<div class='watermark'><img src='{$assets['watermark']}' alt='Watermark'/></div>"
+            : '';
 
         return "
-        <html>
+        <!DOCTYPE html>
+        <html lang='id'>
         <head>
             <meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+            <title>{$title}</title>
             <style>
-                body { font-family: sans-serif; line-height: 1.6; color: #333; }
-                h1 { font-size: 22px; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-                .meta { margin-bottom: 20px; font-size: 13px; color: #555; background: #f9f9f9; padding: 15px; border-radius: 5px; }
-                .content { font-size: 12pt; margin-top: 30px; }
-                table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-                table, th, td { border: 1px solid #ddd; }
-                th, td { padding: 8px; text-align: left; }
-                th { background-color: #f2f2f2; }
+                @page {
+                    margin: 125px 60px 85px 60px;
+                }
+                body {
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 11pt;
+                    line-height: 1.5;
+                    color: #1a1a1a;
+                }
+                .header-kop {
+                    position: fixed;
+                    top: -110px;
+                    left: -40px;
+                    right: -40px;
+                    height: 95px;
+                    text-align: center;
+                }
+                .header-kop img {
+                    width: 100%;
+                    height: auto;
+                    max-height: 95px;
+                }
+                .header-line {
+                    position: fixed;
+                    top: -10px;
+                    left: -40px;
+                    right: -40px;
+                    border-bottom: 2px solid #2d7a60;
+                }
+                .footer-waves {
+                    position: fixed;
+                    bottom: -85px;
+                    left: -60px;
+                    right: -60px;
+                    height: 75px;
+                    text-align: center;
+                }
+                .footer-waves img {
+                    width: 100%;
+                    height: 75px;
+                }
+                .watermark {
+                    position: fixed;
+                    top: 280px;
+                    left: 140px;
+                    width: 320px;
+                    height: 320px;
+                    z-index: -1000;
+                    text-align: center;
+                }
+                .watermark img {
+                    width: 100%;
+                    height: 100%;
+                }
+                .letter-content {
+                    position: relative;
+                    z-index: 10;
+                    text-align: justify;
+                }
+                p {
+                    margin: 0 0 10px 0;
+                }
+                table {
+                    border-collapse: collapse;
+                    width: 100%;
+                    margin-bottom: 15px;
+                }
+                table[border='1'], table.bordered {
+                    border: 1px solid #333;
+                }
+                table[border='1'] td, table[border='1'] th, table.bordered td, table.bordered th {
+                    border: 1px solid #333;
+                    padding: 6px 10px;
+                }
+                table[border='0'] td, table[border='0'] th, table[style*='border: none'] td, table[style*='border: none'] th {
+                    border: none;
+                }
             </style>
         </head>
         <body>
-            <h1>{$title}</h1>
-            <div class='meta'>
-                <strong>Nomor Dokumen:</strong> {$code} <br>
-                <strong>Versi:</strong> {$version} <br>
-                <strong>Tanggal:</strong> {$date}
-            </div>
-            <div class='content'>
-                {$document->content}
+            {$kopHtml}
+            {$footerHtml}
+            {$watermarkHtml}
+
+            <div class='letter-content'>
+                {$optionalHeading}
+                {$content}
             </div>
         </body>
         </html>

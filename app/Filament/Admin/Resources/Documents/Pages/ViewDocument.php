@@ -41,11 +41,27 @@ class ViewDocument extends ViewRecord
     {
         return [
 
-            /* ── Download File ── */
-            Action::make('download')
-                ->label('Unduh Berkas')
+            /* ── Unduh PDF Resmi ── */
+            Action::make('download_pdf')
+                ->label('Unduh PDF')
                 ->icon('heroicon-o-arrow-down-tray')
-                ->color('primary')
+                ->color('success')
+                ->visible(fn (): bool => in_array($this->record->document_type, ['form', 'hybrid']) || str_ends_with(strtolower($this->record->file_path ?? ''), '.pdf'))
+                ->action(fn () => \App\Services\DocumentConversionService::downloadAsPdf($this->record)),
+
+            /* ── Unduh Word ── */
+            Action::make('download_word')
+                ->label('Unduh Word')
+                ->icon('heroicon-o-document-text')
+                ->color('info')
+                ->visible(fn (): bool => in_array($this->record->document_type, ['form', 'hybrid']))
+                ->action(fn () => \App\Services\DocumentConversionService::downloadAsWord($this->record)),
+
+            /* ── Download File Asli (Khusus Berkas Unggahan) ── */
+            Action::make('download')
+                ->label('Unduh Berkas Asli')
+                ->icon('heroicon-o-paper-clip')
+                ->color('gray')
                 ->visible(fn (): bool => filled($this->record->file_path))
                 ->action(function () {
                     $path = $this->record->file_path;

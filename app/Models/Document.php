@@ -281,36 +281,11 @@ class Document extends Model implements Auditable
     }
 
     /**
-     * Build HTML content
+     * Build HTML content menggunakan format surat resmi
      */
     private function buildHtmlContent(): string
     {
-        return "
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset='UTF-8'>
-            <title>{$this->title}</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-                .header { border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-                .title { font-size: 24px; font-weight: bold; color: #333; }
-                .meta { color: #666; font-size: 14px; margin-top: 10px; }
-                .content { margin-top: 20px; white-space: pre-wrap; }
-            </style>
-        </head>
-        <body>
-            <div class='header'>
-                <div class='title'>{$this->title}</div>
-                <div class='meta'>
-                    <strong>Document Number:</strong> {$this->code_number} | 
-                    <strong>Type:</strong> {$this->document_type} |
-                    <strong>Status:</strong> {$this->status}
-                </div>
-            </div>
-            <div class='content'>{$this->content}</div>
-        </body>
-        </html>";
+        return \App\Services\DocumentConversionService::buildHtmlForPdf($this);
     }
 
     // ========== RELATIONSHIPS ==========

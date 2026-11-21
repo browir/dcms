@@ -303,20 +303,19 @@ class DocumentInfolist
                             ->placeholder('Tidak ada catatan'),
                     ]),
 
-                /* ─── KONTEN ─── */
-                Section::make('Konten Dokumen')
-                    ->icon('heroicon-o-document')
-                    ->iconColor('gray')
-                    ->description('Isi dokumen yang dibuat dari formulir')
+                /* ─── KONTEN / PRATINJAU SURAT ─── */
+                Section::make('Pratinjau Lembar Surat Resmi')
+                    ->icon('heroicon-o-document-text')
+                    ->iconColor('success')
+                    ->description('Format lembar surat resmi dengan kop surat, watermark, dan gelombang footer RSU Syifa Medika')
                     ->collapsible()
-                    ->collapsed()
+                    ->collapsed(false)
                     ->columnSpanFull()
                     ->visible(fn (Document $record): bool => filled($record->content))
                     ->schema([
-                        TextEntry::make('content')
-                            ->label('')
-                            ->html()
-                            ->placeholder('Tidak ada konten'),
+                        ViewEntry::make('content')
+                            ->hiddenLabel()
+                            ->view('filament.infolists.document-letter-preview'),
                     ]),
 
                 /* ─── RIWAYAT PENOLAKAN ─── */

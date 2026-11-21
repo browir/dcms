@@ -73,4 +73,34 @@ class DocumentFileController extends Controller
 
         return $response;
     }
+
+    /**
+     * Unduh dokumen sebagai PDF resmi
+     */
+    public function downloadPdf(Document $document)
+    {
+        abort_unless(auth()->user()->can('view', $document), 403);
+
+        return \App\Services\DocumentConversionService::downloadAsPdf($document);
+    }
+
+    /**
+     * Buka / pratinjau dokumen PDF langsung di browser (inline)
+     */
+    public function streamPdf(Document $document)
+    {
+        abort_unless(auth()->user()->can('view', $document), 403);
+
+        return \App\Services\DocumentConversionService::streamPdf($document);
+    }
+
+    /**
+     * Unduh dokumen sebagai Word (.docx)
+     */
+    public function downloadWord(Document $document)
+    {
+        abort_unless(auth()->user()->can('view', $document), 403);
+
+        return \App\Services\DocumentConversionService::downloadAsWord($document);
+    }
 }

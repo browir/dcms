@@ -67,7 +67,7 @@ class DocumentForm
 
             /* ─── TIPE DOKUMEN ─── */
             Section::make('Tipe Dokumen')
-                ->description('Pilih jenis dokumen yang akan dibuat')
+                ->description('Pilih cara pembuatan dokumen / surat')
                 ->icon('heroicon-o-squares-2x2')
                 ->iconColor('primary')
                 ->columnSpanFull()
@@ -75,18 +75,21 @@ class DocumentForm
                     ToggleButtons::make('document_type')
                         ->hiddenLabel()
                         ->options([
-                            'file' => 'Unggah Berkas',
-                            'hybrid' => 'Gabungan',
+                            'form' => 'Tulis Surat (Template)',
+                            'file' => 'Unggah Berkas PDF',
+                            'hybrid' => 'Gabungan (Teks + Lampiran)',
                         ])
                         ->icons([
+                            'form' => 'heroicon-o-pencil-square',
                             'file' => 'heroicon-o-paper-clip',
                             'hybrid' => 'heroicon-o-squares-plus',
                         ])
                         ->colors([
+                            'form' => 'success',
                             'file' => 'primary',
                             'hybrid' => 'warning',
                         ])
-                        ->default('file')
+                        ->default('form')
                         ->required()
                         ->live()
                         ->inline()
@@ -279,9 +282,11 @@ class DocumentForm
                         ->options(function (Get $get) {
                             $companyId = $get('company_id') ?? Auth::user()?->company_id;
 
+                            $hasCompanyTemplates = $companyId && DocumentTemplate::query()->active()->where('company_id', $companyId)->exists();
+
                             return DocumentTemplate::query()
                                 ->active()
-                                ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
+                                ->when($hasCompanyTemplates, fn ($q) => $q->where('company_id', $companyId))
                                 ->pluck('name', 'id');
                         })
                         ->searchable()
