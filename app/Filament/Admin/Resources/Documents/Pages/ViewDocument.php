@@ -10,6 +10,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\Auth;
@@ -86,6 +87,63 @@ class ViewDocument extends ViewRecord
                         ->title('File tidak ditemukan')
                         ->body('Berkas dokumen tidak tersedia di server.')
                         ->danger()
+                        ->send();
+                }),
+
+            /* ── Ubah Perihal Surat ── */
+            Action::make('edit_perihal')
+                ->label('Ubah Perihal')
+                ->icon('heroicon-o-pencil-square')
+                ->color('warning')
+                ->visible(fn (): bool => filled($this->record->letter_number_id) && (
+                    Auth::user()?->can('edit_letter_perihal') || (method_exists(Auth::user(), 'hasRole') && Auth::user()?->hasRole('super_admin'))
+                ))
+                ->modalHeading('Ubah Perihal Surat')
+                ->modalDescription('Perbarui informasi perihal surat resmi yang sudah diterbitkan.')
+                ->modalWidth('lg')
+                ->modalSubmitActionLabel('Simpan Perubahan')
+                ->form([
+                    TextInput::make('nomor_surat_display')
+                        ->label('Nomor Surat')
+                        ->default(fn () => $this->record->letterNumber?->nomor)
+                        ->disabled(),
+                    TextInput::make('judul_surat_display')
+                        ->label('Judul Surat')
+                        ->default(fn () => $this->record->letterNumber?->judul_surat)
+                        ->disabled(),
+                    Textarea::make('perihal')
+                        ->label('Perihal Surat')
+                        ->default(fn () => $this->record->letterNumber?->perihal)
+                        ->placeholder('Masukkan perihal surat...')
+                        ->rows(3)
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    $letterNumber = $this->record->letterNumber;
+                    if (! $letterNumber) {
+                        return;
+                    }
+
+                    $oldPerihal = $letterNumber->perihal;
+                    $letterNumber->update([
+                        'perihal' => $data['perihal'],
+                    ]);
+
+                    activity('dokumen')
+                        ->performedOn($this->record)
+                        ->causedBy(Auth::user())
+                        ->withProperties([
+                            'nomor_surat' => $letterNumber->nomor,
+                            'old_perihal' => $oldPerihal,
+                            'new_perihal' => $data['perihal'],
+                        ])
+                        ->event('updated')
+                        ->log('Mengubah perihal surat resmi');
+
+                    Notification::make()
+                        ->title('Perihal Surat Berhasil Diperbarui')
+                        ->body("Perihal untuk nomor {$letterNumber->nomor} telah diperbarui.")
+                        ->success()
                         ->send();
                 }),
 

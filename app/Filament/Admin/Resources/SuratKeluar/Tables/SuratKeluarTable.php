@@ -203,6 +203,42 @@ class SuratKeluarTable
                             ->disabled(),
                     ]),
 
+                Action::make('ubah_perihal')
+                    ->label('Ubah Perihal')
+                    ->icon('heroicon-o-pencil')
+                    ->color('warning')
+                    ->visible(fn (Surat $record): bool => auth()->user()?->can('edit_letter_perihal') || (method_exists(auth()->user(), 'hasRole') && auth()->user()?->hasRole('super_admin')))
+                    ->modalHeading(fn (Surat $record): string => "Ubah Perihal Surat: {$record->nomor}")
+                    ->modalWidth('lg')
+                    ->modalSubmitActionLabel('Simpan Perubahan')
+                    ->form(fn (Surat $record): array => [
+                        TextInput::make('nomor_display')
+                            ->label('Nomor Surat')
+                            ->default($record->nomor)
+                            ->disabled(),
+                        TextInput::make('judul_display')
+                            ->label('Judul Surat')
+                            ->default($record->judul_surat)
+                            ->disabled(),
+                        Textarea::make('perihal')
+                            ->label('Perihal Surat')
+                            ->default($record->perihal)
+                            ->placeholder('Masukkan perihal surat...')
+                            ->rows(3)
+                            ->required(),
+                    ])
+                    ->action(function (Surat $record, array $data): void {
+                        $record->update([
+                            'perihal' => $data['perihal'],
+                        ]);
+
+                        Notification::make()
+                            ->title('Perihal Berhasil Diperbarui')
+                            ->body("Perihal surat {$record->nomor} telah diperbarui.")
+                            ->success()
+                            ->send();
+                    }),
+
                 Action::make('ubah')
                     ->label('Ubah')
                     ->icon('heroicon-o-pencil-square')

@@ -52,7 +52,16 @@ class LetterNumberPolicy
 
     public function update(AuthUser $authUser, LetterNumber $letterNumber): bool
     {
-        return false;
+        return $this->updatePerihal($authUser, $letterNumber);
+    }
+
+    public function updatePerihal(AuthUser $authUser, LetterNumber $letterNumber): bool
+    {
+        if (method_exists($authUser, 'hasRole') && $authUser->hasRole('super_admin')) {
+            return true;
+        }
+
+        return $authUser->can('edit_letter_perihal');
     }
 
     public function delete(AuthUser $authUser, LetterNumber $letterNumber): bool

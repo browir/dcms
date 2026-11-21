@@ -263,6 +263,7 @@ return [
         'create_own_reminder' => 'Buat pengingat sendiri',
         'send_meeting_reminder' => 'Kirim pengingat rapat',
         'send_expiry_reminder' => 'Kirim pengingat masa berlaku',
+        'edit_letter_perihal' => 'Ubah perihal surat setelah terbit',
     ],
 
     /*

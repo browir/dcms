@@ -12,6 +12,9 @@ use App\Models\LetterNumber;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -178,6 +181,41 @@ class LetterNumberResource extends Resource
                     ->color('gray')
                     ->visible(fn (LetterNumber $record): bool => $record->agenda !== null)
                     ->url(fn (LetterNumber $record): string => AgendaResource::getUrl('view', ['record' => $record->agenda])),
+                Action::make('ubahPerihal')
+                    ->label('Ubah Perihal')
+                    ->icon('heroicon-m-pencil-square')
+                    ->color('warning')
+                    ->visible(fn (LetterNumber $record): bool => auth()->user()?->can('edit_letter_perihal') || (method_exists(auth()->user(), 'hasRole') && auth()->user()?->hasRole('super_admin')))
+                    ->modalHeading(fn (LetterNumber $record): string => "Ubah Perihal: {$record->nomor}")
+                    ->modalWidth('lg')
+                    ->modalSubmitActionLabel('Simpan Perubahan')
+                    ->form(fn (LetterNumber $record): array => [
+                        TextInput::make('nomor_display')
+                            ->label('Nomor Dokumen')
+                            ->default($record->nomor)
+                            ->disabled(),
+                        TextInput::make('judul_display')
+                            ->label('Judul Dokumen')
+                            ->default($record->judul_surat)
+                            ->disabled(),
+                        Textarea::make('perihal')
+                            ->label('Perihal')
+                            ->default($record->perihal)
+                            ->placeholder('Masukkan perihal dokumen...')
+                            ->rows(3)
+                            ->required(),
+                    ])
+                    ->action(function (LetterNumber $record, array $data): void {
+                        $record->update([
+                            'perihal' => $data['perihal'],
+                        ]);
+
+                        Notification::make()
+                            ->title('Perihal Berhasil Diperbarui')
+                            ->body("Perihal untuk nomor {$record->nomor} telah diperbarui.")
+                            ->success()
+                            ->send();
+                    }),
                 DeleteAction::make()
                     ->label('Hapus')
                     ->modalHeading('Hapus Nomor Dokumen')
