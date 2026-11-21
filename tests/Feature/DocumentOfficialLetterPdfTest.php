@@ -115,11 +115,10 @@ class DocumentOfficialLetterPdfTest extends TestCase
         // Header kop image
         $this->assertStringContainsString('header-kop', $html);
 
-        // Watermark emblem
-        $this->assertStringContainsString('watermark', $html);
-
-        // Footer waves
-        $this->assertStringContainsString('footer-waves', $html);
+        // Background: watermark palang medis + gelombang footer dalam satu gambar (letter-bg)
+        // atau class 'watermark' jika fallback digunakan
+        $hasBackground = str_contains($html, 'letter-bg') || str_contains($html, 'watermark');
+        $this->assertTrue($hasBackground, 'HTML harus mengandung elemen background surat (letter-bg atau watermark)');
 
         // Substituted nomor surat (should not contain raw placeholder)
         $this->assertStringNotContainsString('{nomor_surat}', $html);

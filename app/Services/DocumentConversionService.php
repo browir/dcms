@@ -262,22 +262,31 @@ class DocumentConversionService
     }
 
     /**
-     * Resolves letterhead assets (kop surat, watermark, footer waves) as base64 data URIs.
+     * Resolves letterhead assets (kop surat, background watermark+footer) as base64 data URIs.
+     * Menggunakan asset asli dari template Word RSU Syifa Medika Banjarbaru.
      */
     public static function getLetterheadAssets(?int $companyId = null): array
     {
-        $logoKopPath = public_path('images/logo-rsusm.png');
-        $watermarkPath = public_path('images/letter-watermark.png');
-        $footerPath = public_path('images/letter-footer.png');
+        // Kop surat: logo RSU Syifa Medika Banjarbaru (PNG dari template Word)
+        $kopPath = public_path('images/kop-rsusm.png');
+        // Fallback ke file lama jika ada
+        if (! is_file($kopPath)) {
+            $kopPath = public_path('images/logo-rsusm.png');
+        }
 
-        $kopBase64 = is_file($logoKopPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($logoKopPath)) : null;
-        $watermarkBase64 = is_file($watermarkPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($watermarkPath)) : null;
-        $footerBase64 = is_file($footerPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($footerPath)) : null;
+        // Background surat: satu gambar berisi watermark palang medis + gelombang footer
+        // (diambil langsung dari template Word resmi RSU Syifa Medika)
+        $bgPath = public_path('images/letter-bg.png');
+
+        $kopMime = str_ends_with($kopPath, '.jpg') || str_ends_with($kopPath, '.jpeg') ? 'image/jpeg' : 'image/png';
+        $kopBase64 = is_file($kopPath) ? "data:{$kopMime};base64,".base64_encode(file_get_contents($kopPath)) : null;
+        $bgBase64  = is_file($bgPath)  ? 'data:image/png;base64,'.base64_encode(file_get_contents($bgPath))  : null;
 
         return [
-            'kop' => $kopBase64,
-            'watermark' => $watermarkBase64,
-            'footer' => $footerBase64,
+            'kop'       => $kopBase64,
+            'watermark' => $bgBase64,   // alias untuk kompatibilitas
+            'footer'    => null,        // sudah termasuk dalam letter-bg.png
+            'bg'        => $bgBase64,
         ];
     }
 
@@ -317,16 +326,15 @@ class DocumentConversionService
             ";
         }
 
+        // Kop surat di header (fixed, atas halaman)
         $kopHtml = $assets['kop']
-            ? "<div class='header-kop'><img src='{$assets['kop']}' alt='Kop Surat RSU Syifa Medika'/></div><div class='header-line'></div>"
+            ? "<div class='header-kop'><img src='{$assets['kop']}' alt='Kop Surat RSU Syifa Medika'/></div>"
             : '';
 
-        $footerHtml = $assets['footer']
-            ? "<div class='footer-waves'><img src='{$assets['footer']}' alt='Footer Graphic'/></div>"
-            : '';
-
-        $watermarkHtml = $assets['watermark']
-            ? "<div class='watermark'><img src='{$assets['watermark']}' alt='Watermark'/></div>"
+        // Background: satu gambar berisi watermark palang medis + gelombang footer
+        // Diposisikan di tengah-bawah halaman sebagai latar belakang
+        $bgHtml = $assets['bg']
+            ? "<div class='letter-bg'><img src='{$assets['bg']}' alt='Background Surat'/></div>"
             : '';
 
         return "
@@ -337,7 +345,7 @@ class DocumentConversionService
             <title>{$title}</title>
             <style>
                 @page {
-                    margin: 125px 60px 85px 60px;
+                    margin: 120px 60px 60px 60px;
                 }
                 body {
                     font-family: Arial, Helvetica, sans-serif;
@@ -345,51 +353,37 @@ class DocumentConversionService
                     line-height: 1.5;
                     color: #1a1a1a;
                 }
+                /* Kop surat: header tetap di atas setiap halaman */
                 .header-kop {
                     position: fixed;
-                    top: -110px;
-                    left: -40px;
-                    right: -40px;
-                    height: 95px;
+                    top: -108px;
+                    left: -50px;
+                    right: -50px;
+                    height: 100px;
                     text-align: center;
                 }
                 .header-kop img {
                     width: 100%;
-                    height: auto;
-                    max-height: 95px;
+                    height: 100px;
+                    object-fit: fill;
                 }
-                .header-line {
+                /* Background: watermark palang medis + gelombang footer
+                   Mencakup dari tengah sampai bawah halaman */
+                .letter-bg {
                     position: fixed;
-                    top: -10px;
-                    left: -40px;
-                    right: -40px;
-                    border-bottom: 2px solid #2d7a60;
-                }
-                .footer-waves {
-                    position: fixed;
-                    bottom: -85px;
+                    top: 60px;
                     left: -60px;
                     right: -60px;
-                    height: 75px;
+                    bottom: -60px;
+                    z-index: -1;
                     text-align: center;
                 }
-                .footer-waves img {
-                    width: 100%;
-                    height: 75px;
-                }
-                .watermark {
-                    position: fixed;
-                    top: 280px;
-                    left: 140px;
-                    width: 320px;
-                    height: 320px;
-                    z-index: -1000;
-                    text-align: center;
-                }
-                .watermark img {
+                .letter-bg img {
                     width: 100%;
                     height: 100%;
+                    object-fit: fill;
                 }
+                /* Konten surat di atas background */
                 .letter-content {
                     position: relative;
                     z-index: 10;
@@ -417,8 +411,7 @@ class DocumentConversionService
         </head>
         <body>
             {$kopHtml}
-            {$footerHtml}
-            {$watermarkHtml}
+            {$bgHtml}
 
             <div class='letter-content'>
                 {$optionalHeading}
