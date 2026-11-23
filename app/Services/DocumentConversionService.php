@@ -287,10 +287,20 @@ class DocumentConversionService
         $kopBase64 = is_file($kopPath) ? 'data:'.$mimeOf($kopPath).';base64,'.base64_encode(file_get_contents($kopPath)) : null;
         $bgBase64  = is_file($bgPath)  ? 'data:'.$mimeOf($bgPath).';base64,'.base64_encode(file_get_contents($bgPath))  : null;
 
+        // Footer slogan surat: "Pelayanan Profesional dan Tepercaya"
+        $footerPath = public_path('images/letter-footer-slogan.png');
+        if (! is_file($footerPath)) {
+            $footerPath = public_path('images/letter-footer-slogan.jpg');
+        }
+        if (! is_file($footerPath)) {
+            $footerPath = public_path('images/letter-footer.png');
+        }
+        $footerBase64 = is_file($footerPath) ? 'data:'.$mimeOf($footerPath).';base64,'.base64_encode(file_get_contents($footerPath)) : null;
+
         return [
             'kop'       => $kopBase64,
             'watermark' => $bgBase64,   // alias untuk kompatibilitas
-            'footer'    => null,        // sudah termasuk dalam letter-bg.png
+            'footer'    => $footerBase64,
             'bg'        => $bgBase64,
         ];
     }
@@ -398,10 +408,12 @@ class DocumentConversionService
     {
         $kop = collect(['images/kop-rsusm.png', 'images/logo-rsusm.png'])->first(fn ($p) => is_file(public_path($p)));
         $bg = collect(['images/letter-bg.jpg', 'images/letter-bg.png'])->first(fn ($p) => is_file(public_path($p)));
+        $footer = collect(['images/letter-footer-slogan.png', 'images/letter-footer-slogan.jpg', 'images/letter-footer.png'])->first(fn ($p) => is_file(public_path($p)));
 
         return [
-            'kop' => $kop ? asset($kop) : null,
-            'bg' => $bg ? asset($bg) : null,
+            'kop'    => $kop ? asset($kop) : null,
+            'bg'     => $bg ? asset($bg) : null,
+            'footer' => $footer ? asset($footer) : null,
         ];
     }
 
@@ -422,6 +434,11 @@ class DocumentConversionService
         // Diposisikan di tengah-bawah halaman sebagai latar belakang
         $bgHtml = $assets['bg']
             ? "<div class='letter-bg'><img src='{$assets['bg']}' alt='Background Surat'/></div>"
+            : '';
+
+        // Footer slogan di kanan bawah halaman ("Pelayanan Profesional dan Tepercaya")
+        $footerHtml = $assets['footer']
+            ? "<div class='footer-slogan'><img src='{$assets['footer']}' alt='Pelayanan Profesional dan Tepercaya'/></div>"
             : '';
 
         return "
@@ -509,11 +526,27 @@ class DocumentConversionService
                     text-align: left !important;
                     vertical-align: top !important;
                 }
+                /* Footer slogan di kanan bawah */
+                .footer-slogan {
+                    position: fixed;
+                    bottom: -22px;
+                    right: -30px;
+                    width: 283px;
+                    height: 16px;
+                    text-align: right;
+                    z-index: 5;
+                }
+                .footer-slogan img {
+                    width: 283px;
+                    height: 16px;
+                    object-fit: contain;
+                }
             </style>
         </head>
         <body>
             {$kopHtml}
             {$bgHtml}
+            {$footerHtml}
 
             <div class='letter-content'>
                 {$optionalHeading}

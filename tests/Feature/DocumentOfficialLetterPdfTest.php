@@ -124,6 +124,9 @@ class DocumentOfficialLetterPdfTest extends TestCase
         $this->assertStringNotContainsString('{nomor_surat}', $html);
         $this->assertStringContainsString('001/D.1/RSUSM/VI/2026', $html);
 
+        // Footer slogan image
+        $this->assertStringContainsString('footer-slogan', $html);
+
         // Should contain the letter body
         $this->assertStringContainsString('Dengan hormat', $html);
     }

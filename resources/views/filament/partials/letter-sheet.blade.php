@@ -96,7 +96,14 @@
         position: absolute; z-index: 0; pointer-events: none;
         top: calc(180 * var(--u)); left: 0; right: 0; height: calc(943 * var(--u));
     }
-    .dlp-kop img, .dlp-bg img { display: block; width: 100%; height: 100%; max-width: none; object-fit: fill; }
+    /* Footer slogan: "Pelayanan Profesional dan Tepercaya" di kanan bawah halaman */
+    .dlp-footer {
+        position: absolute; z-index: 1; pointer-events: none;
+        bottom: calc(38 * var(--u)); right: calc(30 * var(--u));
+        width: calc(283 * var(--u)); height: calc(16.5 * var(--u));
+    }
+    .dlp-kop img, .dlp-bg img, .dlp-footer img { display: block; width: 100%; height: 100%; max-width: none; object-fit: contain; }
+    .dlp-kop img, .dlp-bg img { object-fit: fill; }
 
     /* Garis batas halaman (bila isi lebih dari 1 halaman A4) */
     .dlp-pagebreaks {
@@ -243,6 +250,10 @@
 
             @if ($assets['bg'])
                 <div class="dlp-bg"><img src="{{ $assets['bg'] }}" alt="" /></div>
+            @endif
+
+            @if (!empty($assets['footer']))
+                <div class="dlp-footer"><img src="{{ $assets['footer'] }}" alt="Pelayanan Profesional dan Tepercaya" /></div>
             @endif
 
             <div class="dlp-pagebreaks" aria-hidden="true"></div>
