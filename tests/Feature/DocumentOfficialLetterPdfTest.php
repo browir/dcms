@@ -150,4 +150,34 @@ class DocumentOfficialLetterPdfTest extends TestCase
 
         $response->assertOk();
     }
+
+    public function test_signature_block_is_aligned_to_the_right(): void
+    {
+        // Simulasi konten yang dihasilkan editor: tabel 2 kolom dengan kolom pertama kosong
+        $rawContent = '<p>Demikian surat tugas ini diberikan...</p>'
+            . '<table><tbody><tr><td rowspan="1" colspan="1"></td><td rowspan="1" colspan="1">Banjarbaru, {tanggal}<br><strong>Direktur,</strong><br><br><br><strong><u>{nama_direktur}</u></strong><br>NIP. {nip_direktur}</td></tr></tbody></table>';
+
+        $prepared = DocumentConversionService::prepareLetterContent($rawContent, 'Surat Tugas', '005/G.IT/SGG/XI/2026', '2026-11-23');
+
+        // Pastikan tabel tanda tangan diubah menjadi class letter-signature-table
+        $this->assertStringContainsString('letter-signature-table', $prepared);
+        $this->assertStringContainsString('letter-signature-block', $prepared);
+
+        // Pastikan kolom spacer 58% ada di sisi kiri dan kolom tanda tangan 42% ada di sisi kanan
+        $this->assertStringContainsString('width: 58%', $prepared);
+        $this->assertStringContainsString('width: 42%', $prepared);
+        $this->assertStringContainsString('dr. Puga Sharaz Wangi, M.A.R.S.', $prepared);
+    }
+
+    public function test_standalone_signature_paragraph_is_also_aligned_to_the_right(): void
+    {
+        $rawContent = '<p>Demikian surat ini dibuat.</p>'
+            . '<p>Banjarbaru, 23 November 2026<br><strong>Direktur,</strong><br><br><br><strong><u>dr. Puga Sharaz Wangi</u></strong><br>NIP. 01042019232</p>';
+
+        $prepared = DocumentConversionService::prepareLetterContent($rawContent, 'Surat Resmi', '001/D/2026');
+
+        $this->assertStringContainsString('letter-signature-table', $prepared);
+        $this->assertStringContainsString('width: 58%', $prepared);
+        $this->assertStringContainsString('width: 42%', $prepared);
+    }
 }

@@ -320,6 +320,9 @@ class DocumentConversionService
             (string) $content
         );
 
+        // Pastikan blok tanda tangan terposisi di sebelah kanan (standar tata naskah dinas)
+        $content = self::alignSignatureBlockToRight($content);
+
         $hasOfficialLetterHeader = str_contains($content, 'SURAT')
             || str_contains($content, 'KEPUTUSAN')
             || str_contains($content, 'Nomor:')
@@ -335,6 +338,55 @@ class DocumentConversionService
                     <p style='font-size: 10.5pt; margin: 4px 0 0;'>Nomor: {$code}</p>
                 </div>
             ".$content;
+    }
+
+    /**
+     * Memastikan blok tanda tangan surat berada di sebelah kanan dokumen (standar tata naskah dinas).
+     * Menangani tabel tanda tangan (kolom kiri kosong/spacer, kolom kanan isi tanda tangan)
+     * serta paragraf tanda tangan tanpa tabel.
+     */
+    public static function alignSignatureBlockToRight(string $content): string
+    {
+        // 1. Tangani tabel 2 kolom di mana kolom pertama kosong/spacer dan kolom kedua berisi tanda tangan
+        $content = preg_replace_callback(
+            '/<table([^>]*)>\s*(?:<tbody>)?\s*<tr([^>]*)>\s*<td([^>]*)>(?:\s*|<p>\s*<\/p>|<br\s*\/?>|&nbsp;)*<\/td>\s*<td([^>]*)>(.*?)<\/td>\s*<\/tr>\s*(?:<\/tbody>)?\s*<\/table>/is',
+            function ($matches) {
+                $signContent = trim($matches[5]);
+                return '<table class="letter-signature-table" style="width: 100%; border: none; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
+                    . '<tbody>'
+                    . '<tr>'
+                    . '<td style="width: 58%; border: none; padding: 0;">&nbsp;</td>'
+                    . '<td class="letter-signature-block" style="width: 42%; border: none; padding: 0; text-align: left; vertical-align: top;">'
+                    . $signContent
+                    . '</td>'
+                    . '</tr>'
+                    . '</tbody>'
+                    . '</table>';
+            },
+            $content
+        );
+
+        // 2. Jika ada paragraf tanda tangan mandiri di luar tabel yang berisi tanggal & jabatan/direktur
+        if (! str_contains($content, 'letter-signature-table')) {
+            $content = preg_replace_callback(
+                '/<p([^>]*)>\s*((?:Banjarbaru,|Hormat kami|Ditetapkan di)[^<]*<br[^>]*>.*?NIP\.[^<]*)<\/p>/is',
+                function ($matches) {
+                    return '<table class="letter-signature-table" style="width: 100%; border: none; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
+                        . '<tbody>'
+                        . '<tr>'
+                        . '<td style="width: 58%; border: none; padding: 0;">&nbsp;</td>'
+                        . '<td class="letter-signature-block" style="width: 42%; border: none; padding: 0; text-align: left; vertical-align: top;">'
+                        . $matches[2]
+                        . '</td>'
+                        . '</tr>'
+                        . '</tbody>'
+                        . '</table>';
+                },
+                $content
+            );
+        }
+
+        return $content;
     }
 
     /**
@@ -441,6 +493,21 @@ class DocumentConversionService
                 }
                 table[border='0'] td, table[border='0'] th, table[style*='border: none'] td, table[style*='border: none'] th {
                     border: none;
+                }
+                table.letter-signature-table {
+                    width: 100% !important;
+                    border: none !important;
+                    border-collapse: collapse !important;
+                    margin-top: 24px !important;
+                    margin-bottom: 20px !important;
+                }
+                table.letter-signature-table td {
+                    border: none !important;
+                    padding: 0 !important;
+                }
+                .letter-signature-block {
+                    text-align: left !important;
+                    vertical-align: top !important;
                 }
             </style>
         </head>

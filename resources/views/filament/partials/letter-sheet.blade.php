@@ -143,6 +143,22 @@
     .dlp-content table[border='1'] td, .dlp-content table[border='1'] th,
     .dlp-content table.bordered td, .dlp-content table.bordered th { border: 1px solid #333; padding: calc(6 * var(--u)) calc(10 * var(--u)); }
     .dlp-content table[border='0'] td, .dlp-content table[border='0'] th { border: none; }
+    .dlp-content table.letter-signature-table,
+    .dlp-content table[style*="border: none"] {
+        border: none !important;
+        margin-top: calc(24 * var(--u));
+        margin-bottom: calc(20 * var(--u));
+    }
+    .dlp-content table.letter-signature-table td,
+    .dlp-content table.letter-signature-table th,
+    .dlp-content table[style*="border: none"] td,
+    .dlp-content table[style*="border: none"] th {
+        border: none !important;
+    }
+    .dlp-content .letter-signature-block {
+        text-align: left !important;
+        vertical-align: top !important;
+    }
 
     .dlp-empty { color: #94a3b8; font-style: italic; text-align: center; padding-top: calc(200 * var(--u)); }
 
