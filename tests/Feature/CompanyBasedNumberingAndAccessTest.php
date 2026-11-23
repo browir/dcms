@@ -456,5 +456,38 @@ class CompanyBasedNumberingAndAccessTest extends TestCase
         $doc->delete();
         $this->assertSoftDeleted($doc);
     }
+
+    /**
+     * Regresi: unit lama yang hanya terhubung lewat departemen (company_id NULL, mis. ACC-BJB)
+     * dulu terurut paling atas dan menutupi unit resmi bernomor (01, 02, ...).
+     */
+    public function test_pilihan_unit_dikelompokkan_per_perusahaan_dengan_unit_bernomor_lebih_dulu(): void
+    {
+        $deptBjb = $this->unitBjb->department_id;
+        $deptBrb = $this->unitBrb->department_id;
+
+        $legacyBjb = Unit::create(['company_id' => null, 'department_id' => $deptBjb, 'name' => 'Accounting', 'prefix' => 'ACC-BJB', 'is_active' => true]);
+        $legacyBrb = Unit::create(['company_id' => null, 'department_id' => $deptBrb, 'name' => 'Accounting', 'prefix' => 'ACC-BRB', 'is_active' => true]);
+        $direktur = Unit::create(['company_id' => $this->rsusmBjb->id, 'department_id' => $deptBjb, 'name' => 'Direktur', 'kode' => '01', 'prefix' => '01', 'is_active' => true]);
+
+        // Pengguna lintas perusahaan dari SGG
+        Permission::findOrCreate('view_all_companies_data', 'web');
+        $this->userSgg->givePermissionTo('view_all_companies_data');
+        $this->actingAs($this->userSgg);
+
+        $this->assertSame([
+            $this->unitSgg->id,                       // perusahaan pengguna lebih dulu
+            $direktur->id, $this->unitBjb->id,        // RSUSM: bernomor 01, 16 ...
+            $legacyBjb->id,                           // ... baru unit lama tanpa kode
+            $this->unitBrb->id, $legacyBrb->id,       // RSUSM Barabai
+        ], array_keys(LetterNumberForm::unitOptions()));
+
+        // Pengguna Banjarbaru tetap melihat unit lama perusahaannya (lewat departemen), tanpa unit Barabai
+        $this->actingAs($this->userBjb);
+        $this->assertSame(
+            [$direktur->id, $this->unitBjb->id, $legacyBjb->id],
+            array_keys(LetterNumberForm::unitOptions()),
+        );
+    }
 }
 

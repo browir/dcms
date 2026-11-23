@@ -262,11 +262,22 @@ class LetterNumberForm
                     $q->where('company_id', $user->company_id)
                         ->orWhereHas('department', fn ($d) => $d->where('company_id', $user->company_id));
                 })
-                ->orderByRaw('LENGTH(COALESCE(kode, prefix, name)), COALESCE(kode, prefix, name) ASC')
+                ->orderByRaw(self::unitSortSql())
                 ->value('id');
         }
 
         return null;
+    }
+
+    /**
+     * Urutan unit dalam satu perusahaan: unit resmi bernomor (units.kode terisi: 01, 02, ...)
+     * lebih dulu, lalu unit lama tanpa kode; masing-masing urut alami (2 sebelum 10).
+     */
+    private static function unitSortSql(): string
+    {
+        return "CASE WHEN units.kode IS NULL OR units.kode = '' THEN 1 ELSE 0 END ASC, "
+            .'LENGTH(COALESCE(units.kode, units.prefix, units.name)) ASC, '
+            .'COALESCE(units.kode, units.prefix, units.name) ASC';
     }
 
     /** Unit yang boleh dipilih: disaring berdasarkan perusahaan bawaan akun */
@@ -278,15 +289,20 @@ class LetterNumberForm
         $service = app(LetterNumberService::class);
         $userCompanyId = $user?->company_id;
 
+        // Perusahaan efektif unit = units.company_id, atau perusahaan departemennya bila kosong.
+        // Unit lama (mis. ACC-BJB) sering hanya terhubung lewat departemen (company_id NULL);
+        // tanpa ini mereka terurut paling atas dan menutupi unit resmi bernomor (01, 02, ...).
+        $companyExpr = 'COALESCE(units.company_id, unit_dept.company_id)';
+
         return Unit::query()
+            ->select('units.*')
+            ->leftJoin('departments as unit_dept', 'unit_dept.id', '=', 'units.department_id')
             ->with(['company', 'department.company'])
-            ->where('is_active', true)
-            ->when(! $all && $userCompanyId, fn (Builder $q) => $q->where(function (Builder $sub) use ($userCompanyId) {
-                $sub->where('company_id', $userCompanyId)
-                    ->orWhereHas('department', fn ($d) => $d->where('company_id', $userCompanyId));
-            }))
-            ->when($all && $userCompanyId, fn (Builder $q) => $q->orderByRaw('CASE WHEN company_id = ? THEN 0 ELSE 1 END', [$userCompanyId]))
-            ->orderByRaw('company_id ASC, LENGTH(COALESCE(kode, prefix, name)), COALESCE(kode, prefix, name) ASC')
+            ->where('units.is_active', true)
+            ->when(! $all && $userCompanyId, fn (Builder $q) => $q->whereRaw("{$companyExpr} = ?", [$userCompanyId]))
+            ->when($all && $userCompanyId, fn (Builder $q) => $q->orderByRaw("CASE WHEN {$companyExpr} = ? THEN 0 ELSE 1 END", [$userCompanyId]))
+            ->orderByRaw("{$companyExpr} ASC")
+            ->orderByRaw(self::unitSortSql())
             ->get()
             ->mapWithKeys(function (Unit $unit) use ($service) {
                 $comp = $unit->company ?? $unit->department?->company;
