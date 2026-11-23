@@ -121,3 +121,4 @@ class EditLetterPerihalPermissionTest extends TestCase
         $this->assertEquals('Perihal Baru yang Diubah', $this->letter->fresh()->perihal);
     }
 }
+
