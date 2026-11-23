@@ -330,6 +330,19 @@ class DocumentForm
                         ->helperText('Gunakan toolbar di atas untuk memformat teks'),
                 ]),
 
+            /* ─── PRATINJAU LANGSUNG ─── */
+            Section::make('Pratinjau Lembar Surat')
+                ->description('Tampilan surat sesuai PDF resmi. Diperbarui otomatis ±1 detik setelah Anda berhenti mengetik.')
+                ->icon('heroicon-o-eye')
+                ->iconColor('success')
+                ->columnSpanFull()
+                ->collapsible()
+                ->hidden(fn ($get) => $get('document_type') === 'file')
+                ->schema([
+                    View::make('filament.partials.letter-sheet')
+                        ->viewData(fn (Get $get): array => self::buildLivePreviewData($get)),
+                ]),
+
             /* ─── ORGANISASI ─── */
             Section::make('Organisasi')
                 ->description('Tentukan perusahaan, departemen, unit, dan kategori dokumen')
@@ -744,6 +757,28 @@ class DocumentForm
                 default => 'Pending',
             },
             'nextStep' => self::buildNextStepMessage($documentType, $progress, $status),
+        ];
+    }
+
+    /**
+     * Data untuk pratinjau langsung (view filament.partials.letter-sheet) dari state form saat ini.
+     */
+    private static function buildLivePreviewData(Get $get): array
+    {
+        $content = $get('content');
+        $code = $get('code_number');
+
+        if (blank($code) && filled($get('letter_number_id'))) {
+            $code = LetterNumber::query()->whereKey($get('letter_number_id'))->value('nomor');
+        }
+
+        return [
+            'content' => is_string($content) ? $content : '',
+            'title' => $get('title'),
+            'code' => $code,
+            'tanggalSurat' => $get('tanggal_surat'),
+            'badge' => 'Pratinjau Langsung',
+            'note' => 'belum disimpan',
         ];
     }
 

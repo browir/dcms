@@ -298,22 +298,26 @@ class DocumentConversionService
     /**
      * Membangun HTML surat resmi berstandar rumah sakit (kop, watermark, gelombang footer)
      */
-    public static function buildHtmlForPdf(Document $document): string
+    /**
+     * Isi surat siap render: placeholder template diganti, dan judul + nomor ditambahkan
+     * di atas bila isi belum punya kepala surat resmi.
+     *
+     * Dipakai bersama oleh PDF (buildHtmlForPdf) dan pratinjau HTML
+     * (view filament.partials.letter-sheet) agar keduanya selalu identik.
+     */
+    public static function prepareLetterContent(?string $content, ?string $title, ?string $code, mixed $tanggalSurat = null): string
     {
-        $assets = self::getLetterheadAssets($document->company_id);
-        $title = htmlspecialchars($document->title ?? 'Surat Resmi');
-        $code = htmlspecialchars($document->code_number ?? '-');
-
-        // Ganti placeholder template yang belum terisi jika ada
-        $content = $document->content ?? '';
-        $tanggalSurat = $document->tanggal_surat
-            ? $document->tanggal_surat->locale('id')->isoFormat('D MMMM YYYY')
+        $title = htmlspecialchars(filled($title) ? $title : 'Surat Resmi');
+        $code = htmlspecialchars(filled($code) ? $code : '-');
+        $tanggal = filled($tanggalSurat)
+            ? \Illuminate\Support\Carbon::parse($tanggalSurat)->locale('id')->isoFormat('D MMMM YYYY')
             : now()->locale('id')->isoFormat('D MMMM YYYY');
 
+        // Ganti placeholder template yang belum terisi jika ada
         $content = str_replace(
             ['{nomor_surat}', '{nomor}', '{tanggal}', '{nama_direktur}', '{nip_direktur}'],
-            [$code, $code, $tanggalSurat, 'dr. Puga Sharaz Wangi, M.A.R.S.', '01042019232'],
-            $content
+            [$code, $code, $tanggal, 'dr. Puga Sharaz Wangi, M.A.R.S.', '01042019232'],
+            (string) $content
         );
 
         $hasOfficialLetterHeader = str_contains($content, 'SURAT')
@@ -321,15 +325,41 @@ class DocumentConversionService
             || str_contains($content, 'Nomor:')
             || str_contains($content, 'Yth.');
 
-        $optionalHeading = '';
-        if (! $hasOfficialLetterHeader) {
-            $optionalHeading = "
+        if ($hasOfficialLetterHeader) {
+            return $content;
+        }
+
+        return "
                 <div style='text-align: center; margin-bottom: 24px;'>
                     <h2 style='font-size: 14pt; font-weight: bold; margin: 0; text-transform: uppercase; text-decoration: underline;'>{$title}</h2>
                     <p style='font-size: 10.5pt; margin: 4px 0 0;'>Nomor: {$code}</p>
                 </div>
-            ";
-        }
+            ".$content;
+    }
+
+    /**
+     * URL publik aset kop & latar surat — sama persis dengan yang dipakai PDF.
+     *
+     * @return array{kop: ?string, bg: ?string}
+     */
+    public static function getLetterheadAssetUrls(): array
+    {
+        $kop = collect(['images/kop-rsusm.png', 'images/logo-rsusm.png'])->first(fn ($p) => is_file(public_path($p)));
+        $bg = collect(['images/letter-bg.jpg', 'images/letter-bg.png'])->first(fn ($p) => is_file(public_path($p)));
+
+        return [
+            'kop' => $kop ? asset($kop) : null,
+            'bg' => $bg ? asset($bg) : null,
+        ];
+    }
+
+    public static function buildHtmlForPdf(Document $document): string
+    {
+        $assets = self::getLetterheadAssets($document->company_id);
+        $title = htmlspecialchars($document->title ?? 'Surat Resmi');
+
+        $content = self::prepareLetterContent($document->content, $document->title, $document->code_number, $document->tanggal_surat);
+        $optionalHeading = '';
 
         // Kop surat di header (fixed, atas halaman)
         $kopHtml = $assets['kop']
