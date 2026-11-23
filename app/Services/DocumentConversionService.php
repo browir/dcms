@@ -276,11 +276,16 @@ class DocumentConversionService
 
         // Background surat: satu gambar berisi watermark palang medis + gelombang footer
         // (diambil langsung dari template Word resmi RSU Syifa Medika)
-        $bgPath = public_path('images/letter-bg.png');
+        // Utamakan versi JPEG: PNG ber-alpha (transparan) besar membuat dompdf memproses
+        // kanal alpha piksel demi piksel via GD dan menghabiskan memory_limit.
+        $bgPath = public_path('images/letter-bg.jpg');
+        if (! is_file($bgPath)) {
+            $bgPath = public_path('images/letter-bg.png');
+        }
 
-        $kopMime = str_ends_with($kopPath, '.jpg') || str_ends_with($kopPath, '.jpeg') ? 'image/jpeg' : 'image/png';
-        $kopBase64 = is_file($kopPath) ? "data:{$kopMime};base64,".base64_encode(file_get_contents($kopPath)) : null;
-        $bgBase64  = is_file($bgPath)  ? 'data:image/png;base64,'.base64_encode(file_get_contents($bgPath))  : null;
+        $mimeOf = fn (string $path) => preg_match('/\.jpe?g$/i', $path) ? 'image/jpeg' : 'image/png';
+        $kopBase64 = is_file($kopPath) ? 'data:'.$mimeOf($kopPath).';base64,'.base64_encode(file_get_contents($kopPath)) : null;
+        $bgBase64  = is_file($bgPath)  ? 'data:'.$mimeOf($bgPath).';base64,'.base64_encode(file_get_contents($bgPath))  : null;
 
         return [
             'kop'       => $kopBase64,
