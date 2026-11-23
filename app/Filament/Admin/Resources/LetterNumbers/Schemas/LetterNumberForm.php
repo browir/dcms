@@ -20,6 +20,7 @@ use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 
@@ -100,7 +101,10 @@ class LetterNumberForm
                         ->helperText(fn () => ! Auth::user()?->hasRole(['super_admin', 'direktur', 'Sekretaris']) && filled(Auth::user()?->unit_id)
                             ? 'Unit terkunci sesuai unit kerja bawaan akun Anda.'
                             : 'Perusahaan penerbit mengikuti unit.')
-                        ->options(fn () => self::unitOptions())
+                        ->options(fn () => self::groupedUnitOptions())
+                        // Bawaan Filament hanya menampilkan 50 opsi pertama pada select yang bisa dicari;
+                        // super admin punya ratusan unit lintas perusahaan, jadi tampilkan semuanya.
+                        ->optionsLimit(1000)
                         ->default(fn () => Auth::user()?->unit_id ?? self::defaultUnitId())
                         ->disabled(fn () => ! Auth::user()?->hasRole(['super_admin', 'direktur', 'Sekretaris']) && filled(Auth::user()?->unit_id))
                         ->dehydrated()
@@ -280,13 +284,45 @@ class LetterNumberForm
             .'COALESCE(units.kode, units.prefix, units.name) ASC';
     }
 
+
+    /**
+     * Opsi unit untuk select: dikelompokkan per perusahaan (judul grup = nama perusahaan)
+     * bila pengguna bisa melihat lebih dari satu perusahaan; daftar datar bila hanya satu.
+     *
+     * @return array<string, array<int, string>>|array<int, string>
+     */
+    public static function groupedUnitOptions(): array
+    {
+        $units = self::selectableUnits();
+        $groupOf = fn (Unit $unit): string => ($unit->company ?? $unit->department?->company)?->name ?? 'Tanpa Perusahaan';
+
+        if ($units->map($groupOf)->unique()->count() <= 1) {
+            return self::unitLabels($units);
+        }
+
+        // Urutan grup & isi mengikuti urutan selectableUnits() (perusahaan pengguna lebih dulu).
+        return $units
+            ->groupBy($groupOf)
+            ->map(fn (Collection $group): array => self::unitLabels($group))
+            ->all();
+    }
+
     /** Unit yang boleh dipilih: disaring berdasarkan perusahaan bawaan akun */
     public static function unitOptions(): array
+    {
+        return self::unitLabels(self::selectableUnits());
+    }
+
+    /**
+     * Unit aktif yang boleh dipilih pengguna, terurut per perusahaan lalu unit bernomor lebih dulu.
+     *
+     * @return Collection<int, Unit>
+     */
+    private static function selectableUnits(): Collection
     {
         /** @var User|null $user */
         $user = Auth::user();
         $all  = $user?->hasRole('super_admin') || $user?->can('view_all_companies_data');
-        $service = app(LetterNumberService::class);
         $userCompanyId = $user?->company_id;
 
         // Perusahaan efektif unit = units.company_id, atau perusahaan departemennya bila kosong.
@@ -303,10 +339,22 @@ class LetterNumberForm
             ->when($all && $userCompanyId, fn (Builder $q) => $q->orderByRaw("CASE WHEN {$companyExpr} = ? THEN 0 ELSE 1 END", [$userCompanyId]))
             ->orderByRaw("{$companyExpr} ASC")
             ->orderByRaw(self::unitSortSql())
-            ->get()
+            ->get();
+    }
+
+    /**
+     * @param  Collection<int, Unit>  $units
+     * @return array<int, string>
+     */
+    private static function unitLabels(Collection $units): array
+    {
+        $service = app(LetterNumberService::class);
+
+        return $units
             ->mapWithKeys(function (Unit $unit) use ($service) {
                 $comp = $unit->company ?? $unit->department?->company;
                 $compCode = $comp ? $service->companyCode($comp) : '-';
+
                 return [$unit->id => "{$compCode} · {$service->unitCode($unit)} — {$unit->name}"];
             })
             ->all();

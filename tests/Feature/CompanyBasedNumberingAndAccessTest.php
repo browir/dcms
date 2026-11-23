@@ -482,12 +482,19 @@ class CompanyBasedNumberingAndAccessTest extends TestCase
             $this->unitBrb->id, $legacyBrb->id,       // RSUSM Barabai
         ], array_keys(LetterNumberForm::unitOptions()));
 
+        // Select dikelompokkan per perusahaan, urutan grup sama (perusahaan pengguna lebih dulu)
+        $grouped = LetterNumberForm::groupedUnitOptions();
+        $this->assertSame([$this->sgg->name, $this->rsusmBjb->name, $this->rsusmBrb->name], array_keys($grouped));
+        $this->assertSame([$direktur->id, $this->unitBjb->id, $legacyBjb->id], array_keys($grouped[$this->rsusmBjb->name]));
+
         // Pengguna Banjarbaru tetap melihat unit lama perusahaannya (lewat departemen), tanpa unit Barabai
         $this->actingAs($this->userBjb);
         $this->assertSame(
             [$direktur->id, $this->unitBjb->id, $legacyBjb->id],
             array_keys(LetterNumberForm::unitOptions()),
         );
+        // Satu perusahaan saja → daftar datar tanpa judul grup
+        $this->assertSame(LetterNumberForm::unitOptions(), LetterNumberForm::groupedUnitOptions());
     }
 }
 
