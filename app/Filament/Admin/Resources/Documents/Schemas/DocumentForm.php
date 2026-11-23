@@ -23,6 +23,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -268,79 +269,83 @@ class DocumentForm
                     Hidden::make('_computed_file_hash'),
                 ]),
 
-            /* ─── KONTEN FORMULIR ─── */
-            Section::make('Konten Dokumen')
-                ->description('Tulis isi dokumen menggunakan editor teks kaya atau terapkan template surat resmi')
-                ->icon('heroicon-o-pencil-square')
-                ->iconColor('info')
+            /* ─── KONTEN FORMULIR + PRATINJAU LANGSUNG (berdampingan) ─── */
+            // Dua kolom bila lebar form ≥ 48rem (container query), bertumpuk bila lebih sempit.
+            Grid::make(['default' => 1, '@3xl' => 2])
+                ->gridContainer()
                 ->columnSpanFull()
                 ->hidden(fn ($get) => $get('document_type') === 'file')
                 ->schema([
-                    Select::make('template_id')
-                        ->label('Pilih Template Surat')
-                        ->placeholder('Pilih template untuk mengisi otomatis format surat...')
-                        ->options(function (Get $get) {
-                            $companyId = $get('company_id') ?? Auth::user()?->company_id;
+                    Section::make('Konten Dokumen')
+                        ->description('Tulis isi dokumen menggunakan editor teks kaya atau terapkan template surat resmi')
+                        ->icon('heroicon-o-pencil-square')
+                        ->iconColor('info')
+                        ->schema([
+                            Select::make('template_id')
+                                ->label('Pilih Template Surat')
+                                ->placeholder('Pilih template untuk mengisi otomatis format surat...')
+                                ->options(function (Get $get) {
+                                    $companyId = $get('company_id') ?? Auth::user()?->company_id;
 
-                            $hasCompanyTemplates = $companyId && DocumentTemplate::query()->active()->where('company_id', $companyId)->exists();
+                                    $hasCompanyTemplates = $companyId && DocumentTemplate::query()->active()->where('company_id', $companyId)->exists();
 
-                            return DocumentTemplate::query()
-                                ->active()
-                                ->when($hasCompanyTemplates, fn ($q) => $q->where('company_id', $companyId))
-                                ->pluck('name', 'id');
-                        })
-                        ->searchable()
-                        ->live()
-                        ->dehydrated(false)
-                        ->prefixIcon('heroicon-o-document-duplicate')
-                        ->helperText('Memilih template akan mengisi otomatis format surat ke editor di bawah.')
-                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                            if (! $state) {
-                                return;
-                            }
-                            $template = DocumentTemplate::find($state);
-                            if (! $template) {
-                                return;
-                            }
+                                    return DocumentTemplate::query()
+                                        ->active()
+                                        ->when($hasCompanyTemplates, fn ($q) => $q->where('company_id', $companyId))
+                                        ->pluck('name', 'id');
+                                })
+                                ->searchable()
+                                ->live()
+                                ->dehydrated(false)
+                                ->prefixIcon('heroicon-o-document-duplicate')
+                                ->helperText('Memilih template akan mengisi otomatis format surat ke editor di bawah.')
+                                ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                    if (! $state) {
+                                        return;
+                                    }
+                                    $template = DocumentTemplate::find($state);
+                                    if (! $template) {
+                                        return;
+                                    }
 
-                            $nomor = $get('code_number');
-                            if (! $nomor && $get('letter_number_id')) {
-                                $nomor = LetterNumber::find($get('letter_number_id'))?->nomor;
-                            }
-                            $nomor ??= '[NOMOR SURAT]';
+                                    $nomor = $get('code_number');
+                                    if (! $nomor && $get('letter_number_id')) {
+                                        $nomor = LetterNumber::find($get('letter_number_id'))?->nomor;
+                                    }
+                                    $nomor ??= '[NOMOR SURAT]';
 
-                            $tanggal = filled($get('published_at'))
-                                ? \Illuminate\Support\Carbon::parse($get('published_at'))->translatedFormat('d F Y')
-                                : now()->translatedFormat('d F Y');
+                                    $tanggal = filled($get('published_at'))
+                                        ? \Illuminate\Support\Carbon::parse($get('published_at'))->translatedFormat('d F Y')
+                                        : now()->translatedFormat('d F Y');
 
-                            $content = str_replace(
-                                ['{nomor_surat}', '{nomor}', '{tanggal}', '{nama_direktur}', '{nip_direktur}'],
-                                [$nomor, $nomor, $tanggal, 'dr. Puga Sharaz Wangi, M.A.R.S.', '01042019232'],
-                                $template->template_content
-                            );
+                                    $content = str_replace(
+                                        ['{nomor_surat}', '{nomor}', '{tanggal}', '{nama_direktur}', '{nip_direktur}'],
+                                        [$nomor, $nomor, $tanggal, 'dr. Puga Sharaz Wangi, M.A.R.S.', '01042019232'],
+                                        $template->template_content
+                                    );
 
-                            $set('content', $content);
-                        }),
+                                    $set('content', $content);
+                                }),
 
-                    RichEditor::make('content')
-                        ->hiddenLabel()
-                        ->live(debounce: 900)
-                        ->maxLength(65535)
-                        ->required(fn ($get) => in_array($get('document_type'), ['form', 'hybrid']))
-                        ->helperText('Gunakan toolbar di atas untuk memformat teks'),
-                ]),
+                            RichEditor::make('content')
+                                ->hiddenLabel()
+                                ->live(debounce: 900)
+                                ->maxLength(65535)
+                                ->required(fn ($get) => in_array($get('document_type'), ['form', 'hybrid']))
+                                ->helperText('Gunakan toolbar di atas untuk memformat teks'),
+                        ]),
 
-            /* ─── PRATINJAU LANGSUNG ─── */
-            Section::make('Pratinjau Lembar Surat')
-                ->description('Tampilan surat sesuai PDF resmi. Diperbarui otomatis ±1 detik setelah Anda berhenti mengetik.')
-                ->icon('heroicon-o-eye')
-                ->iconColor('success')
-                ->columnSpanFull()
-                ->collapsible()
-                ->hidden(fn ($get) => $get('document_type') === 'file')
-                ->schema([
-                    View::make('filament.partials.letter-sheet')
-                        ->viewData(fn (Get $get): array => self::buildLivePreviewData($get)),
+                    Section::make('Pratinjau Lembar Surat')
+                        ->description('Sesuai PDF resmi. Diperbarui otomatis ±1 detik setelah berhenti mengetik.')
+                        ->icon('heroicon-o-eye')
+                        ->iconColor('success')
+                        ->collapsible()
+                        // Tetap terlihat (sticky) saat menggulir editor yang panjang; CSS di partial letter-sheet.
+                        ->extraAttributes(['class' => 'dlp-sticky'])
+                        ->schema([
+                            View::make('filament.partials.letter-sheet')
+                                ->viewData(fn (Get $get): array => self::buildLivePreviewData($get)),
+                        ]),
                 ]),
 
             /* ─── ORGANISASI ─── */

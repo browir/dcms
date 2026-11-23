@@ -159,6 +159,16 @@
     @media (max-width: 640px) {
         .dlp-desk { padding: .75rem .5rem; }
     }
+
+    /* Pratinjau di samping editor (form buat/edit): ikut terlihat saat menggulir */
+    .dlp-sticky { position: sticky; top: 5rem; align-self: start; }
+
+    /* Kolom sempit (mis. di samping editor): alas meja & toolbar lebih ringkas */
+    .dlp { container-type: inline-size; }
+    @container (max-width: 560px) {
+        .dlp-desk { padding: .75rem; border-radius: .75rem; }
+        .dlp-toolbar { padding: .625rem; }
+    }
 </style>
 @endonce
 
