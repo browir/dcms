@@ -142,25 +142,44 @@
     .dlp-content code, .dlp-content pre { font-family: "Courier New", Courier, monospace; }
     .dlp-content hr { border: 0; border-top: 1px inset gray; margin: .5em 0; }
     .dlp-content img { display: inline; max-width: 100%; height: auto; }
-    .dlp-content table { width: 100%; border-collapse: collapse; margin: 0 0 calc(15 * var(--u)); text-align: left; }
-    .dlp-content td, .dlp-content th { padding: calc(1 * var(--u)); vertical-align: middle; }
-    .dlp-content th { font-weight: bold; text-align: center; }
-    .dlp-content table[border] td, .dlp-content table[border] th { border: 1px inset gray; }
-    .dlp-content table[border='1'], .dlp-content table.bordered { border: 1px solid #333; }
-    .dlp-content table[border='1'] td, .dlp-content table[border='1'] th,
-    .dlp-content table.bordered td, .dlp-content table.bordered th { border: 1px solid #333; padding: calc(6 * var(--u)) calc(10 * var(--u)); }
-    .dlp-content table[border='0'] td, .dlp-content table[border='0'] th { border: none; }
+    .dlp-content table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0 0 calc(15 * var(--u));
+        text-align: left;
+        border: 1px solid #333;
+    }
+    .dlp-content td, .dlp-content th {
+        padding: calc(6 * var(--u)) calc(10 * var(--u));
+        vertical-align: middle;
+        border: 1px solid #333;
+    }
+    .dlp-content th {
+        font-weight: bold;
+        text-align: center;
+        background-color: #f2f2f2;
+    }
+    /* Tabel tanpa border (misal: tanda tangan & meta nomor/tanggal surat) */
+    .dlp-content table.letter-meta-table,
     .dlp-content table.letter-signature-table,
+    .dlp-content table[border='0'],
     .dlp-content table[style*="border: none"] {
         border: none !important;
-        margin-top: calc(24 * var(--u));
-        margin-bottom: calc(20 * var(--u));
     }
+    .dlp-content table.letter-meta-table td,
+    .dlp-content table.letter-meta-table th,
     .dlp-content table.letter-signature-table td,
     .dlp-content table.letter-signature-table th,
+    .dlp-content table[border='0'] td,
+    .dlp-content table[border='0'] th,
     .dlp-content table[style*="border: none"] td,
     .dlp-content table[style*="border: none"] th {
         border: none !important;
+        padding: calc(2 * var(--u)) 0 !important;
+    }
+    .dlp-content table.letter-signature-table {
+        margin-top: calc(24 * var(--u)) !important;
+        margin-bottom: calc(20 * var(--u)) !important;
     }
     .dlp-content .letter-signature-block {
         text-align: left !important;

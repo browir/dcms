@@ -333,6 +333,9 @@ class DocumentConversionService
         // Pastikan blok tanda tangan terposisi di sebelah kanan (standar tata naskah dinas)
         $content = self::alignSignatureBlockToRight($content);
 
+        // Tandai tabel kepala surat (Nomor & Tanggal) agar tetap tanpa border
+        $content = self::markMetaTables($content);
+
         $hasOfficialLetterHeader = str_contains($content, 'SURAT')
             || str_contains($content, 'KEPUTUSAN')
             || str_contains($content, 'Nomor:')
@@ -397,6 +400,35 @@ class DocumentConversionService
         }
 
         return $content;
+    }
+
+    /**
+     * Menandai tabel metadata kepala surat (Nomor & Tanggal di sisi kanan)
+     * agar tidak terkena border tabel konten.
+     */
+    public static function markMetaTables(string $content): string
+    {
+        return preg_replace_callback(
+            '/<table([^>]*)>(.*?)<\/table>/is',
+            function ($matches) {
+                $tableAttrs = $matches[1];
+                $tableBody = $matches[2];
+
+                if (str_contains($tableAttrs, 'letter-signature-table') || str_contains($tableAttrs, 'letter-meta-table')) {
+                    return $matches[0];
+                }
+
+                $hasNomorOrPerihal = (str_contains($tableBody, 'Nomor :') || str_contains($tableBody, 'Perihal :') || str_contains($tableBody, 'Lampiran :'));
+                $hasTanggalAtas = (str_contains($tableBody, 'Banjarbaru,') && ! str_contains($tableBody, 'Direktur'));
+
+                if ($hasNomorOrPerihal && $hasTanggalAtas) {
+                    return '<table class="letter-meta-table" style="width: 100%; border: none; border-collapse: collapse; margin-bottom: 16px;">' . $tableBody . '</table>';
+                }
+
+                return $matches[0];
+            },
+            $content
+        );
     }
 
     /**
@@ -500,21 +532,37 @@ class DocumentConversionService
                     border-collapse: collapse;
                     width: 100%;
                     margin-bottom: 15px;
-                }
-                table[border='1'], table.bordered {
                     border: 1px solid #333;
                 }
-                table[border='1'] td, table[border='1'] th, table.bordered td, table.bordered th {
+                td, th {
                     border: 1px solid #333;
                     padding: 6px 10px;
+                    vertical-align: middle;
                 }
-                table[border='0'] td, table[border='0'] th, table[style*='border: none'] td, table[style*='border: none'] th {
-                    border: none;
+                th {
+                    font-weight: bold;
+                    text-align: center;
+                    background-color: #f2f2f2;
+                }
+                table.letter-meta-table,
+                table.letter-signature-table,
+                table[border='0'],
+                table[style*='border: none'] {
+                    border: none !important;
+                }
+                table.letter-meta-table td,
+                table.letter-meta-table th,
+                table.letter-signature-table td,
+                table.letter-signature-table th,
+                table[border='0'] td,
+                table[border='0'] th,
+                table[style*='border: none'] td,
+                table[style*='border: none'] th {
+                    border: none !important;
+                    padding: 2px 0 !important;
                 }
                 table.letter-signature-table {
                     width: 100% !important;
-                    border: none !important;
-                    border-collapse: collapse !important;
                     margin-top: 24px !important;
                     margin-bottom: 20px !important;
                 }

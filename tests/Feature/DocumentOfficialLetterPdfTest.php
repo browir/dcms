@@ -183,4 +183,21 @@ class DocumentOfficialLetterPdfTest extends TestCase
         $this->assertStringContainsString('width: 58%', $prepared);
         $this->assertStringContainsString('width: 42%', $prepared);
     }
+
+    public function test_tables_have_borders_and_header_meta_tables_are_borderless(): void
+    {
+        $rawContent = '<table><tbody><tr><td style="width:60%;">Nomor : 001/D/2026<br>Perihal : Undangan</td><td style="width:40%;">Banjarbaru, 23 November 2026</td></tr></tbody></table>'
+            . '<p>Dengan ini memberikan tugas kepada:</p>'
+            . '<table><tbody><tr><th>Nama</th><th>Jabatan</th></tr><tr><td>Budi</td><td>Staf</td></tr></tbody></table>';
+
+        $prepared = DocumentConversionService::prepareLetterContent($rawContent, 'Surat Undangan', '001/D/2026');
+
+        // Header meta table diberi class letter-meta-table
+        $this->assertStringContainsString('letter-meta-table', $prepared);
+
+        // PDF HTML memuat border CSS untuk tabel
+        $html = DocumentConversionService::buildHtmlForPdf($this->document);
+        $this->assertStringContainsString('border: 1px solid #333', $html);
+        $this->assertStringContainsString('table.letter-meta-table', $html);
+    }
 }
