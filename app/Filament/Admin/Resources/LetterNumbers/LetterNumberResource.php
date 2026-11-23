@@ -11,6 +11,7 @@ use App\Models\DocumentCategory;
 use App\Models\LetterNumber;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -162,85 +163,88 @@ class LetterNumberResource extends Resource
                     ->query(fn (Builder $q, array $data) => $q->when($data['value'], fn ($q, $year) => $q->whereYear('tanggal_surat', $year))),
             ])
             ->recordActions([
-                Action::make('isiDokumen')
-                    ->label('Isi Dokumen')
-                    ->icon('heroicon-m-document-plus')
-                    ->color('primary')
-                    ->button()
-                    ->visible(fn (LetterNumber $record): bool => ! $record->document && ! $record->agenda && (auth()->user()?->can('create', Document::class) ?? false))
-                    ->url(fn (LetterNumber $record): string => DocumentResource::getUrl('create', ['nomor_surat' => $record->id])),
-                Action::make('lihatDokumen')
-                    ->label('Lihat Dokumen')
-                    ->icon('heroicon-m-eye')
-                    ->color('gray')
-                    ->visible(fn (LetterNumber $record): bool => $record->document !== null && $record->document->trashed() === false)
-                    ->url(fn (LetterNumber $record): string => DocumentResource::getUrl('view', ['record' => $record->document])),
-                Action::make('lihatKegiatan')
-                    ->label('Lihat Kegiatan')
-                    ->icon('heroicon-m-megaphone')
-                    ->color('gray')
-                    ->visible(fn (LetterNumber $record): bool => $record->agenda !== null)
-                    ->url(fn (LetterNumber $record): string => AgendaResource::getUrl('view', ['record' => $record->agenda])),
-                Action::make('ubahPerihal')
-                    ->label('Ubah Perihal')
-                    ->icon('heroicon-m-pencil-square')
-                    ->color('warning')
-                    ->visible(fn (LetterNumber $record): bool => auth()->user()?->can('edit_letter_perihal') || (method_exists(auth()->user(), 'hasRole') && auth()->user()?->hasRole('super_admin')))
-                    ->modalHeading(fn (LetterNumber $record): string => "Ubah Perihal: {$record->nomor}")
-                    ->modalWidth('lg')
-                    ->modalSubmitActionLabel('Simpan Perubahan')
-                    ->form(fn (LetterNumber $record): array => [
-                        TextInput::make('nomor_display')
-                            ->label('Nomor Dokumen')
-                            ->default($record->nomor)
-                            ->disabled(),
-                        TextInput::make('judul_display')
-                            ->label('Judul Dokumen')
-                            ->default($record->judul_surat)
-                            ->disabled(),
-                        Textarea::make('perihal')
-                            ->label('Perihal')
-                            ->default($record->perihal)
-                            ->placeholder('Masukkan perihal dokumen...')
-                            ->rows(3)
-                            ->required(),
-                    ])
-                    ->action(function (LetterNumber $record, array $data): void {
-                        $record->update([
-                            'perihal' => $data['perihal'],
-                        ]);
+                ActionGroup::make([
+                    Action::make('isiDokumen')
+                        ->label('Isi Dokumen')
+                        ->icon('heroicon-m-document-plus')
+                        ->color('primary')
+                        ->visible(fn (LetterNumber $record): bool => ! $record->document && ! $record->agenda && (auth()->user()?->can('create', Document::class) ?? false))
+                        ->url(fn (LetterNumber $record): string => DocumentResource::getUrl('create', ['nomor_surat' => $record->id])),
+                    Action::make('lihatDokumen')
+                        ->label('Lihat Dokumen')
+                        ->icon('heroicon-m-eye')
+                        ->color('gray')
+                        ->visible(fn (LetterNumber $record): bool => $record->document !== null && $record->document->trashed() === false)
+                        ->url(fn (LetterNumber $record): string => DocumentResource::getUrl('view', ['record' => $record->document])),
+                    Action::make('lihatKegiatan')
+                        ->label('Lihat Kegiatan')
+                        ->icon('heroicon-m-megaphone')
+                        ->color('gray')
+                        ->visible(fn (LetterNumber $record): bool => $record->agenda !== null)
+                        ->url(fn (LetterNumber $record): string => AgendaResource::getUrl('view', ['record' => $record->agenda])),
+                    Action::make('ubahPerihal')
+                        ->label('Ubah Perihal')
+                        ->icon('heroicon-m-pencil-square')
+                        ->color('warning')
+                        ->visible(fn (LetterNumber $record): bool => auth()->user()?->can('edit_letter_perihal') || (method_exists(auth()->user(), 'hasRole') && auth()->user()?->hasRole('super_admin')))
+                        ->modalHeading(fn (LetterNumber $record): string => "Ubah Perihal: {$record->nomor}")
+                        ->modalWidth('lg')
+                        ->modalSubmitActionLabel('Simpan Perubahan')
+                        ->form(fn (LetterNumber $record): array => [
+                            TextInput::make('nomor_display')
+                                ->label('Nomor Dokumen')
+                                ->default($record->nomor)
+                                ->disabled(),
+                            TextInput::make('judul_display')
+                                ->label('Judul Dokumen')
+                                ->default($record->judul_surat)
+                                ->disabled(),
+                            Textarea::make('perihal')
+                                ->label('Perihal')
+                                ->default($record->perihal)
+                                ->placeholder('Masukkan perihal dokumen...')
+                                ->rows(3)
+                                ->required(),
+                        ])
+                        ->action(function (LetterNumber $record, array $data): void {
+                            $record->update([
+                                'perihal' => $data['perihal'],
+                            ]);
 
-                        Notification::make()
-                            ->title('Perihal Berhasil Diperbarui')
-                            ->body("Perihal untuk nomor {$record->nomor} telah diperbarui.")
-                            ->success()
-                            ->send();
-                    }),
-                DeleteAction::make()
-                    ->label('Hapus')
-                    ->modalHeading('Hapus Nomor Dokumen')
-                    ->modalDescription(fn (LetterNumber $record) => "Apakah Anda yakin ingin menghapus nomor dokumen {$record->nomor}? Nomor ini belum digunakan oleh dokumen apa pun.")
-                    ->modalSubmitActionLabel('Ya, Hapus Nomor')
-                    ->visible(fn (LetterNumber $record): bool => auth()->user()?->can('delete', $record) ?? false)
-                    ->before(function (LetterNumber $record): void {
-                        if ($record->nomor_urut) {
-                            $year = $record->tanggal_surat ? $record->tanggal_surat->year : now()->year;
-                            $maxRemaining = LetterNumber::query()
-                                ->where('company_id', $record->company_id)
-                                ->whereYear('tanggal_surat', $year)
-                                ->where('id', '!=', $record->id)
-                                ->max('nomor_urut') ?? 0;
+                            Notification::make()
+                                ->title('Perihal Berhasil Diperbarui')
+                                ->body("Perihal untuk nomor {$record->nomor} telah diperbarui.")
+                                ->success()
+                                ->send();
+                        }),
+                    DeleteAction::make()
+                        ->label('Hapus')
+                        ->modalHeading('Hapus Nomor Dokumen')
+                        ->modalDescription(fn (LetterNumber $record) => "Apakah Anda yakin ingin menghapus nomor dokumen {$record->nomor}? Nomor ini belum digunakan oleh dokumen apa pun.")
+                        ->modalSubmitActionLabel('Ya, Hapus Nomor')
+                        ->visible(fn (LetterNumber $record): bool => auth()->user()?->can('delete', $record) ?? false)
+                        ->before(function (LetterNumber $record): void {
+                            if ($record->nomor_urut) {
+                                $year = $record->tanggal_surat ? $record->tanggal_surat->year : now()->year;
+                                $maxRemaining = LetterNumber::query()
+                                    ->where('company_id', $record->company_id)
+                                    ->whereYear('tanggal_surat', $year)
+                                    ->where('id', '!=', $record->id)
+                                    ->max('nomor_urut') ?? 0;
 
-                            DB::table('letter_number_counters')
-                                ->where('company_id', $record->company_id)
-                                ->where('year', $year)
-                                ->update([
-                                    'last_number' => $maxRemaining,
-                                    'updated_at'  => now(),
-                                ]);
-                        }
-                    })
-                    ->successNotificationTitle('Nomor dokumen berhasil dihapus'),
+                                DB::table('letter_number_counters')
+                                    ->where('company_id', $record->company_id)
+                                    ->where('year', $year)
+                                    ->update([
+                                        'last_number' => $maxRemaining,
+                                        'updated_at'  => now(),
+                                    ]);
+                            }
+                        })
+                        ->successNotificationTitle('Nomor dokumen berhasil dihapus'),
+                ])
+                ->tooltip('Menu Aksi')
+                ->icon('heroicon-m-ellipsis-vertical'),
             ])
             ->emptyStateHeading('Belum ada nomor dokumen')
             ->emptyStateDescription('Ambil nomor dokumen dulu, lalu isi dokumen resminya ke nomor tersebut.');
