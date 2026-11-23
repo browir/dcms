@@ -492,6 +492,14 @@ class DocumentForm
                                 ];
                             }
 
+                            if ($user && $user->hasRole('Sekretaris')) {
+                                return [
+                                    'draft' => 'Draft',
+                                    'pending_direktur' => 'Kirim ke Direktur',
+                                    'archived' => 'Diarsipkan',
+                                ];
+                            }
+
                             return [
                                 'draft' => 'Draft',
                                 'pending_kabid' => 'Pending',
@@ -501,12 +509,14 @@ class DocumentForm
                         ->icons([
                             'draft' => 'heroicon-o-pencil',
                             'pending_kabid' => 'heroicon-o-paper-airplane',
+                            'pending_direktur' => 'heroicon-o-paper-airplane',
                             'approved' => 'heroicon-o-check-circle',
                             'archived' => 'heroicon-o-archive-box',
                         ])
                         ->colors([
                             'draft' => 'primary',
                             'pending_kabid' => 'primary',
+                            'pending_direktur' => 'primary',
                             'approved' => 'primary',
                             'archived' => 'primary',
                         ])
@@ -523,6 +533,10 @@ class DocumentForm
 
                             if ($canDirectApprove) {
                                 return new HtmlString($style.'<span class="hlp-desk">Draft = simpan sementara. Diterbitkan = dokumen langsung diterbitkan &amp; aktif (akses Direktur).</span><span class="hlp-mob">Draft: simpan sementara. Diterbitkan: langsung aktif.</span>');
+                            }
+
+                            if ($user && $user->hasRole('Sekretaris')) {
+                                return new HtmlString($style.'<span class="hlp-desk">Draft = simpan sementara. Kirim ke Direktur = ajukan dokumen langsung ke Direktur untuk peninjauan persetujuan.</span><span class="hlp-mob">Draft: simpan sementara. Kirim: langsung ke Direktur.</span>');
                             }
 
                             return new HtmlString($style.'<span class="hlp-desk">Draft = simpan sementara. Pending = ajukan dokumen untuk peninjauan persetujuan.</span><span class="hlp-mob">Draft: simpan sementara. Pending: ajukan review.</span>');

@@ -156,19 +156,27 @@ class ViewDocument extends ViewRecord
                 ->modalHeading(fn (): string => $this->record->rejections()->exists()
                     ? 'Ajukan Ulang Dokumen yang Diperbaiki?'
                     : 'Kirim Dokumen untuk Review?')
-                ->modalDescription(fn (): string => $this->record->rejections()->exists()
-                    ? 'Dokumen versi terbaru Anda akan dikirim ulang ke Kepala Bidang untuk direview. Pastikan semua perbaikan sudah dilakukan.'
-                    : 'Dokumen akan dikirim ke Kepala Bidang untuk direview. Pastikan dokumen sudah lengkap.')
+                ->modalDescription(function (): string {
+                    $isSekretaris = auth()->user()?->hasRole('Sekretaris') || $this->record->user?->hasRole('Sekretaris');
+                    $targetRole = $isSekretaris ? 'Direktur' : 'Kepala Bidang';
+
+                    return $this->record->rejections()->exists()
+                        ? "Dokumen versi terbaru Anda akan dikirim ulang ke {$targetRole} untuk direview. Pastikan semua perbaikan sudah dilakukan."
+                        : "Dokumen akan dikirim ke {$targetRole} untuk direview. Pastikan dokumen sudah lengkap.";
+                })
                 ->modalIcon('heroicon-o-paper-airplane')
                 ->visible(fn (): bool => $this->record->status === 'draft')
                 ->action(function () {
                     $this->record->submitForReview();
                     $wasRejected = $this->record->rejections()->exists();
+                    $isSekretaris = auth()->user()?->hasRole('Sekretaris') || $this->record->user?->hasRole('Sekretaris');
+                    $targetRole = $isSekretaris ? 'Direktur' : 'Kabid';
+
                     Notification::make()
                         ->title($wasRejected ? 'Dokumen diajukan ulang' : 'Dokumen dikirim')
                         ->body($wasRejected
-                            ? 'Dokumen hasil perbaikan berhasil diajukan ulang ke Kabid.'
-                            : 'Dokumen berhasil dikirim untuk review Kabid.')
+                            ? "Dokumen hasil perbaikan berhasil diajukan ulang ke {$targetRole}."
+                            : "Dokumen berhasil dikirim untuk review {$targetRole}.")
                         ->success()
                         ->send();
                     $this->refreshFormData(['status']);

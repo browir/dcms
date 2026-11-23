@@ -421,11 +421,39 @@ class Document extends Model implements Auditable
     // ========== WORKFLOW & NOTIFIKASI ==========
 
     /**
-     * Ajukan dokumen untuk direview oleh Kabid.
+     * Ajukan dokumen untuk direview oleh atasan.
+     * Khusus Sekretaris (tidak memiliki Kabid), dokumen langsung diajukan ke Direktur.
+     * Untuk staf/pegawai umum, melalui review Kabid terlebih dahulu.
      */
     public function submitForReview(): void
     {
-        // Semua dokumen (termasuk dari Kabid) wajib melalui review Kabid terlebih dahulu
+        $creator = $this->user ?? Auth::user();
+        $isSekretaris = $creator && method_exists($creator, 'hasRole') && $creator->hasRole('Sekretaris');
+
+        if ($isSekretaris) {
+            $this->update(['status' => self::STATUS_PENDING_DIREKTUR]);
+
+            // Kirim notifikasi langsung ke Direktur
+            $direkturUsers = User::role('direktur')
+                ->when($this->company_id, fn ($q) => $q->where('company_id', $this->company_id))
+                ->get();
+
+            if ($direkturUsers->isEmpty()) {
+                $direkturUsers = User::role('direktur')->get();
+            }
+
+            if ($direkturUsers->isNotEmpty()) {
+                try {
+                    Notification::send($direkturUsers, new DocumentSubmittedNotification($this));
+                } catch (\Throwable $e) {
+                    Log::error('Failed to send DocumentSubmittedNotification to Direktur: '.$e->getMessage());
+                }
+            }
+
+            return;
+        }
+
+        // Semua dokumen staf reguler melalui review Kabid terlebih dahulu
         $this->update(['status' => self::STATUS_PENDING_KABID]);
 
         // Cari Kabid di departemen yang sama
@@ -564,11 +592,38 @@ class Document extends Model implements Auditable
     }
 
     /**
-     * Ajukan ulang dokumen yang sebelumnya ditolak, kembali ke alur review Kabid.
+     * Ajukan ulang dokumen yang sebelumnya ditolak.
+     * Khusus Sekretaris, diajukan ulang langsung ke Direktur.
+     * Untuk staf/pegawai umum, kembali ke alur review Kabid.
      * Dipanggil saat atasan menyetujui DocumentChangeRequest.
      */
     public function resubmit(): void
     {
+        $creator = $this->user ?? Auth::user();
+        $isSekretaris = $creator && method_exists($creator, 'hasRole') && $creator->hasRole('Sekretaris');
+
+        if ($isSekretaris) {
+            $this->update(['status' => self::STATUS_PENDING_DIREKTUR]);
+
+            $direkturUsers = User::role('direktur')
+                ->when($this->company_id, fn ($q) => $q->where('company_id', $this->company_id))
+                ->get();
+
+            if ($direkturUsers->isEmpty()) {
+                $direkturUsers = User::role('direktur')->get();
+            }
+
+            if ($direkturUsers->isNotEmpty()) {
+                try {
+                    Notification::send($direkturUsers, new DocumentSubmittedNotification($this));
+                } catch (\Throwable $e) {
+                    Log::error('Failed to send DocumentSubmittedNotification to Direktur (resubmit): '.$e->getMessage());
+                }
+            }
+
+            return;
+        }
+
         $this->update(['status' => self::STATUS_PENDING_KABID]);
 
         // Kirim notifikasi ke Kabid departemen yang sama

@@ -76,7 +76,7 @@ class CreateDocument extends CreateRecord
     {
         /** @var Document $record */
         $record = $this->getRecord();
-        if ($record->status === Document::STATUS_PENDING_KABID) {
+        if (in_array($record->status, [Document::STATUS_PENDING_KABID, Document::STATUS_PENDING_DIREKTUR])) {
             $record->submitForReview();
         }
     }
