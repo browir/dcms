@@ -4,9 +4,8 @@ namespace Tests\Feature\TwoFactor;
 
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Auth\TwoFactorChallenge;
-use App\Models\TwoFactorCode;
 use App\Models\User;
-use App\Notifications\TwoFactorCodeNotification;
+use App\Services\TotpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
@@ -23,11 +22,17 @@ class TwoFactorChallengeLivewireTest extends TestCase
     {
         Notification::fake();
 
+        $totp = app(TotpService::class);
+        $secret = $totp->generateSecret();
+
         $user = User::factory()->create([
             'email' => 'test2fa@syifaglobalgroup.com',
             'username' => 'test2fa',
             'password' => Hash::make('password123'),
             'two_factor_enabled' => true,
+            'two_factor_enabled_at' => now(),
+            'two_factor_type' => 'totp',
+            'two_factor_secret' => $secret,
         ]);
 
         // 1. Submit login form
@@ -42,23 +47,14 @@ class TwoFactorChallengeLivewireTest extends TestCase
         $this->assertEquals($user->id, session('2fa_pending_user_id'));
         $this->assertTrue(session('2fa_remember'));
 
-        // Notification OTP terkirim
-        Notification::assertSentTo($user, TwoFactorCodeNotification::class);
+        // Tidak ada email yang dikirim karena menggunakan Google Authenticator
+        Notification::assertNothingSent();
 
-        // Ambil kode yang baru saja di-generate
-        $codeRecord = TwoFactorCode::where('user_id', $user->id)
-            ->where('purpose', 'login')
-            ->latest('id')
-            ->first();
+        // 2. Submit kode TOTP di TwoFactorChallenge
+        $validCode = $totp->generateCode($secret);
 
-        $this->assertNotNull($codeRecord);
-
-        // Timpa hash dengan kode test yang diketahui
-        $codeRecord->update(['code_hash' => Hash::make('654321')]);
-
-        // 2. Submit kode di TwoFactorChallenge
         Livewire::test(TwoFactorChallenge::class)
-            ->set('code', '654321')
+            ->set('code', $validCode)
             ->set('trustDevice', true)
             ->set('trustDays', 30)
             ->call('verify')
@@ -74,8 +70,14 @@ class TwoFactorChallengeLivewireTest extends TestCase
 
     public function test_verify_with_correct_code_logs_in_and_redirects(): void
     {
+        $totp = app(TotpService::class);
+        $secret = $totp->generateSecret();
+
         $user = User::factory()->create([
             'two_factor_enabled' => true,
+            'two_factor_enabled_at' => now(),
+            'two_factor_type' => 'totp',
+            'two_factor_secret' => $secret,
         ]);
 
         session([
@@ -83,16 +85,10 @@ class TwoFactorChallengeLivewireTest extends TestCase
             '2fa_remember' => false,
         ]);
 
-        TwoFactorCode::create([
-            'user_id' => $user->id,
-            'code_hash' => Hash::make('123456'),
-            'purpose' => 'login',
-            'attempts' => 0,
-            'expires_at' => now()->addMinutes(10),
-        ]);
+        $validCode = $totp->generateCode($secret);
 
         Livewire::test(TwoFactorChallenge::class)
-            ->set('code', '123456')
+            ->set('code', $validCode)
             ->set('trustDevice', true)
             ->set('trustDays', 30)
             ->call('verify')
@@ -110,8 +106,14 @@ class TwoFactorChallengeLivewireTest extends TestCase
 
     public function test_verify_with_wrong_code_shows_error(): void
     {
+        $totp = app(TotpService::class);
+        $secret = $totp->generateSecret();
+
         $user = User::factory()->create([
             'two_factor_enabled' => true,
+            'two_factor_enabled_at' => now(),
+            'two_factor_type' => 'totp',
+            'two_factor_secret' => $secret,
         ]);
 
         session([
@@ -119,19 +121,11 @@ class TwoFactorChallengeLivewireTest extends TestCase
             '2fa_remember' => false,
         ]);
 
-        TwoFactorCode::create([
-            'user_id' => $user->id,
-            'code_hash' => Hash::make('123456'),
-            'purpose' => 'login',
-            'attempts' => 0,
-            'expires_at' => now()->addMinutes(10),
-        ]);
-
         Livewire::test(TwoFactorChallenge::class)
             ->set('code', '999999')
             ->call('verify')
             ->assertSet('code', '')
-            ->assertSee('Kode tidak valid atau sudah kedaluwarsa.');
+            ->assertSee('Kode authenticator tidak valid');
 
         $this->assertFalse(Auth::check());
     }

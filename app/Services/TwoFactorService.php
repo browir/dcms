@@ -3,138 +3,20 @@
 namespace App\Services;
 
 use App\Models\TrustedDevice;
-use App\Models\TwoFactorCode;
 use App\Models\TwoFactorLog;
 use App\Models\User;
-use App\Notifications\TwoFactorCodeNotification;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Cookie;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class TwoFactorService
 {
-    // ── Kode OTP ─────────────────────────────────────────────────────────────
+    // ── Aktifkan / Nonaktifkan 2FA (Google Authenticator) ─────────────────────
 
     /**
-     * Buat dan kirim kode OTP baru ke email pengguna.
-     * Kode lama dengan purpose yang sama hangus secara otomatis (set used_at).
-     *
-     * @throws \RuntimeException jika rate limit kirim ulang tercapai
+     * Aktifkan Google Authenticator untuk pengguna.
      */
-    public function sendCode(User $user, string $purpose, Request $request): TwoFactorCode
-    {
-        $this->enforceResendRateLimit($user);
-
-        // Hanguskan kode lama yang belum dipakai untuk purpose yang sama
-        TwoFactorCode::where('user_id', $user->id)
-            ->where('purpose', $purpose)
-            ->whereNull('used_at')
-            ->update(['used_at' => now()]);
-
-        // Buat kode baru — aman secara kriptografis
-        $plain = $this->generatePlainCode();
-
-        $code = TwoFactorCode::create([
-            'user_id'    => $user->id,
-            'code_hash'  => Hash::make($plain),
-            'purpose'    => $purpose,
-            'attempts'   => 0,
-            'expires_at' => now()->addMinutes(config('two_factor.code_ttl_minutes', 10)),
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-        ]);
-
-        // Kirim email notifikasi OTP secara sinkron (time-sensitive)
-        try {
-            $user->notify(new TwoFactorCodeNotification(
-                plainCode: $plain,
-                purpose: $purpose,
-                ip: $request->ip(),
-                userAgent: $request->userAgent(),
-            ));
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('[2FA] Gagal mengirim email OTP: ' . $e->getMessage(), [
-                'user_id' => $user->id,
-                'purpose' => $purpose,
-                'exception' => $e,
-            ]);
-            throw new \RuntimeException('Gagal mengirim kode verifikasi ke email. Silakan periksa koneksi email atau coba lagi nanti.');
-        }
-
-        $this->log($user, TwoFactorLog::EVENT_CODE_SENT, $request, ['purpose' => $purpose]);
-        $this->incrementResendCounter($user);
-
-        return $code;
-    }
-
-    /**
-     * Verifikasi kode OTP. Mengembalikan TwoFactorCode jika berhasil, null jika gagal.
-     * Selalu mencatat log.
-     */
-    public function verifyCode(User $user, string $purpose, string $plainCode, Request $request): ?TwoFactorCode
-    {
-        $code = TwoFactorCode::where('user_id', $user->id)
-            ->where('purpose', $purpose)
-            ->whereNull('used_at')
-            ->latest()
-            ->first();
-
-        if (! $code || ! $code->isValid()) {
-            $this->log($user, TwoFactorLog::EVENT_FAILED, $request, [
-                'purpose' => $purpose,
-                'reason'  => 'no_valid_code',
-            ]);
-            return null;
-        }
-
-        if (! $code->verify($plainCode)) {
-            if ($code->fresh()->isExhausted()) {
-                $this->log($user, TwoFactorLog::EVENT_LOCKED, $request, ['purpose' => $purpose]);
-            } else {
-                $this->log($user, TwoFactorLog::EVENT_FAILED, $request, [
-                    'purpose'  => $purpose,
-                    'attempts' => $code->fresh()->attempts,
-                ]);
-            }
-            return null;
-        }
-
-        $this->log($user, TwoFactorLog::EVENT_VERIFIED, $request, ['purpose' => $purpose]);
-        return $code;
-    }
-
-    /**
-     * Cek apakah ada kode aktif (untuk tombol kirim ulang — tahu berapa detik lagi boleh kirim).
-     */
-    public function getResendCooldownSeconds(User $user): int
-    {
-        $key = "2fa_resend_cooldown_{$user->id}";
-        $ttl = Cache::get($key);
-        return $ttl ? (int) ($ttl - now()->timestamp) : 0;
-    }
-
-    // ── Aktifkan / Nonaktifkan 2FA ────────────────────────────────────────────
-
-    public function enable(User $user, Request $request): void
-    {
-        $user->update([
-            'two_factor_enabled'    => true,
-            'two_factor_enabled_at' => now(),
-            'two_factor_type'       => 'email',
-        ]);
-
-        $this->log($user, TwoFactorLog::EVENT_2FA_ENABLED, $request, ['method' => 'email']);
-
-        try {
-            $user->notify(new \App\Notifications\TwoFactorStatusNotification('enabled'));
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('[2FA] Gagal mengirim notifikasi status enabled: ' . $e->getMessage());
-        }
-    }
-
-    public function enableTotp(User $user, string $secret, Request $request): void
+    public function enable(User $user, string $secret, Request $request): void
     {
         $user->update([
             'two_factor_enabled'    => true,
@@ -152,12 +34,23 @@ class TwoFactorService
         }
     }
 
+    /**
+     * Alias untuk enable() dengan parameter secret.
+     */
+    public function enableTotp(User $user, string $secret, ?Request $request = null): void
+    {
+        $this->enable($user, $secret, $request ?? request());
+    }
+
+    /**
+     * Nonaktifkan 2FA pengguna dan cabut semua perangkat tepercaya.
+     */
     public function disable(User $user, Request $request): void
     {
         $user->update([
             'two_factor_enabled'    => false,
             'two_factor_enabled_at' => null,
-            'two_factor_type'       => 'email',
+            'two_factor_type'       => 'totp',
             'two_factor_secret'     => null,
         ]);
 
@@ -288,26 +181,30 @@ class TwoFactorService
 
     /**
      * Reset 2FA pengguna: nonaktifkan dan cabut semua perangkat.
-     * Dipanggil hanya oleh admin yang berwenang.
+     * Dipanggil oleh admin atau artisan command.
      */
-    public function adminReset(User $target, User $actor, Request $request): void
+    public function adminReset(User $target, User|string $actor, ?Request $request = null): void
     {
         $target->update([
             'two_factor_enabled'    => false,
             'two_factor_enabled_at' => null,
-            'two_factor_type'       => 'email',
+            'two_factor_type'       => 'totp',
             'two_factor_secret'     => null,
         ]);
 
         TrustedDevice::where('user_id', $target->id)->delete();
 
-        $this->log($target, TwoFactorLog::EVENT_ADMIN_RESET, $request, [
-            'actor_id'   => $actor->id,
-            'actor_name' => $actor->name,
-        ], $actor);
+        $req = $request ?? request();
+        $actorId = $actor instanceof User ? $actor->id : null;
+        $actorName = $actor instanceof User ? $actor->name : (string) $actor;
+
+        $this->log($target, TwoFactorLog::EVENT_ADMIN_RESET, $req, [
+            'actor_id'   => $actorId,
+            'actor_name' => $actorName,
+        ], $actor instanceof User ? $actor : null);
 
         \Illuminate\Support\Facades\Log::channel('stack')->info(
-            "[2FA] Admin reset: {$actor->name} (#{$actor->id}) mereset 2FA pengguna {$target->name} (#{$target->id})"
+            "[2FA] Admin reset: {$actorName} mereset 2FA pengguna {$target->name} (#{$target->id})"
         );
     }
 
@@ -321,51 +218,7 @@ class TwoFactorService
         $this->revokeAllTrustedDevices($user, $request);
     }
 
-    // ── Internal helpers ──────────────────────────────────────────────────────
-
-    private function generatePlainCode(): string
-    {
-        $length = config('two_factor.code_length', 6);
-        return str_pad(
-            (string) random_int(0, (int) str_repeat('9', $length)),
-            $length,
-            '0',
-            STR_PAD_LEFT
-        );
-    }
-
-    private function enforceResendRateLimit(User $user): void
-    {
-        // Cooldown per kirim
-        $cooldownKey = "2fa_resend_cooldown_{$user->id}";
-        if (Cache::has($cooldownKey)) {
-            $seconds = (int) (Cache::get($cooldownKey) - now()->timestamp);
-            throw new \RuntimeException("Tunggu {$seconds} detik sebelum mengirim ulang kode.");
-        }
-
-        // Batas per jam
-        $hourlyKey   = "2fa_resend_hourly_{$user->id}";
-        $max         = config('two_factor.resend_max_per_hour', 5);
-        $sent        = (int) Cache::get($hourlyKey, 0);
-        if ($sent >= $max) {
-            throw new \RuntimeException('Batas pengiriman kode per jam tercapai. Coba lagi nanti.');
-        }
-    }
-
-    private function incrementResendCounter(User $user): void
-    {
-        $cooldown  = config('two_factor.resend_cooldown_seconds', 60);
-        $cooldownKey = "2fa_resend_cooldown_{$user->id}";
-        Cache::put($cooldownKey, now()->addSeconds($cooldown)->timestamp, $cooldown);
-
-        $hourlyKey = "2fa_resend_hourly_{$user->id}";
-        Cache::increment($hourlyKey);
-        // TTL hourly key: 1 jam (auto-expire)
-        if (! Cache::has("{$hourlyKey}_ttl")) {
-            Cache::put("{$hourlyKey}_ttl", 1, 3600);
-            Cache::put($hourlyKey, Cache::get($hourlyKey, 0), 3600);
-        }
-    }
+    // ── Audit Log ─────────────────────────────────────────────────────────────
 
     public function log(
         User    $user,

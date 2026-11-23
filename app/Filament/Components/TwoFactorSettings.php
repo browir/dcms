@@ -11,23 +11,20 @@ use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 /**
- * Komponen Livewire untuk manajemen 2FA di halaman profil.
- * Ditampilkan via @livewire('two-factor-settings') di view profil.
+ * Komponen Livewire untuk manajemen 2FA (Google Authenticator) di halaman profil.
  *
  * State machine:
  *   idle            → tampilan status 2FA saat ini
- *   setup_totp      → scan QR code & input kode Google Authenticator
- *   confirm_enable  → input kode email untuk mengaktifkan 2FA
- *   confirm_disable → input kode (TOTP / email) untuk menonaktifkan 2FA
+ *   setup           → scan QR code & konfirmasi aktivasi Google Authenticator
+ *   confirm_disable → input kode authenticator untuk menonaktifkan 2FA
  */
 class TwoFactorSettings extends Component
 {
     // ── State ────────────────────────────────────────────────────────────────
-    public string $step         = 'idle'; // idle | setup_totp | confirm_enable | confirm_disable
+    public string $step         = 'idle'; // idle | setup | confirm_disable
     public string $code         = '';
     public string $errorMsg     = '';
     public string $successMsg   = '';
-    public int    $cooldown     = 0;
     public int    $defaultTrustDays;
 
     // TOTP setup state
@@ -73,9 +70,9 @@ class TwoFactorSettings extends Component
         return $options;
     }
 
-    // ── Aktifkan 2FA via Google Authenticator (TOTP) ─────────────────────────
+    // ── Aktifkan 2FA (Google Authenticator) ───────────────────────────────────
 
-    public function initEnableTotp(): void
+    public function initEnable(): void
     {
         $this->reset(['errorMsg', 'successMsg', 'code']);
 
@@ -86,10 +83,15 @@ class TwoFactorSettings extends Component
             $this->totpSecret,
             config('app.name', 'DCMS Syifa')
         );
-        $this->step = 'setup_totp';
+        $this->step = 'setup';
     }
 
-    public function confirmTotp(): void
+    public function initEnableTotp(): void
+    {
+        $this->initEnable();
+    }
+
+    public function confirmEnable(): void
     {
         $this->reset('errorMsg');
         $cleanCode = preg_replace('/\s+/', '', (string) $this->code);
@@ -101,65 +103,22 @@ class TwoFactorSettings extends Component
         }
 
         try {
-            $this->twoFactor->enableTotp(Auth::user(), $this->totpSecret, request());
+            $this->twoFactor->enable(Auth::user(), $this->totpSecret, request());
             $this->step       = 'idle';
             $this->code       = '';
             $this->totpSecret = '';
             $this->totpQrUrl  = '';
-            $this->successMsg = 'Google Authenticator (2FA) berhasil diaktifkan!';
+            $this->successMsg = 'Google Authenticator (2FA) berhasil diaktifkan.';
             $this->dispatch('2fa-status-changed');
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('[2FA] Gagal mengaktifkan TOTP 2FA: ' . $e->getMessage(), ['exception' => $e]);
+            \Illuminate\Support\Facades\Log::error('[2FA] Gagal mengaktifkan Google Authenticator: ' . $e->getMessage(), ['exception' => $e]);
             $this->errorMsg = 'Gagal mengaktifkan Google Authenticator. Silakan coba lagi.';
         }
     }
 
-    // ── Aktifkan 2FA via Email ───────────────────────────────────────────────
-
-    /**
-     * Langkah 1: kirim kode konfirmasi ke email, masuk ke step confirm_enable
-     */
-    public function initEnable(): void
+    public function confirmTotp(): void
     {
-        $this->reset(['errorMsg', 'successMsg', 'code']);
-
-        try {
-            $this->twoFactor->sendCode(Auth::user(), 'enable_2fa', request());
-            $this->step     = 'confirm_enable';
-            $this->cooldown = config('two_factor.resend_cooldown_seconds', 60);
-        } catch (\RuntimeException $e) {
-            $this->errorMsg = $e->getMessage();
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('[2FA] Gagal kirim OTP enable_2fa: ' . $e->getMessage(), ['exception' => $e]);
-            $this->errorMsg = 'Gagal mengirim kode verifikasi ke email. Silakan coba lagi beberapa saat lagi.';
-        }
-    }
-
-    /**
-     * Langkah 2: verifikasi kode → aktifkan 2FA Email
-     */
-    public function confirmEnable(): void
-    {
-        $this->reset('errorMsg');
-
-        $result = $this->twoFactor->verifyCode(Auth::user(), 'enable_2fa', trim($this->code), request());
-
-        if (! $result) {
-            $this->errorMsg = 'Kode tidak valid atau sudah kedaluwarsa.';
-            $this->code     = '';
-            return;
-        }
-
-        try {
-            $this->twoFactor->enable(Auth::user(), request());
-            $this->step       = 'idle';
-            $this->code       = '';
-            $this->successMsg = 'Verifikasi dua faktor berhasil diaktifkan.';
-            $this->dispatch('2fa-status-changed');
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('[2FA] Gagal mengaktifkan 2FA: ' . $e->getMessage(), ['exception' => $e]);
-            $this->errorMsg = 'Gagal mengaktifkan 2FA. Silakan coba lagi.';
-        }
+        $this->confirmEnable();
     }
 
     // ── Nonaktifkan 2FA ───────────────────────────────────────────────────────
@@ -167,25 +126,7 @@ class TwoFactorSettings extends Component
     public function initDisable(): void
     {
         $this->reset(['errorMsg', 'successMsg', 'code']);
-        $user = Auth::user();
-
-        // Jika TOTP, tidak perlu kirim email OTP
-        if ($user->two_factor_type === 'totp' || filled($user->two_factor_secret)) {
-            $this->step     = 'confirm_disable';
-            $this->cooldown = 0;
-            return;
-        }
-
-        try {
-            $this->twoFactor->sendCode($user, 'disable_2fa', request());
-            $this->step     = 'confirm_disable';
-            $this->cooldown = config('two_factor.resend_cooldown_seconds', 60);
-        } catch (\RuntimeException $e) {
-            $this->errorMsg = $e->getMessage();
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('[2FA] Gagal kirim OTP disable_2fa: ' . $e->getMessage(), ['exception' => $e]);
-            $this->errorMsg = 'Gagal mengirim kode verifikasi ke email. Silakan coba lagi beberapa saat lagi.';
-        }
+        $this->step = 'confirm_disable';
     }
 
     public function confirmDisable(): void
@@ -194,20 +135,11 @@ class TwoFactorSettings extends Component
         $user = Auth::user();
         $cleanCode = preg_replace('/\s+/', '', (string) $this->code);
 
-        if ($user->two_factor_type === 'totp' || filled($user->two_factor_secret)) {
-            $isValid = $this->totp->verifyCode((string) $user->two_factor_secret, $cleanCode);
-            if (! $isValid) {
-                $this->errorMsg = 'Kode authenticator tidak valid. Masukkan 6 digit kode dari aplikasi ponsel Anda.';
-                $this->code     = '';
-                return;
-            }
-        } else {
-            $result = $this->twoFactor->verifyCode($user, 'disable_2fa', $cleanCode, request());
-            if (! $result) {
-                $this->errorMsg = 'Kode tidak valid atau sudah kedaluwarsa.';
-                $this->code     = '';
-                return;
-            }
+        $isValid = $this->totp->verifyCode((string) $user->two_factor_secret, $cleanCode);
+        if (! $isValid) {
+            $this->errorMsg = 'Kode authenticator tidak valid. Masukkan 6 digit kode yang tampil di aplikasi ponsel Anda.';
+            $this->code     = '';
+            return;
         }
 
         try {
@@ -222,30 +154,6 @@ class TwoFactorSettings extends Component
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('[2FA] Gagal menonaktifkan 2FA: ' . $e->getMessage(), ['exception' => $e]);
             $this->errorMsg = 'Gagal menonaktifkan 2FA. Silakan coba lagi.';
-        }
-    }
-
-    // ── Kirim Ulang Kode (Email) ─────────────────────────────────────────────
-
-    public function resendCode(): void
-    {
-        $user = Auth::user();
-        if ($user->two_factor_type === 'totp' || filled($user->two_factor_secret)) {
-            return;
-        }
-
-        $purpose = $this->step === 'confirm_enable' ? 'enable_2fa' : 'disable_2fa';
-
-        try {
-            $this->twoFactor->sendCode($user, $purpose, request());
-            $this->cooldown = config('two_factor.resend_cooldown_seconds', 60);
-            $this->errorMsg = '';
-            $this->dispatch('code-resent');
-        } catch (\RuntimeException $e) {
-            $this->errorMsg = $e->getMessage();
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('[2FA] Gagal resend OTP: ' . $e->getMessage(), ['exception' => $e]);
-            $this->errorMsg = 'Gagal mengirim ulang kode verifikasi. Silakan coba lagi beberapa saat lagi.';
         }
     }
 

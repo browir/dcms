@@ -3,10 +3,9 @@
 namespace Tests\Feature\TwoFactor;
 
 use App\Filament\Components\TwoFactorSettings;
-use App\Models\TwoFactorCode;
 use App\Models\User;
-use App\Notifications\TwoFactorCodeNotification;
 use App\Notifications\TwoFactorStatusNotification;
+use App\Services\TotpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
@@ -24,9 +23,8 @@ class TwoFactorLivewireComponentTest extends TestCase
         ], $attrs));
     }
 
-    public function test_init_enable_sends_notification_and_transitions_to_confirm_step(): void
+    public function test_init_enable_generates_secret_and_transitions_to_setup_step(): void
     {
-        Notification::fake();
         $user = $this->makeUser();
 
         $this->actingAs($user);
@@ -34,19 +32,12 @@ class TwoFactorLivewireComponentTest extends TestCase
         Livewire::test(TwoFactorSettings::class)
             ->assertSet('step', 'idle')
             ->call('initEnable')
-            ->assertSet('step', 'confirm_enable')
+            ->assertSet('step', 'setup')
             ->assertHasNoErrors();
-
-        Notification::assertSentTo($user, TwoFactorCodeNotification::class);
-        $this->assertDatabaseHas('two_factor_codes', [
-            'user_id' => $user->id,
-            'purpose' => 'enable_2fa',
-        ]);
     }
 
     public function test_confirm_enable_with_wrong_code_shows_error(): void
     {
-        Notification::fake();
         $user = $this->makeUser();
 
         $this->actingAs($user);
@@ -55,8 +46,8 @@ class TwoFactorLivewireComponentTest extends TestCase
             ->call('initEnable')
             ->set('code', '000000')
             ->call('confirmEnable')
-            ->assertSet('step', 'confirm_enable')
-            ->assertSee('Kode tidak valid atau sudah kedaluwarsa.');
+            ->assertSet('step', 'setup')
+            ->assertSee('Kode authenticator tidak valid');
 
         $this->assertFalse($user->fresh()->two_factor_enabled);
     }
@@ -68,50 +59,55 @@ class TwoFactorLivewireComponentTest extends TestCase
 
         $this->actingAs($user);
 
-        // Mock sendCode by manually dispatching or directly checking code
+        $totp = app(TotpService::class);
+
         $component = Livewire::test(TwoFactorSettings::class)
             ->call('initEnable');
 
-        $latestCode = TwoFactorCode::where('user_id', $user->id)
-            ->where('purpose', 'enable_2fa')
-            ->first();
+        $secret = $component->get('totpSecret');
+        $this->assertNotEmpty($secret);
 
-        // Let's verify by overriding the code hash with known code
-        $latestCode->update(['code_hash' => bcrypt('123456')]);
+        $validCode = $totp->generateCode($secret);
 
-        $component->set('code', '123456')
+        $component->set('code', $validCode)
             ->call('confirmEnable')
             ->assertSet('step', 'idle')
             ->assertSet('code', '')
-            ->assertSee('Verifikasi dua faktor berhasil diaktifkan.');
+            ->assertSee('Google Authenticator (2FA) berhasil diaktifkan.');
 
         $this->assertTrue($user->fresh()->two_factor_enabled);
+        $this->assertEquals('totp', $user->fresh()->two_factor_type);
+        $this->assertEquals($secret, $user->fresh()->two_factor_secret);
+
         Notification::assertSentTo($user, TwoFactorStatusNotification::class);
     }
 
     public function test_disable_flow(): void
     {
         Notification::fake();
-        $user = $this->makeUser(['two_factor_enabled' => true]);
+        $totp = app(TotpService::class);
+        $secret = $totp->generateSecret();
+
+        $user = $this->makeUser([
+            'two_factor_enabled' => true,
+            'two_factor_enabled_at' => now(),
+            'two_factor_type' => 'totp',
+            'two_factor_secret' => $secret,
+        ]);
 
         $this->actingAs($user);
 
-        $component = Livewire::test(TwoFactorSettings::class)
+        $validCode = $totp->generateCode($secret);
+
+        Livewire::test(TwoFactorSettings::class)
             ->call('initDisable')
-            ->assertSet('step', 'confirm_disable');
-
-        $latestCode = TwoFactorCode::where('user_id', $user->id)
-            ->where('purpose', 'disable_2fa')
-            ->first();
-
-        $latestCode->update(['code_hash' => bcrypt('654321')]);
-
-        $component->set('code', '654321')
+            ->assertSet('step', 'confirm_disable')
+            ->set('code', $validCode)
             ->call('confirmDisable')
             ->assertSet('step', 'idle')
             ->assertSee('Verifikasi dua faktor berhasil dinonaktifkan.');
 
         $this->assertFalse($user->fresh()->two_factor_enabled);
+        $this->assertNull($user->fresh()->two_factor_secret);
     }
 }
-

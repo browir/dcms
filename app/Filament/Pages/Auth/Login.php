@@ -107,24 +107,6 @@ class Login extends BaseLogin
                 '2fa_remember'        => $data['remember'] ?? false,
             ]);
 
-            // Jika menggunakan Google Authenticator (TOTP), langsung redirect tanpa kirim email
-            if ($user->two_factor_type === 'totp' || filled($user->two_factor_secret)) {
-                $this->redirect(route('filament.admin.auth.two-factor-challenge'));
-                return null;
-            }
-
-            // Kirim kode OTP via Email
-            try {
-                $twoFactor->sendCode($user, 'login', request());
-            } catch (\RuntimeException $e) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['data.login' => $e->getMessage()]);
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('[2FA] Gagal kirim OTP saat login: ' . $e->getMessage(), ['exception' => $e]);
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'data.login' => 'Gagal mengirim kode verifikasi ke email. Silakan hubungi administrator.',
-                ]);
-            }
-
             $this->redirect(route('filament.admin.auth.two-factor-challenge'));
             return null;
         }

@@ -10,10 +10,10 @@ use Illuminate\Console\Command;
 class TwoFactorAdminCommand extends Command
 {
     protected $signature = '2fa:manage 
-                            {action : status, disable, or enable-totp}
+                            {action : status, disable, enable, or enable-totp}
                             {user? : Username, email, or ID of the user}';
 
-    protected $description = 'Kelola 2FA pengguna (status, disable, enable-totp)';
+    protected $description = 'Kelola 2FA pengguna (status, disable, enable)';
 
     public function handle(TwoFactorService $twoFactor, TotpService $totp): int
     {
@@ -71,6 +71,7 @@ class TwoFactorAdminCommand extends Command
                 $this->info("2FA untuk {$user->name} ({$user->email}) berhasil dinonaktifkan.");
                 break;
 
+            case 'enable':
             case 'enable-totp':
                 $secret = $totp->generateSecret();
                 $twoFactor->enableTotp($user, $secret);
@@ -90,3 +91,4 @@ class TwoFactorAdminCommand extends Command
         return Command::SUCCESS;
     }
 }
+

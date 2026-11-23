@@ -12,14 +12,13 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.simple')]
-#[Title('Verifikasi Dua Faktor')]
+#[Title('Verifikasi Google Authenticator')]
 class TwoFactorChallenge extends Component
 {
     public string $code        = '';
     public bool   $trustDevice = true;
     public int    $trustDays   = 30;
     public string $errorMsg    = '';
-    public int    $cooldown    = 0;
 
     protected TwoFactorService $twoFactor;
     protected TotpService      $totp;
@@ -39,7 +38,7 @@ class TwoFactorChallenge extends Component
         }
 
         $user = User::find(session('2fa_pending_user_id'));
-        if (! $user) {
+        if (! $user || empty($user->two_factor_secret)) {
             $this->redirect(route('filament.admin.auth.login'));
             return;
         }
@@ -47,12 +46,6 @@ class TwoFactorChallenge extends Component
         // Default trust days dari preferensi pengguna
         $this->trustDays = $user->default_trust_days
             ?? config('two_factor.default_duration_days', 30);
-
-        if ($this->isTotp) {
-            $this->cooldown = 0;
-        } else {
-            $this->cooldown = $this->twoFactor->getResendCooldownSeconds($user);
-        }
     }
 
     /** Pilihan durasi kepercayaan perangkat */
@@ -72,41 +65,23 @@ class TwoFactorChallenge extends Component
         return User::find(session('2fa_pending_user_id'));
     }
 
-    #[Computed]
-    public function isTotp(): bool
-    {
-        $user = $this->pendingUser;
-        return $user && ($user->two_factor_type === 'totp' || filled($user->two_factor_secret));
-    }
-
     public function verify(): void
     {
         $this->errorMsg = '';
         $user = $this->pendingUser;
 
-        if (! $user) {
+        if (! $user || empty($user->two_factor_secret)) {
             $this->redirect(route('filament.admin.auth.login'));
             return;
         }
 
         $cleanCode = preg_replace('/\s+/', '', (string) $this->code);
+        $isValid = $this->totp->verifyCode((string) $user->two_factor_secret, $cleanCode);
 
-        if ($this->isTotp) {
-            $isValid = $this->totp->verifyCode((string) $user->two_factor_secret, $cleanCode);
-
-            if (! $isValid) {
-                $this->errorMsg = 'Kode authenticator tidak valid. Pastikan waktu di perangkat Anda sesuai dan masukkan 6 digit kode terbaru.';
-                $this->code     = '';
-                return;
-            }
-        } else {
-            $code = $this->twoFactor->verifyCode($user, 'login', $cleanCode, request());
-
-            if (! $code) {
-                $this->errorMsg = 'Kode tidak valid atau sudah kedaluwarsa. Periksa kembali atau minta kode baru.';
-                $this->code     = '';
-                return;
-            }
+        if (! $isValid) {
+            $this->errorMsg = 'Kode authenticator tidak valid. Pastikan waktu di perangkat Anda sesuai dan masukkan 6 digit kode terbaru.';
+            $this->code     = '';
+            return;
         }
 
         // Kode berhasil — tangani perangkat tepercaya
@@ -128,30 +103,6 @@ class TwoFactorChallenge extends Component
         }
 
         $this->redirectIntended(default: filament()->getUrl());
-    }
-
-    public function resend(): void
-    {
-        if ($this->isTotp) {
-            return;
-        }
-
-        $user = $this->pendingUser;
-        if (! $user) {
-            return;
-        }
-
-        try {
-            $this->twoFactor->sendCode($user, 'login', request());
-            $this->cooldown = config('two_factor.resend_cooldown_seconds', 60);
-            $this->errorMsg = '';
-            $this->dispatch('resent');
-        } catch (\RuntimeException $e) {
-            $this->errorMsg = $e->getMessage();
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('[2FA] Gagal kirim ulang OTP login challenge: ' . $e->getMessage(), ['exception' => $e]);
-            $this->errorMsg = 'Gagal mengirim kode verifikasi ke email. Silakan coba lagi beberapa saat lagi.';
-        }
     }
 
     public function render()

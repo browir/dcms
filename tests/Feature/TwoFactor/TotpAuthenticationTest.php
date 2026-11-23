@@ -6,7 +6,6 @@ use App\Filament\Components\TwoFactorSettings;
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Auth\TwoFactorChallenge;
 use App\Models\User;
-use App\Notifications\TwoFactorCodeNotification;
 use App\Services\TotpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
@@ -128,7 +127,7 @@ class TotpAuthenticationTest extends TestCase
 
         $test = Livewire::test(TwoFactorSettings::class)
             ->call('initEnableTotp')
-            ->assertSet('step', 'setup_totp');
+            ->assertSet('step', 'setup');
 
         $generatedSecret = $test->get('totpSecret');
         $this->assertNotEmpty($generatedSecret);

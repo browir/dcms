@@ -1,40 +1,22 @@
 <div class="min-h-screen flex items-center justify-center px-4 py-12"
-     style="background: var(--ui-bg, #f4f6fa);"
-     x-data="{
-         cooldown: {{ $this->cooldown }},
-         startCooldown() {
-             if (this.cooldown <= 0) return;
-             const t = setInterval(() => {
-                 this.cooldown--;
-                 if (this.cooldown <= 0) clearInterval(t);
-             }, 1000);
-         }
-     }"
-     x-init="startCooldown()"
-     @resent.window="cooldown = {{ config('two_factor.resend_cooldown_seconds', 60) }}; startCooldown()"
->
+     style="background: var(--ui-bg, #f4f6fa);">
     <div class="w-full max-w-md">
         {{-- Card --}}
         <div class="bg-white dark:bg-[#111a2e] rounded-2xl shadow-xl border border-gray-100 dark:border-[#26344d] p-8">
 
             {{-- Header --}}
             <div class="text-center mb-8">
-                {{-- Ikon perisai --}}
+                {{-- Ikon perisai / ponsel --}}
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-900/30 mb-4">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
                     </svg>
                 </div>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-                    {{ $this->isTotp ? 'Verifikasi Authenticator' : 'Verifikasi Dua Faktor' }}
+                    Verifikasi Google Authenticator
                 </h1>
                 <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    @if ($this->isTotp)
-                        Buka aplikasi <strong>Google Authenticator</strong> di ponsel Anda dan masukkan 6 digit kode yang tampil.
-                    @else
-                        Kode 6 digit telah dikirim ke email Anda.<br>
-                        Masukkan kode tersebut untuk melanjutkan.
-                    @endif
+                    Buka aplikasi <strong>Google Authenticator</strong> di ponsel Anda dan masukkan 6 digit kode yang tampil.
                 </p>
             </div>
 
@@ -54,7 +36,7 @@
                 {{-- Input kode --}}
                 <div>
                     <label for="code" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                        Kode Verifikasi
+                        Kode Authenticator
                     </label>
                     <input
                         id="code"
@@ -69,11 +51,7 @@
                         class="w-full text-center text-2xl font-mono font-bold tracking-[0.5em] rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f1729] text-gray-900 dark:text-white px-4 py-3.5 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     >
                     <p class="mt-1.5 text-xs text-gray-400 dark:text-gray-500 text-center">
-                        @if ($this->isTotp)
-                            Kode berubah secara otomatis setiap 30 detik pada aplikasi ponsel Anda.
-                        @else
-                            Berlaku {{ config('two_factor.code_ttl_minutes', 10) }} menit · Sekali pakai
-                        @endif
+                        Kode berubah otomatis setiap 30 detik pada layar ponsel Anda.
                     </p>
                 </div>
 
@@ -125,31 +103,6 @@
                     </span>
                 </button>
             </form>
-
-            @if (! $this->isTotp)
-                {{-- Divider --}}
-                <div class="relative my-5">
-                    <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200 dark:border-gray-700"></div></div>
-                    <div class="relative flex justify-center text-xs text-gray-400 dark:text-gray-500 bg-white dark:bg-[#111a2e] px-2">atau</div>
-                </div>
-
-                {{-- Kirim ulang --}}
-                <div class="text-center">
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Tidak menerima kode?</p>
-                    <button
-                        wire:click="resend"
-                        wire:loading.attr="disabled"
-                        :disabled="cooldown > 0"
-                        x-bind:disabled="cooldown > 0"
-                        class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed transition"
-                    >
-                        <span x-show="cooldown <= 0">Kirim ulang kode</span>
-                        <span x-show="cooldown > 0" x-cloak>
-                            Kirim ulang dalam <span x-text="cooldown"></span> detik
-                        </span>
-                    </button>
-                </div>
-            @endif
 
             {{-- Kembali ke login --}}
             <div class="mt-6 pt-5 border-t border-gray-100 dark:border-gray-800 text-center">

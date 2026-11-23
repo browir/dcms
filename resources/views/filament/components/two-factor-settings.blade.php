@@ -1,17 +1,4 @@
-<div
-    x-data="{
-        cooldown: {{ $cooldown }},
-        startCooldown() {
-            if (this.cooldown <= 0) return;
-            const t = setInterval(() => {
-                this.cooldown--;
-                if (this.cooldown <= 0) clearInterval(t);
-            }, 1000);
-        }
-    }"
-    x-init="startCooldown()"
-    @code-resent.window="cooldown = {{ config('two_factor.resend_cooldown_seconds', 60) }}; startCooldown()"
->
+<div>
     <x-filament::section
         icon="heroicon-o-shield-check"
         icon-color="primary"
@@ -20,19 +7,12 @@
         <x-slot name="heading">Verifikasi Dua Faktor (2FA)</x-slot>
 
         <x-slot name="description">
-            Lapisan keamanan ekstra: verifikasi login menggunakan aplikasi Google Authenticator atau kode OTP email.
+            Lapisan keamanan ekstra menggunakan aplikasi Google Authenticator pada ponsel Anda.
         </x-slot>
 
         <x-slot name="afterHeader">
             @if ($this->user->hasTwoFactorEnabled())
-                <div class="flex items-center gap-1.5">
-                    <x-filament::badge color="success" icon="heroicon-m-check-circle">Aktif</x-filament::badge>
-                    @if ($this->user->two_factor_type === 'totp' || filled($this->user->two_factor_secret))
-                        <x-filament::badge color="primary" icon="heroicon-m-device-phone-mobile">Google Authenticator</x-filament::badge>
-                    @else
-                        <x-filament::badge color="gray" icon="heroicon-m-envelope">Email OTP</x-filament::badge>
-                    @endif
-                </div>
+                <x-filament::badge color="success" icon="heroicon-m-device-phone-mobile">Google Authenticator Aktif</x-filament::badge>
             @else
                 <x-filament::badge color="gray" icon="heroicon-m-x-circle">Nonaktif</x-filament::badge>
             @endif
@@ -79,100 +59,53 @@
 
                 @if ($this->user->hasTwoFactorEnabled())
                     {{-- Status: 2FA aktif --}}
-                    @if ($this->user->two_factor_type === 'totp' || filled($this->user->two_factor_secret))
-                        <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                            Akun Anda dilindungi oleh <strong>Google Authenticator</strong>.
-                            Saat masuk dari perangkat baru, masukkan kode 6 digit yang dihasilkan secara instan di ponsel Anda tanpa memerlukan koneksi email.
-                            Diaktifkan pada <strong>{{ $this->user->two_factor_enabled_at?->translatedFormat('d F Y, H:i') ?? '—' }}</strong>.
-                        </p>
-                        <div class="mt-4 flex flex-wrap items-center gap-3">
-                            <x-filament::button
-                                wire:click="initDisable"
-                                wire:loading.attr="disabled"
-                                wire:target="initDisable"
-                                color="danger"
-                                icon="heroicon-m-lock-open"
-                                size="sm"
-                            >
-                                Nonaktifkan 2FA
-                            </x-filament::button>
-                        </div>
-                    @else
-                        <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                            Setiap login dari perangkat baru memerlukan kode verifikasi yang dikirim ke email <strong>{{ $this->user->email }}</strong>.
-                            Diaktifkan pada <strong>{{ $this->user->two_factor_enabled_at?->translatedFormat('d F Y, H:i') ?? '—' }}</strong>.
-                        </p>
-                        <div class="mt-4 flex flex-wrap items-center gap-3">
-                            <x-filament::button
-                                wire:click="initEnableTotp"
-                                wire:loading.attr="disabled"
-                                wire:target="initEnableTotp"
-                                color="primary"
-                                icon="heroicon-m-qr-code"
-                                size="sm"
-                            >
-                                <span wire:loading.remove wire:target="initEnableTotp">Ganti ke Google Authenticator (Disarankan)</span>
-                                <span wire:loading wire:target="initEnableTotp">Menyiapkan…</span>
-                            </x-filament::button>
-
-                            <x-filament::button
-                                wire:click="initDisable"
-                                wire:loading.attr="disabled"
-                                wire:target="initDisable"
-                                wire:confirm="Nonaktifkan verifikasi dua faktor? Kode konfirmasi akan dikirim ke email Anda."
-                                color="danger"
-                                icon="heroicon-m-lock-open"
-                                size="sm"
-                                outlined
-                            >
-                                <span wire:loading.remove wire:target="initDisable">Nonaktifkan 2FA</span>
-                                <span wire:loading wire:target="initDisable">Mengirim kode…</span>
-                            </x-filament::button>
-                        </div>
-                    @endif
-                @else
-                    {{-- Status: 2FA nonaktif --}}
                     <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                        Aktifkan verifikasi dua faktor untuk melindungi akun Anda dari akses tidak sah.
-                        Disarankan menggunakan <strong>Google Authenticator</strong> agar tidak bergantung pada pengiriman email atau DNS.
+                        Akun Anda dilindungi oleh <strong>Google Authenticator</strong>.
+                        Saat login dari perangkat baru, masukkan 6 digit kode yang tampil di aplikasi authenticator ponsel Anda.
+                        Diaktifkan pada <strong>{{ $this->user->two_factor_enabled_at?->translatedFormat('d F Y, H:i') ?? '—' }}</strong>.
                     </p>
                     <div class="mt-4 flex flex-wrap items-center gap-3">
                         <x-filament::button
-                            wire:click="initEnableTotp"
+                            wire:click="initDisable"
                             wire:loading.attr="disabled"
-                            wire:target="initEnableTotp"
-                            color="primary"
-                            icon="heroicon-m-qr-code"
+                            wire:target="initDisable"
+                            color="danger"
+                            icon="heroicon-m-lock-open"
                             size="sm"
                         >
-                            <span wire:loading.remove wire:target="initEnableTotp">Aktifkan Google Authenticator (Disarankan)</span>
-                            <span wire:loading wire:target="initEnableTotp">Menyiapkan QR…</span>
+                            Nonaktifkan 2FA
                         </x-filament::button>
-
+                    </div>
+                @else
+                    {{-- Status: 2FA nonaktif --}}
+                    <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                        Tingkatkan keamanan akun Anda dengan verifikasi dua faktor menggunakan <strong>Google Authenticator</strong> (atau Microsoft Authenticator / Aegis).
+                        Kode verifikasi dihasilkan langsung di ponsel Anda secara aman tanpa koneksi internet atau email.
+                    </p>
+                    <div class="mt-4 flex flex-wrap items-center gap-3">
                         <x-filament::button
                             wire:click="initEnable"
                             wire:loading.attr="disabled"
                             wire:target="initEnable"
-                            color="gray"
-                            icon="heroicon-m-envelope"
+                            color="primary"
+                            icon="heroicon-m-qr-code"
                             size="sm"
-                            outlined
                         >
-                            <span wire:loading.remove wire:target="initEnable">Aktifkan via Email OTP</span>
-                            <span wire:loading wire:target="initEnable">Mengirim kode…</span>
+                            <span wire:loading.remove wire:target="initEnable">Aktifkan Google Authenticator</span>
+                            <span wire:loading wire:target="initEnable">Menyiapkan…</span>
                         </x-filament::button>
                     </div>
                 @endif
 
             {{-- ═══════════════════ SETUP GOOGLE AUTHENTICATOR (TOTP) ═════════════ --}}
-            @elseif ($step === 'setup_totp')
+            @elseif ($step === 'setup')
 
                 <div style="max-width: 520px;" class="space-y-4">
                     <div>
-                        <p class="tfa-confirm-heading text-base font-semibold text-gray-900 dark:text-white">
+                        <p class="text-base font-semibold text-gray-900 dark:text-white">
                             Hubungkan Google Authenticator
                         </p>
-                        <p class="tfa-confirm-desc text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
                             Gunakan aplikasi <strong>Google Authenticator</strong> (atau Microsoft Authenticator, Aegis) di ponsel Anda.
                         </p>
                     </div>
@@ -208,7 +141,7 @@
                                     Buka aplikasi Authenticator di ponsel Anda, tap <strong>(+)</strong> lalu pilih <strong>Pindai kode QR</strong>.
                                 </p>
                                 <div class="pt-1">
-                                    <p class="text-gray-500 dark:text-gray-400 mb-1">Atau masukkan kode rahasia manual:</p>
+                                    <p class="text-gray-500 dark:text-gray-400 mb-1">Atau masukkan kode rahasia secara manual:</p>
                                     <div class="flex items-center gap-2">
                                         <code class="px-2 py-1 rounded bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 font-mono font-bold text-xs text-gray-800 dark:text-gray-200 tracking-wider select-all">
                                             {{ $totpSecret }}
@@ -245,15 +178,15 @@
                     {{-- Tombol Aksi --}}
                     <div class="tfa-btn-row">
                         <x-filament::button
-                            wire:click="confirmTotp"
+                            wire:click="confirmEnable"
                             wire:loading.attr="disabled"
-                            wire:target="confirmTotp"
+                            wire:target="confirmEnable"
                             color="primary"
                             icon="heroicon-m-check"
                             size="md"
                         >
-                            <span wire:loading.remove wire:target="confirmTotp">Verifikasi & Aktifkan</span>
-                            <span wire:loading wire:target="confirmTotp">Memverifikasi…</span>
+                            <span wire:loading.remove wire:target="confirmEnable">Verifikasi & Aktifkan</span>
+                            <span wire:loading wire:target="confirmEnable">Memverifikasi…</span>
                         </x-filament::button>
 
                         <x-filament::button
@@ -267,27 +200,16 @@
                     </div>
                 </div>
 
-            {{-- ═══════════════════ CONFIRM ENABLE EMAIL / DISABLE ═══════════════ --}}
-            @elseif (in_array($step, ['confirm_enable', 'confirm_disable']))
+            {{-- ═══════════════════ CONFIRM DISABLE ═════════════════════════════ --}}
+            @elseif ($step === 'confirm_disable')
 
                 <div style="max-width: 480px;">
-
-                    @php
-                        $isTotpUser = ($step === 'confirm_disable' && ($this->user->two_factor_type === 'totp' || filled($this->user->two_factor_secret)));
-                    @endphp
-
-                    {{-- Sub-heading biasa tanpa card pembungkus --}}
                     <div style="margin-bottom: 16px;">
                         <p class="tfa-confirm-heading">
-                            {{ $step === 'confirm_enable' ? 'Konfirmasi Aktifkan 2FA Email' : ($isTotpUser ? 'Konfirmasi Nonaktifkan Google Authenticator' : 'Konfirmasi Nonaktifkan 2FA') }}
+                            Konfirmasi Nonaktifkan Google Authenticator
                         </p>
                         <p class="tfa-confirm-desc">
-                            @if ($isTotpUser)
-                                Buka aplikasi <strong>Google Authenticator</strong> di ponsel Anda dan masukkan 6 digit kode yang tampil saat ini untuk menonaktifkan 2FA.
-                            @else
-                                Kode verifikasi telah dikirim ke <strong>{{ Auth::user()->email }}</strong>.<br>
-                                Masukkan kode 6 digit untuk {{ $step === 'confirm_enable' ? 'mengaktifkan' : 'menonaktifkan' }} 2FA.
-                            @endif
+                            Buka aplikasi <strong>Google Authenticator</strong> di ponsel Anda dan masukkan 6 digit kode saat ini untuk menonaktifkan 2FA.
                         </p>
                     </div>
 
@@ -320,7 +242,7 @@
 
                     {{-- Input OTP --}}
                     <div style="margin-bottom: 20px;">
-                        <label for="otp_code_input" class="tfa-label">Kode Verifikasi</label>
+                        <label for="otp_code_input" class="tfa-label">Kode Authenticator</label>
 
                         <input
                             id="otp_code_input"
@@ -328,76 +250,32 @@
                             inputmode="numeric"
                             pattern="[0-9]*"
                             maxlength="6"
-                            autocomplete="one-time-code"
                             placeholder="000000"
                             wire:model="code"
                             wire:loading.attr="disabled"
                             @if ($errorMsg) aria-invalid="true" @endif
-                            aria-describedby="otp_helper"
                             autofocus
                             class="tfa-otp-input{{ $errorMsg ? ' tfa-otp-error' : '' }}"
                         >
 
-                        <p class="tfa-helper" id="otp_helper">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clip-rule="evenodd" />
-                            </svg>
-                            @if ($isTotpUser)
-                                <span>Kode berubah setiap 30 detik pada aplikasi ponsel Anda.</span>
-                            @else
-                                <span>Berlaku {{ config('two_factor.code_ttl_minutes', 10) }} menit · Sekali pakai</span>
-                            @endif
+                        <p class="tfa-helper">
+                            Kode berubah setiap 30 detik pada aplikasi ponsel Anda.
                         </p>
                     </div>
 
                     {{-- Baris Tombol --}}
                     <div class="tfa-btn-row">
-                        @if ($step === 'confirm_enable')
-                            <x-filament::button
-                                wire:click="confirmEnable"
-                                wire:loading.attr="disabled"
-                                wire:target="confirmEnable"
-                                color="primary"
-                                icon="heroicon-m-shield-check"
-                                size="md"
-                            >
-                                <span wire:loading.remove wire:target="confirmEnable">Aktifkan 2FA</span>
-                                <span wire:loading wire:target="confirmEnable">Memverifikasi…</span>
-                            </x-filament::button>
-                        @else
-                            <x-filament::button
-                                wire:click="confirmDisable"
-                                wire:loading.attr="disabled"
-                                wire:target="confirmDisable"
-                                color="danger"
-                                icon="heroicon-m-lock-open"
-                                size="md"
-                            >
-                                <span wire:loading.remove wire:target="confirmDisable">Nonaktifkan 2FA</span>
-                                <span wire:loading wire:target="confirmDisable">Memverifikasi…</span>
-                            </x-filament::button>
-                        @endif
-
-                        @if (! $isTotpUser)
-                            <x-filament::button
-                                wire:click="resendCode"
-                                wire:loading.attr="disabled"
-                                wire:target="resendCode"
-                                color="gray"
-                                icon="heroicon-m-paper-airplane"
-                                size="md"
-                                outlined
-                                x-bind:disabled="cooldown > 0"
-                            >
-                                <span wire:loading.remove wire:target="resendCode">
-                                    <span x-show="cooldown <= 0">Kirim ulang kode</span>
-                                    <span x-show="cooldown > 0" x-cloak>
-                                        Kirim ulang (<span x-text="cooldown"></span>d)
-                                    </span>
-                                </span>
-                                <span wire:loading wire:target="resendCode">Mengirim ulang…</span>
-                            </x-filament::button>
-                        @endif
+                        <x-filament::button
+                            wire:click="confirmDisable"
+                            wire:loading.attr="disabled"
+                            wire:target="confirmDisable"
+                            color="danger"
+                            icon="heroicon-m-lock-open"
+                            size="md"
+                        >
+                            <span wire:loading.remove wire:target="confirmDisable">Nonaktifkan 2FA</span>
+                            <span wire:loading wire:target="confirmDisable">Memverifikasi…</span>
+                        </x-filament::button>
 
                         <x-filament::button
                             wire:click="cancel"
