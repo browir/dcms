@@ -200,4 +200,32 @@ class DocumentOfficialLetterPdfTest extends TestCase
         $this->assertStringContainsString('border: 1px solid #333', $html);
         $this->assertStringContainsString('table.letter-meta-table', $html);
     }
+
+    public function test_combined_spt_and_sppd_contains_both_pages_and_page_break(): void
+    {
+        $rawCombinedContent = '<p style="text-align: center;"><strong>SURAT PERINTAH TUGAS</strong><br>Nomor: {nomor_surat}</p>'
+            . '<p>Dengan ini memberikan tugas...</p>'
+            . '<table class="letter-signature-table"><tbody><tr><td style="width: 58%;">&nbsp;</td><td class="letter-signature-block">Banjarbaru, {tanggal}<br>Direktur</td></tr></tbody></table>'
+            . '<div style="page-break-before: always; break-before: page;"></div>'
+            . '<p style="text-align: center;"><strong>SURAT PERINTAH PERJALANAN DINAS (SPPD)</strong><br>Nomor: {nomor_surat}</p>'
+            . '<table><tbody><tr><td>Pejabat pemberi perintah</td><td>Direktur</td></tr></tbody></table>'
+            . '<table class="letter-signature-table"><tbody><tr><td style="width: 58%;">&nbsp;</td><td class="letter-signature-block">Banjarbaru, {tanggal}<br>Direktur</td></tr></tbody></table>';
+
+        $prepared = DocumentConversionService::prepareLetterContent(
+            $rawCombinedContent,
+            'Surat Perintah Tugas (SPT) & SPPD',
+            '005/G.IT/SGG/XI/2026',
+            '2026-11-23'
+        );
+
+        // Memuat Surat Perintah Tugas dan Surat Perintah Perjalanan Dinas
+        $this->assertStringContainsString('SURAT PERINTAH TUGAS', $prepared);
+        $this->assertStringContainsString('SURAT PERINTAH PERJALANAN DINAS (SPPD)', $prepared);
+
+        // Memuat page break pemisah halaman
+        $this->assertStringContainsString('page-break-before: always', $prepared);
+
+        // Nomor surat terisi di kedua halaman
+        $this->assertEquals(2, substr_count($prepared, '005/G.IT/SGG/XI/2026'));
+    }
 }
