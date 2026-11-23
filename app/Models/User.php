@@ -38,6 +38,8 @@ class User extends Authenticatable implements Auditable, FilamentUser, HasAvatar
         'is_active',
         'two_factor_enabled',
         'two_factor_enabled_at',
+        'two_factor_type',
+        'two_factor_secret',
         'default_trust_days',
     ];
 
@@ -66,6 +68,7 @@ class User extends Authenticatable implements Auditable, FilamentUser, HasAvatar
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
     ];
 
     protected $casts = [
@@ -77,6 +80,7 @@ class User extends Authenticatable implements Auditable, FilamentUser, HasAvatar
         'unit_id'                => 'integer',
         'two_factor_enabled'     => 'boolean',
         'two_factor_enabled_at'  => 'datetime',
+        'two_factor_secret'      => 'encrypted',
         'default_trust_days'     => 'integer',
         'password_changed_at'    => 'datetime',
     ];

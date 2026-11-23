@@ -3,6 +3,7 @@
 namespace App\Filament\Pages\Auth;
 
 use App\Models\User;
+use App\Services\TotpService;
 use App\Services\TwoFactorService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
@@ -21,10 +22,12 @@ class TwoFactorChallenge extends Component
     public int    $cooldown    = 0;
 
     protected TwoFactorService $twoFactor;
+    protected TotpService      $totp;
 
-    public function boot(TwoFactorService $twoFactor): void
+    public function boot(TwoFactorService $twoFactor, TotpService $totp): void
     {
         $this->twoFactor = $twoFactor;
+        $this->totp      = $totp;
     }
 
     public function mount(): void
@@ -45,7 +48,11 @@ class TwoFactorChallenge extends Component
         $this->trustDays = $user->default_trust_days
             ?? config('two_factor.default_duration_days', 30);
 
-        $this->cooldown = $this->twoFactor->getResendCooldownSeconds($user);
+        if ($this->isTotp) {
+            $this->cooldown = 0;
+        } else {
+            $this->cooldown = $this->twoFactor->getResendCooldownSeconds($user);
+        }
     }
 
     /** Pilihan durasi kepercayaan perangkat */
@@ -65,6 +72,13 @@ class TwoFactorChallenge extends Component
         return User::find(session('2fa_pending_user_id'));
     }
 
+    #[Computed]
+    public function isTotp(): bool
+    {
+        $user = $this->pendingUser;
+        return $user && ($user->two_factor_type === 'totp' || filled($user->two_factor_secret));
+    }
+
     public function verify(): void
     {
         $this->errorMsg = '';
@@ -75,12 +89,24 @@ class TwoFactorChallenge extends Component
             return;
         }
 
-        $code = $this->twoFactor->verifyCode($user, 'login', trim($this->code), request());
+        $cleanCode = preg_replace('/\s+/', '', (string) $this->code);
 
-        if (! $code) {
-            $this->errorMsg = 'Kode tidak valid atau sudah kedaluwarsa. Periksa kembali atau minta kode baru.';
-            $this->code     = '';
-            return;
+        if ($this->isTotp) {
+            $isValid = $this->totp->verifyCode((string) $user->two_factor_secret, $cleanCode);
+
+            if (! $isValid) {
+                $this->errorMsg = 'Kode authenticator tidak valid. Pastikan waktu di perangkat Anda sesuai dan masukkan 6 digit kode terbaru.';
+                $this->code     = '';
+                return;
+            }
+        } else {
+            $code = $this->twoFactor->verifyCode($user, 'login', $cleanCode, request());
+
+            if (! $code) {
+                $this->errorMsg = 'Kode tidak valid atau sudah kedaluwarsa. Periksa kembali atau minta kode baru.';
+                $this->code     = '';
+                return;
+            }
         }
 
         // Kode berhasil — tangani perangkat tepercaya
@@ -106,6 +132,10 @@ class TwoFactorChallenge extends Component
 
     public function resend(): void
     {
+        if ($this->isTotp) {
+            return;
+        }
+
         $user = $this->pendingUser;
         if (! $user) {
             return;

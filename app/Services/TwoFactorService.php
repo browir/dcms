@@ -122,9 +122,28 @@ class TwoFactorService
         $user->update([
             'two_factor_enabled'    => true,
             'two_factor_enabled_at' => now(),
+            'two_factor_type'       => 'email',
         ]);
 
-        $this->log($user, TwoFactorLog::EVENT_2FA_ENABLED, $request);
+        $this->log($user, TwoFactorLog::EVENT_2FA_ENABLED, $request, ['method' => 'email']);
+
+        try {
+            $user->notify(new \App\Notifications\TwoFactorStatusNotification('enabled'));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[2FA] Gagal mengirim notifikasi status enabled: ' . $e->getMessage());
+        }
+    }
+
+    public function enableTotp(User $user, string $secret, Request $request): void
+    {
+        $user->update([
+            'two_factor_enabled'    => true,
+            'two_factor_enabled_at' => now(),
+            'two_factor_type'       => 'totp',
+            'two_factor_secret'     => $secret,
+        ]);
+
+        $this->log($user, TwoFactorLog::EVENT_2FA_ENABLED, $request, ['method' => 'totp']);
 
         try {
             $user->notify(new \App\Notifications\TwoFactorStatusNotification('enabled'));
@@ -138,6 +157,8 @@ class TwoFactorService
         $user->update([
             'two_factor_enabled'    => false,
             'two_factor_enabled_at' => null,
+            'two_factor_type'       => 'email',
+            'two_factor_secret'     => null,
         ]);
 
         $this->revokeAllTrustedDevices($user, $request);
@@ -274,6 +295,8 @@ class TwoFactorService
         $target->update([
             'two_factor_enabled'    => false,
             'two_factor_enabled_at' => null,
+            'two_factor_type'       => 'email',
+            'two_factor_secret'     => null,
         ]);
 
         TrustedDevice::where('user_id', $target->id)->delete();

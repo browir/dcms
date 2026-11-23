@@ -25,10 +25,16 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/>
                     </svg>
                 </div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Verifikasi Dua Faktor</h1>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                    {{ $this->isTotp ? 'Verifikasi Authenticator' : 'Verifikasi Dua Faktor' }}
+                </h1>
                 <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    Kode 6 digit telah dikirim ke email Anda.<br>
-                    Masukkan kode tersebut untuk melanjutkan.
+                    @if ($this->isTotp)
+                        Buka aplikasi <strong>Google Authenticator</strong> di ponsel Anda dan masukkan 6 digit kode yang tampil.
+                    @else
+                        Kode 6 digit telah dikirim ke email Anda.<br>
+                        Masukkan kode tersebut untuk melanjutkan.
+                    @endif
                 </p>
             </div>
 
@@ -63,7 +69,11 @@
                         class="w-full text-center text-2xl font-mono font-bold tracking-[0.5em] rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#0f1729] text-gray-900 dark:text-white px-4 py-3.5 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     >
                     <p class="mt-1.5 text-xs text-gray-400 dark:text-gray-500 text-center">
-                        Berlaku {{ config('two_factor.code_ttl_minutes', 10) }} menit · Sekali pakai
+                        @if ($this->isTotp)
+                            Kode berubah secara otomatis setiap 30 detik pada aplikasi ponsel Anda.
+                        @else
+                            Berlaku {{ config('two_factor.code_ttl_minutes', 10) }} menit · Sekali pakai
+                        @endif
                     </p>
                 </div>
 
@@ -116,28 +126,30 @@
                 </button>
             </form>
 
-            {{-- Divider --}}
-            <div class="relative my-5">
-                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200 dark:border-gray-700"></div></div>
-                <div class="relative flex justify-center text-xs text-gray-400 dark:text-gray-500 bg-white dark:bg-[#111a2e] px-2">atau</div>
-            </div>
+            @if (! $this->isTotp)
+                {{-- Divider --}}
+                <div class="relative my-5">
+                    <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200 dark:border-gray-700"></div></div>
+                    <div class="relative flex justify-center text-xs text-gray-400 dark:text-gray-500 bg-white dark:bg-[#111a2e] px-2">atau</div>
+                </div>
 
-            {{-- Kirim ulang --}}
-            <div class="text-center">
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Tidak menerima kode?</p>
-                <button
-                    wire:click="resend"
-                    wire:loading.attr="disabled"
-                    :disabled="cooldown > 0"
-                    x-bind:disabled="cooldown > 0"
-                    class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed transition"
-                >
-                    <span x-show="cooldown <= 0">Kirim ulang kode</span>
-                    <span x-show="cooldown > 0" x-cloak>
-                        Kirim ulang dalam <span x-text="cooldown"></span> detik
-                    </span>
-                </button>
-            </div>
+                {{-- Kirim ulang --}}
+                <div class="text-center">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Tidak menerima kode?</p>
+                    <button
+                        wire:click="resend"
+                        wire:loading.attr="disabled"
+                        :disabled="cooldown > 0"
+                        x-bind:disabled="cooldown > 0"
+                        class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed transition"
+                    >
+                        <span x-show="cooldown <= 0">Kirim ulang kode</span>
+                        <span x-show="cooldown > 0" x-cloak>
+                            Kirim ulang dalam <span x-text="cooldown"></span> detik
+                        </span>
+                    </button>
+                </div>
+            @endif
 
             {{-- Kembali ke login --}}
             <div class="mt-6 pt-5 border-t border-gray-100 dark:border-gray-800 text-center">

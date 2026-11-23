@@ -107,7 +107,13 @@ class Login extends BaseLogin
                 '2fa_remember'        => $data['remember'] ?? false,
             ]);
 
-            // Kirim kode OTP
+            // Jika menggunakan Google Authenticator (TOTP), langsung redirect tanpa kirim email
+            if ($user->two_factor_type === 'totp' || filled($user->two_factor_secret)) {
+                $this->redirect(route('filament.admin.auth.two-factor-challenge'));
+                return null;
+            }
+
+            // Kirim kode OTP via Email
             try {
                 $twoFactor->sendCode($user, 'login', request());
             } catch (\RuntimeException $e) {
