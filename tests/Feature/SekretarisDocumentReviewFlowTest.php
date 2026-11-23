@@ -236,3 +236,4 @@ class SekretarisDocumentReviewFlowTest extends TestCase
         Notification::assertSentTo($this->direktur, DocumentSubmittedNotification::class);
     }
 }
+
