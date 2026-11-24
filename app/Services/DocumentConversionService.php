@@ -362,19 +362,23 @@ class DocumentConversionService
     {
         // 1. Tangani tabel 2 kolom di mana kolom pertama kosong/spacer dan kolom kedua berisi tanda tangan
         $content = preg_replace_callback(
-            '/<table\b[^>]*>[\s\S]*?<tr\b[^>]*>[\s\S]*?<td\b[^>]*>(?:<p\b[^>]*>)?(?:\s|&nbsp;|<br\s*\/?>)*(?:<\/p>)?<\/td>[\s\S]*?<td\b[^>]*>([\s\S]*?(?:Direktur|Hormat kami|NIP\.|dr\.\s*Puga|\{nama_direktur\})[\s\S]*?)<\/td>[\s\S]*?<\/tr>[\s\S]*?<\/table>/i',
-            function ($matches) {
-                $signContent = trim($matches[1]);
-                return '<table class="letter-signature-table" style="width: 100%; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
-                    . '<tbody>'
-                    . '<tr>'
-                    . '<td style="width: 58%; border: none !important; padding: 0;">&nbsp;</td>'
-                    . '<td class="letter-signature-block" style="width: 42%; border: none !important; padding: 0; text-align: left; vertical-align: top;">'
-                    . $signContent
-                    . '</td>'
-                    . '</tr>'
-                    . '</tbody>'
-                    . '</table>';
+            '/<table\b[^>]*>((?:(?!<\/table>)[\s\S])*?)<\/table>/i',
+            function ($tableMatch) {
+                $tableInner = $tableMatch[1];
+                if (preg_match('/<tr\b[^>]*>\s*<td\b[^>]*>(?:<p\b[^>]*>)?(?:\s|&nbsp;|<br\s*\/?>)*(?:<\/p>)?<\/td>\s*<td\b[^>]*>([\s\S]*?(?:Direktur|Hormat kami|NIP\.|dr\.\s*Puga|\{nama_direktur\})[\s\S]*?)<\/td>\s*<\/tr>/i', $tableInner, $matches)) {
+                    $signContent = trim($matches[1]);
+                    return '<table class="letter-signature-table" style="width: 100%; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
+                        . '<tbody>'
+                        . '<tr>'
+                        . '<td style="width: 58%; border: none !important; padding: 0;">&nbsp;</td>'
+                        . '<td class="letter-signature-block" style="width: 42%; border: none !important; padding: 0; text-align: left; vertical-align: top;">'
+                        . $signContent
+                        . '</td>'
+                        . '</tr>'
+                        . '</tbody>'
+                        . '</table>';
+                }
+                return $tableMatch[0];
             },
             $content
         );
@@ -447,7 +451,7 @@ class DocumentConversionService
     public static function normalizeDocumentTables(string $content): string
     {
         return preg_replace_callback(
-            '/<table\b([^>]*)>([\s\S]*?)<\/table>/i',
+            '/<table\b([^>]*)>((?:(?!<\/table>)[\s\S])*?)<\/table>/i',
             function ($matches) {
                 $tableAttrs = $matches[1];
                 $tableInner = $matches[2];

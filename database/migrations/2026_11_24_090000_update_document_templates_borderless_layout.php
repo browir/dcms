@@ -1,20 +1,13 @@
 <?php
 
-use App\Models\DocumentTemplate;
-use App\Services\DocumentConversionService;
 use Illuminate\Database\Migrations\Migration;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        $templates = DocumentTemplate::where('code', 'like', 'RSUSM-%')->get();
-
-        foreach ($templates as $tpl) {
-            $updated = DocumentConversionService::normalizeDocumentTables($tpl->template_content);
-            $updated = DocumentConversionService::alignSignatureBlockToRight($updated);
-            $tpl->update(['template_content' => $updated]);
-        }
+        $seeder = require __DIR__ . '/2026_11_16_000002_seed_rsusm_document_templates.php';
+        $seeder->up();
     }
 
     public function down(): void
