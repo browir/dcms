@@ -91,6 +91,30 @@
     html.dark .tiptap,
     html.dark .ProseMirror { color: #e5e7eb !important; }
 
+    /* RichEditor (TipTap/ProseMirror): Tabel tata letak (identitas, jadwal, meta, tanda tangan) tanpa border */
+    html.dark .fi-fo-rich-editor .ProseMirror table:not(:has(th)):not(.letter-data-table),
+    html.dark .fi-fo-rich-editor .ProseMirror table:not(:has(th)):not(.letter-data-table) td,
+    html.dark .fi-fo-rich-editor .ProseMirror table:not(:has(th)):not(.letter-data-table) th,
+    html.dark .fi-fo-rich-editor .ProseMirror table.letter-layout-table,
+    html.dark .fi-fo-rich-editor .ProseMirror table.letter-layout-table td,
+    html.dark .fi-fo-rich-editor .ProseMirror table.letter-meta-table,
+    html.dark .fi-fo-rich-editor .ProseMirror table.letter-meta-table td,
+    html.dark .fi-fo-rich-editor .ProseMirror table.letter-signature-table,
+    html.dark .fi-fo-rich-editor .ProseMirror table.letter-signature-table td {
+        border: none !important;
+        border-color: transparent !important;
+    }
+
+    /* RichEditor (TipTap/ProseMirror): Tabel data bergaris rapi */
+    html.dark .fi-fo-rich-editor .ProseMirror table:has(th),
+    html.dark .fi-fo-rich-editor .ProseMirror table:has(th) td,
+    html.dark .fi-fo-rich-editor .ProseMirror table:has(th) th,
+    html.dark .fi-fo-rich-editor .ProseMirror table.letter-data-table,
+    html.dark .fi-fo-rich-editor .ProseMirror table.letter-data-table td,
+    html.dark .fi-fo-rich-editor .ProseMirror table.letter-data-table th {
+        border: 1px solid #334155 !important;
+    }
+
     /* Scrollbar */
     html.dark ::-webkit-scrollbar-thumb { background: #334155 !important; }
     html.dark ::-webkit-scrollbar-track { background: #0b1220 !important; }

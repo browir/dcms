@@ -333,8 +333,8 @@ class DocumentConversionService
         // Pastikan blok tanda tangan terposisi di sebelah kanan (standar tata naskah dinas)
         $content = self::alignSignatureBlockToRight($content);
 
-        // Tandai tabel kepala surat (Nomor & Tanggal) agar tetap tanpa border
-        $content = self::markMetaTables($content);
+        // Normalisasi semua tabel: tabel tata letak (identitas, jadwal, meta, ttd) tanpa border, tabel data bergaris
+        $content = self::normalizeDocumentTables($content);
 
         $hasOfficialLetterHeader = str_contains($content, 'SURAT')
             || str_contains($content, 'KEPUTUSAN')
@@ -356,20 +356,20 @@ class DocumentConversionService
     /**
      * Memastikan blok tanda tangan surat berada di sebelah kanan dokumen (standar tata naskah dinas).
      * Menangani tabel tanda tangan (kolom kiri kosong/spacer, kolom kanan isi tanda tangan)
-     * serta paragraf tanda tangan tanpa tabel.
+     * serta paragraf tanda tangan (single <p> dengan <br> maupun multi <p> dari RichEditor).
      */
     public static function alignSignatureBlockToRight(string $content): string
     {
         // 1. Tangani tabel 2 kolom di mana kolom pertama kosong/spacer dan kolom kedua berisi tanda tangan
         $content = preg_replace_callback(
-            '/<table([^>]*)>\s*(?:<tbody>)?\s*<tr([^>]*)>\s*<td([^>]*)>(?:\s*|<p>\s*<\/p>|<br\s*\/?>|&nbsp;)*<\/td>\s*<td([^>]*)>(.*?)<\/td>\s*<\/tr>\s*(?:<\/tbody>)?\s*<\/table>/is',
+            '/<table\b[^>]*>[\s\S]*?<tr\b[^>]*>[\s\S]*?<td\b[^>]*>(?:<p\b[^>]*>)?(?:\s|&nbsp;|<br\s*\/?>)*(?:<\/p>)?<\/td>[\s\S]*?<td\b[^>]*>([\s\S]*?(?:Direktur|Hormat kami|NIP\.|dr\.\s*Puga|\{nama_direktur\})[\s\S]*?)<\/td>[\s\S]*?<\/tr>[\s\S]*?<\/table>/i',
             function ($matches) {
-                $signContent = trim($matches[5]);
-                return '<table class="letter-signature-table" style="width: 100%; border: none; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
+                $signContent = trim($matches[1]);
+                return '<table class="letter-signature-table" style="width: 100%; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
                     . '<tbody>'
                     . '<tr>'
-                    . '<td style="width: 58%; border: none; padding: 0;">&nbsp;</td>'
-                    . '<td class="letter-signature-block" style="width: 42%; border: none; padding: 0; text-align: left; vertical-align: top;">'
+                    . '<td style="width: 58%; border: none !important; padding: 0;">&nbsp;</td>'
+                    . '<td class="letter-signature-block" style="width: 42%; border: none !important; padding: 0; text-align: left; vertical-align: top;">'
                     . $signContent
                     . '</td>'
                     . '</tr>'
@@ -379,25 +379,53 @@ class DocumentConversionService
             $content
         );
 
-        // 2. Jika ada paragraf tanda tangan mandiri di luar tabel yang berisi tanggal & jabatan/direktur
-        if (! str_contains($content, 'letter-signature-table')) {
-            $content = preg_replace_callback(
-                '/<p([^>]*)>\s*((?:Banjarbaru,|Hormat kami|Ditetapkan di)[^<]*<br[^>]*>.*?NIP\.[^<]*)<\/p>/is',
-                function ($matches) {
-                    return '<table class="letter-signature-table" style="width: 100%; border: none; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
-                        . '<tbody>'
-                        . '<tr>'
-                        . '<td style="width: 58%; border: none; padding: 0;">&nbsp;</td>'
-                        . '<td class="letter-signature-block" style="width: 42%; border: none; padding: 0; text-align: left; vertical-align: top;">'
-                        . $matches[2]
-                        . '</td>'
-                        . '</tr>'
-                        . '</tbody>'
-                        . '</table>';
-                },
-                $content
-            );
-        }
+        // 2. Multi-paragraf tanda tangan di luar tabel (urutan <p>...</p> berisi tanggal & jabatan/direktur/NIP)
+        $pattern = '/((?:<p\b[^>]*>\s*(?:Banjarbaru,|Hormat kami|Ditetapkan di|Direktur,|<strong[^>]*>Direktur)[\s\S]*?<\/p>)(?:\s*<p\b[^>]*>[\s\S]*?<\/p>){1,6})/i';
+        $content = preg_replace_callback($pattern, function ($matches) {
+            $block = $matches[1];
+            if ((str_contains($block, 'NIP') || str_contains($block, 'Direktur') || str_contains($block, 'Puga'))
+                && ! str_contains($block, 'letter-signature-block')) {
+                return '<table class="letter-signature-table" style="width: 100%; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
+                    . '<tbody>'
+                    . '<tr>'
+                    . '<td style="width: 58%; border: none !important; padding: 0;">&nbsp;</td>'
+                    . '<td class="letter-signature-block" style="width: 42%; border: none !important; padding: 0; text-align: left; vertical-align: top;">'
+                    . $block
+                    . '</td>'
+                    . '</tr>'
+                    . '</tbody>'
+                    . '</table>';
+            }
+            return $matches[0];
+        }, $content);
+
+        // 3. Paragraf tunggal yang berisi tanda tangan dengan <br>
+        $content = preg_replace_callback(
+            '/<p\b[^>]*>([\s\S]*?)(?:<br\s*\/?>\s*)*((?:Banjarbaru,|Hormat kami|Ditetapkan di)[^<]*<br\s*\/?>[\s\S]*?NIP\.[^<]*)<\/p>/i',
+            function ($matches) {
+                if (str_contains($matches[0], 'letter-signature-block')) {
+                    return $matches[0];
+                }
+                $prefix = trim($matches[1]);
+                $sig = trim($matches[2]);
+                $res = '';
+                if ($prefix !== '') {
+                    $res .= '<p>' . $prefix . '</p>';
+                }
+                $res .= '<table class="letter-signature-table" style="width: 100%; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
+                    . '<tbody>'
+                    . '<tr>'
+                    . '<td style="width: 58%; border: none !important; padding: 0;">&nbsp;</td>'
+                    . '<td class="letter-signature-block" style="width: 42%; border: none !important; padding: 0; text-align: left; vertical-align: top;">'
+                    . $sig
+                    . '</td>'
+                    . '</tr>'
+                    . '</tbody>'
+                    . '</table>';
+                return $res;
+            },
+            $content
+        );
 
         return $content;
     }
@@ -408,24 +436,80 @@ class DocumentConversionService
      */
     public static function markMetaTables(string $content): string
     {
+        return self::normalizeDocumentTables($content);
+    }
+
+    /**
+     * Melakukan normalisasi semua tabel di dalam dokumen resmi:
+     * - Tabel tata letak (identitas, jadwal, kepala surat, blok tanda tangan): TANPA BORDER (border: none)
+     * - Tabel data (tabel petugas SPT, daftar undangan, rincian SPPD, tabel ber-th): BERGARIS (1px solid #333)
+     */
+    public static function normalizeDocumentTables(string $content): string
+    {
         return preg_replace_callback(
-            '/<table([^>]*)>(.*?)<\/table>/is',
+            '/<table\b([^>]*)>([\s\S]*?)<\/table>/i',
             function ($matches) {
                 $tableAttrs = $matches[1];
-                $tableBody = $matches[2];
+                $tableInner = $matches[2];
 
-                if (str_contains($tableAttrs, 'letter-signature-table') || str_contains($tableAttrs, 'letter-meta-table')) {
-                    return $matches[0];
+                // 1. Signature table: pertahankan dan pastikan border none
+                if (str_contains($tableAttrs, 'letter-signature-table')) {
+                    return '<table class="letter-signature-table" style="width: 100%; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
+                        . preg_replace('/<td\b([^>]*)>/i', '<td$1 style="border: none !important; padding: 0 !important;">', $tableInner)
+                        . '</table>';
                 }
 
-                $hasNomorOrPerihal = (str_contains($tableBody, 'Nomor :') || str_contains($tableBody, 'Perihal :') || str_contains($tableBody, 'Lampiran :'));
-                $hasTanggalAtas = (str_contains($tableBody, 'Banjarbaru,') && ! str_contains($tableBody, 'Direktur'));
-
-                if ($hasNomorOrPerihal && $hasTanggalAtas) {
-                    return '<table class="letter-meta-table" style="width: 100%; border: none; border-collapse: collapse; margin-bottom: 16px;">' . $tableBody . '</table>';
+                // 2. Meta table (Nomor & Tanggal di sisi kanan)
+                $hasNomorOrPerihal = (str_contains($tableInner, 'Nomor :') || str_contains($tableInner, 'Perihal :') || str_contains($tableInner, 'Lampiran :'));
+                $hasTanggalAtas = (str_contains($tableInner, 'Banjarbaru,') && ! str_contains($tableInner, 'Direktur'));
+                if (str_contains($tableAttrs, 'letter-meta-table') || ($hasNomorOrPerihal && $hasTanggalAtas)) {
+                    return '<table class="letter-meta-table" style="width: 100%; border: none !important; border-collapse: collapse; margin-bottom: 16px;">'
+                        . preg_replace('/<td\b([^>]*)>/i', '<td$1 style="border: none !important; padding: 2px 4px !important;">', $tableInner)
+                        . '</table>';
                 }
 
-                return $matches[0];
+                // 3. Periksa apakah tabel memiliki header <th>
+                $hasTh = (bool) preg_match('/<th\b/i', $tableInner);
+
+                // Periksa jumlah kolom maksimum
+                $maxCols = 0;
+                if (preg_match_all('/<tr\b[^>]*>([\s\S]*?)<\/tr>/i', $tableInner, $rows)) {
+                    foreach ($rows[1] as $r) {
+                        $colCount = preg_match_all('/<(?:td|th)\b/i', $r);
+                        if ($colCount > $maxCols) {
+                            $maxCols = $colCount;
+                        }
+                    }
+                }
+
+                // Periksa kata kunci tabel tata letak (identitas biodata atau jadwal)
+                $hasLayoutKeywords = (bool) preg_match('/(Nama|NIP|Jabatan|Hari|Tanggal|Waktu|Pukul|Tempat|Pangkat|Golongan|Keperluan|Transportasi)\s*<\/strong>\s*<\/td>\s*<td[^>]*>\s*:/i', $tableInner)
+                    || (bool) preg_match('/<(?:td|p|strong)[^>]*>(Nama|NIP|Jabatan|Hari,\s*Tanggal|Hari\/Tanggal|Waktu|Pukul|Tempat):?\s*<\/(?:td|p|strong)>\s*<td[^>]*>\s*:/i', $tableInner);
+
+                $isExplicitBorderless = str_contains($tableAttrs, 'border: none') || str_contains($tableAttrs, 'border="0"') || str_contains($tableAttrs, 'letter-layout-table');
+
+                // Khusus SPPD (8 butir), harus bergaris (data table)
+                $isSPPD = str_contains($tableInner, 'Pejabat berwenang pemberi perintah') || str_contains($tableInner, 'Nama karyawan yang diberi perintah');
+
+                // Jika TANPA <th> dan (<= 2 kolom atau ada keyword identitas/jadwal atau eksplisit borderless) dan BUKAN SPPD:
+                if (! $hasTh && ! $isSPPD && ($hasLayoutKeywords || $isExplicitBorderless || $maxCols <= 2)) {
+                    $cleanInner = preg_replace_callback('/<td\b([^>]*)>/i', function ($tdMatch) {
+                        $attrs = preg_replace('/\s*style=(["\']).*?\1/i', '', $tdMatch[1]);
+                        return '<td' . $attrs . ' style="border: none !important; padding: 3px 4px !important; vertical-align: top;">';
+                    }, $tableInner);
+                    return '<table class="letter-layout-table" style="width: 100%; border: none !important; border-collapse: collapse; margin-bottom: 14px;">' . $cleanInner . '</table>';
+                }
+
+                // Selain itu: Tabel Data (Petugas, SPPD, Daftar Undangan, dll.) -> bergaris
+                $cleanInner = preg_replace_callback('/<th\b([^>]*)>/i', function ($thMatch) {
+                    $attrs = preg_replace('/\s*style=(["\']).*?\1/i', '', $thMatch[1]);
+                    return '<th' . $attrs . ' style="border: 1px solid #333 !important; padding: 6px 10px; background-color: #f2f2f2; font-weight: bold; text-align: center;">';
+                }, $tableInner);
+                $cleanInner = preg_replace_callback('/<td\b([^>]*)>/i', function ($tdMatch) {
+                    $attrs = preg_replace('/\s*style=(["\']).*?\1/i', '', $tdMatch[1]);
+                    return '<td' . $attrs . ' style="border: 1px solid #333 !important; padding: 6px 10px; vertical-align: middle;">';
+                }, $cleanInner);
+                return '<table class="letter-data-table" style="width: 100%; border-collapse: collapse; border: 1px solid #333 !important; margin-bottom: 16px;">' . $cleanInner . '</table>';
             },
             $content
         );
@@ -532,24 +616,16 @@ class DocumentConversionService
                     border-collapse: collapse;
                     width: 100%;
                     margin-bottom: 15px;
-                    border: 1px solid #333;
                 }
-                td, th {
-                    border: 1px solid #333;
-                    padding: 6px 10px;
-                    vertical-align: middle;
-                }
-                th {
-                    font-weight: bold;
-                    text-align: center;
-                    background-color: #f2f2f2;
-                }
+                table.letter-layout-table,
                 table.letter-meta-table,
                 table.letter-signature-table,
                 table[border='0'],
                 table[style*='border: none'] {
                     border: none !important;
                 }
+                table.letter-layout-table td,
+                table.letter-layout-table th,
                 table.letter-meta-table td,
                 table.letter-meta-table th,
                 table.letter-signature-table td,
@@ -559,7 +635,7 @@ class DocumentConversionService
                 table[style*='border: none'] td,
                 table[style*='border: none'] th {
                     border: none !important;
-                    padding: 2px 0 !important;
+                    padding: 3px 4px !important;
                 }
                 table.letter-signature-table {
                     width: 100% !important;
@@ -573,6 +649,27 @@ class DocumentConversionService
                 .letter-signature-block {
                     text-align: left !important;
                     vertical-align: top !important;
+                    padding-left: 0 !important;
+                }
+                table.letter-data-table,
+                table:not(.letter-layout-table):not(.letter-meta-table):not(.letter-signature-table) {
+                    border-collapse: collapse;
+                    border: 1px solid #333;
+                }
+                table.letter-data-table td,
+                table.letter-data-table th,
+                table:not(.letter-layout-table):not(.letter-meta-table):not(.letter-signature-table) td,
+                table:not(.letter-layout-table):not(.letter-meta-table):not(.letter-signature-table) th {
+                    border: 1px solid #333;
+                    padding: 6px 10px;
+                    vertical-align: middle;
+                }
+                table.letter-data-table th,
+                table:not(.letter-layout-table):not(.letter-meta-table):not(.letter-signature-table) th {
+                    font-weight: bold;
+                    text-align: center;
+                    background-color: #f2f2f2;
+                }
                 }
                 /* Footer slogan di kanan bawah */
                 .footer-slogan {

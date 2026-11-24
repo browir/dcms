@@ -228,4 +228,43 @@ class DocumentOfficialLetterPdfTest extends TestCase
         // Nomor surat terisi di kedua halaman
         $this->assertEquals(2, substr_count($prepared, '005/G.IT/SGG/XI/2026'));
     }
+
+    public function test_editor_multi_paragraph_signature_is_aligned_to_the_right(): void
+    {
+        // Format paragraf bertingkat seperti saat diketik di RichEditor
+        $rawContent = '<p>Demikian surat tugas ini diberikan...</p>'
+            . '<p>Banjarbaru, 23 November 2026</p>'
+            . '<p><strong>Direktur,</strong></p>'
+            . '<p><br></p>'
+            . '<p><br></p>'
+            . '<p><strong><u>dr. Puga Sharaz Wangi, M.A.R.S.</u></strong></p>'
+            . '<p>NIP. 01042019232</p>';
+
+        $prepared = DocumentConversionService::prepareLetterContent($rawContent, 'Surat Tugas', '001/G/2026');
+
+        $this->assertStringContainsString('letter-signature-table', $prepared);
+        $this->assertStringContainsString('width: 58%', $prepared);
+        $this->assertStringContainsString('width: 42%', $prepared);
+        $this->assertStringContainsString('dr. Puga Sharaz Wangi, M.A.R.S.', $prepared);
+    }
+
+    public function test_layout_identitas_and_jadwal_tables_are_borderless_while_data_tables_have_borders(): void
+    {
+        $rawContent = '<p>Yang bertanda tangan di bawah ini:</p>'
+            . '<table><tbody><tr><td><strong>Nama</strong></td><td>: dr. Puga</td></tr><tr><td><strong>NIP</strong></td><td>: 01042019232</td></tr><tr><td><strong>Jabatan</strong></td><td>: Direktur</td></tr></tbody></table>'
+            . '<p>Dengan ini memberikan tugas kepada:</p>'
+            . '<table><thead><tr><th>Nama</th><th>Jabatan</th><th>NIP</th></tr></thead><tbody><tr><td>Budi</td><td>Staf</td><td>123</td></tr></tbody></table>'
+            . '<p>Pada jadwal berikut:</p>'
+            . '<table><tbody><tr><td><strong>Hari, Tanggal</strong></td><td>: Senin, 24 Nov 2026</td></tr><tr><td><strong>Waktu</strong></td><td>: 08.00</td></tr><tr><td><strong>Tempat</strong></td><td>: Aula</td></tr></tbody></table>';
+
+        $prepared = DocumentConversionService::prepareLetterContent($rawContent, 'Surat Keterangan', '001/N/2026');
+
+        // Tabel identitas & jadwal harus diberi class letter-layout-table dan style border: none !important
+        $this->assertStringContainsString('letter-layout-table', $prepared);
+        $this->assertStringContainsString('border: none !important', $prepared);
+
+        // Tabel petugas harus diberi class letter-data-table dan border: 1px solid #333 !important
+        $this->assertStringContainsString('letter-data-table', $prepared);
+        $this->assertStringContainsString('border: 1px solid #333 !important', $prepared);
+    }
 }

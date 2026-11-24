@@ -547,5 +547,29 @@
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25) !important;
     }
 
+    /* ── RichEditor (TipTap/ProseMirror): Tabel tata letak tanpa garis border ── */
+    .fi-fo-rich-editor .ProseMirror table:not(:has(th)):not(.letter-data-table),
+    .fi-fo-rich-editor .ProseMirror table:not(:has(th)):not(.letter-data-table) td,
+    .fi-fo-rich-editor .ProseMirror table:not(:has(th)):not(.letter-data-table) th,
+    .fi-fo-rich-editor .ProseMirror table.letter-layout-table,
+    .fi-fo-rich-editor .ProseMirror table.letter-layout-table td,
+    .fi-fo-rich-editor .ProseMirror table.letter-meta-table,
+    .fi-fo-rich-editor .ProseMirror table.letter-meta-table td,
+    .fi-fo-rich-editor .ProseMirror table.letter-signature-table,
+    .fi-fo-rich-editor .ProseMirror table.letter-signature-table td {
+        border: none !important;
+        border-color: transparent !important;
+    }
+
+    /* RichEditor (TipTap/ProseMirror): Tabel data bergaris rapi */
+    .fi-fo-rich-editor .ProseMirror table:has(th),
+    .fi-fo-rich-editor .ProseMirror table:has(th) td,
+    .fi-fo-rich-editor .ProseMirror table:has(th) th,
+    .fi-fo-rich-editor .ProseMirror table.letter-data-table,
+    .fi-fo-rich-editor .ProseMirror table.letter-data-table td,
+    .fi-fo-rich-editor .ProseMirror table.letter-data-table th {
+        border: 1px solid rgba(156, 163, 175, 0.4) !important;
+    }
+
 </style>
 
