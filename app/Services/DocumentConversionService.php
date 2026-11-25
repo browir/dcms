@@ -567,14 +567,14 @@ class DocumentConversionService
             }
         }
 
-        $sigStampHtml = '<div class="letter-sig-stamp-container" style="position: relative; width: 100%; min-height: 65px; margin: 4px 0;">';
+        $sigStampHtml = '<div class="letter-sig-stamp-container" style="position: relative; width: 100%; min-height: 80px; margin: 4px 0;">';
         if ($stampSrc) {
-            $sigStampHtml .= '<img src="' . $stampSrc . '" alt="Stempel Resmi" class="letter-stamp-img" style="position: absolute; left: -50px; top: 0px; width: 135px; height: auto; opacity: 0.88; pointer-events: none; z-index: 2;" />';
+            $sigStampHtml .= '<img src="' . $stampSrc . '" alt="Stempel Resmi" class="letter-stamp-img" style="position: absolute; left: -50px; top: 0px; width: 145px; height: auto; opacity: 0.88; pointer-events: none; z-index: 2;" />';
         }
         if ($sigSrc) {
-            $sigStampHtml .= '<img src="' . $sigSrc . '" alt="Tanda Tangan" class="letter-signature-img" style="position: relative; max-height: 75px; max-width: 175px; object-fit: contain; display: block; z-index: 1;" />';
+            $sigStampHtml .= '<img src="' . $sigSrc . '" alt="Tanda Tangan" class="letter-signature-img" style="position: relative; max-height: 100px; max-width: 220px; width: auto; object-fit: contain; display: block; z-index: 1;" />';
         } else {
-            $sigStampHtml .= '<div style="height: 55px;">&nbsp;</div>';
+            $sigStampHtml .= '<div style="height: 70px;">&nbsp;</div>';
         }
         $sigStampHtml .= '</div>';
 

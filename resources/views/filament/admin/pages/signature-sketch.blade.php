@@ -424,6 +424,78 @@
                         </div>
                     @endif
                 </div>
+
+                {{-- ── Pratinjau pada Surat (di dalam kolom kiri, di bawah canvas) ── --}}
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f1f5f9;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.625rem;">
+                        <div style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; font-weight: 600; color: #374151;">
+                            <span class="sig-icon-sm" style="color: #6366f1;">
+                                <x-heroicon-o-document-magnifying-glass style="width: 1rem; height: 1rem;" />
+                            </span>
+                            Pratinjau pada Surat
+                        </div>
+                        <span style="font-size: 0.6rem; background: #eff6ff; color: #1d4ed8; padding: 1px 7px; border-radius: 9999px; font-weight: 600; border: 1px solid #bfdbfe;">
+                            Live
+                        </span>
+                    </div>
+
+                    {{-- Simulasi kertas surat mini: kiri = isi surat, kanan = kolom ttd --}}
+                    <div style="display: flex; gap: 0.625rem; align-items: flex-start; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.625rem; overflow: hidden;">
+
+                        {{-- Kiri: simulasi isi surat --}}
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem; padding-bottom: 0.3rem; border-bottom: 1px solid #e2e8f0;">
+                                <div style="width: 16px; height: 16px; background: linear-gradient(135deg, #ec4899, #be185d); border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+                                    <span style="color: white; font-weight: 900; font-size: 6px; line-height: 1;">RS</span>
+                                </div>
+                                <div style="font-size: 0.5rem; font-weight: 700; color: #475569; letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">RSU SYIFA MEDIKA BANJARBARU</div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                <div style="background: #e2e8f0; height: 4px; border-radius: 2px; width: 90%;"></div>
+                                <div style="background: #e2e8f0; height: 4px; border-radius: 2px; width: 70%;"></div>
+                                <div style="background: #e2e8f0; height: 4px; border-radius: 2px; width: 80%;"></div>
+                                <div style="background: #e2e8f0; height: 4px; border-radius: 2px; width: 55%;"></div>
+                            </div>
+                        </div>
+
+                        {{-- Pemisah vertikal --}}
+                        <div style="width: 1px; background: #e2e8f0; align-self: stretch; flex-shrink: 0;"></div>
+
+                        {{-- Kanan: blok tanda tangan --}}
+                        <div style="flex: 0 0 auto; width: 170px; font-size: 0.65rem; line-height: 1.5; color: #1e293b;">
+                            <div style="color: #64748b; white-space: nowrap;">Banjarbaru, {{ now()->translatedFormat('d F Y') }}</div>
+                            <div><strong>{{ $this->data['position'] ?? 'Direktur' }},</strong></div>
+
+                            {{-- Gambar tanda tangan --}}
+                            <div style="margin: 2px 0; min-height: 50px; display: flex; align-items: flex-end;">
+                                @if ($uploaded_file)
+                                    <img src="{{ $uploaded_file->temporaryUrl() }}"
+                                         alt="Tanda Tangan"
+                                         style="max-height: 65px; max-width: 160px; width: auto; object-fit: contain; display: block;" />
+                                @elseif ($signature_data)
+                                    <img src="{{ $signature_data }}"
+                                         alt="Tanda Tangan"
+                                         style="max-height: 65px; max-width: 160px; width: auto; object-fit: contain; display: block;" />
+                                @else
+                                    <div style="width: 100%; border-bottom: 1px dashed #cbd5e1; color: #94a3b8; font-size: 0.55rem; text-align: center; padding-bottom: 2px; font-style: italic;">
+                                        [ tanda tangan ]
+                                    </div>
+                                @endif
+                            </div>
+
+                            <div><strong><u>{{ $this->data['name'] ?? 'Nama Penanda Tangan' }}</u></strong></div>
+                            @if (!empty($this->data['nip']))
+                                <div>NIP. {{ $this->data['nip'] }}</div>
+                            @else
+                                <div style="color: #94a3b8; font-style: italic; font-size: 0.58rem;">[NIP jika ada]</div>
+                            @endif
+                        </div>
+                    </div>
+
+                    <p style="font-size: 0.6rem; color: #94a3b8; margin-top: 0.375rem;">
+                        Diperbarui otomatis setelah Anda selesai menggores.
+                    </p>
+                </div>
             </div>
 
             {{-- Kolom Kanan: Form Pejabat --}}
