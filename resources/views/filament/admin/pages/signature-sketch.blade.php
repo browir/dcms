@@ -656,7 +656,7 @@
                     </div>
                 </div>
                 <span style="font-size: 0.75rem; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 9999px; font-weight: 600;">
-                    Total: {{ count($this->signatures) }} tanda tangan milik Anda
+                    {{ count($this->signatures) > 0 ? '✓ Tanda tangan aktif' : 'Belum ada tanda tangan' }}
                 </span>
             </div>
 
@@ -671,19 +671,13 @@
             @else
                 <div class="sig-gallery">
                     @foreach ($this->signatures as $sig)
-                        <div class="sig-item-card {{ $sig->is_active ? 'is-active' : '' }}">
+                        <div class="sig-item-card is-active">
                             <div>
                                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    @if ($sig->is_active)
-                                        <span class="sig-icon-sm" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 600; color: #065f46; background: #d1fae5; border: 1px solid #6ee7b7; padding: 2px 8px; border-radius: 9999px;">
-                                            <x-heroicon-m-check-circle class="w-3.5 h-3.5" style="width: 0.875rem; height: 0.875rem;" />
-                                            Aktif Utama
-                                        </span>
-                                    @else
-                                        <span style="display: inline-flex; font-size: 0.7rem; font-weight: 500; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 9999px;">
-                                            Tersimpan
-                                        </span>
-                                    @endif
+                                    <span class="sig-icon-sm" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 600; color: #065f46; background: #d1fae5; border: 1px solid #6ee7b7; padding: 2px 8px; border-radius: 9999px;">
+                                        <x-heroicon-m-check-circle class="w-3.5 h-3.5" style="width: 0.875rem; height: 0.875rem;" />
+                                        Aktif Utama
+                                    </span>
 
                                     <span style="font-size: 0.7rem; color: #94a3b8;">
                                         {{ $sig->created_at?->translatedFormat('d M Y') }}
@@ -693,7 +687,7 @@
                                 {{-- Kotak Gambar Tanda Tangan --}}
                                 <div class="sig-img-box">
                                     @if ($sig->signature_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($sig->signature_path))
-                                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($sig->signature_path) }}" 
+                                        <img src="{{ asset('storage/' . $sig->signature_path) }}" 
                                              alt="Tanda Tangan {{ $sig->name }}">
                                     @else
                                         <span style="font-size: 0.75rem; color: #94a3b8; font-style: italic;">File tanda tangan tidak ditemukan</span>
@@ -723,21 +717,11 @@
 
                             {{-- Tombol Aksi --}}
                             <div style="margin-top: 0.875rem; padding-top: 0.625rem; border-top: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
-                                @if (! $sig->is_active)
-                                    <button type="button" 
-                                            wire:click="setActiveSignature({{ $sig->id }})"
-                                            class="sig-icon-sm"
-                                            style="display: inline-flex; align-items: center; gap: 4px; background: none; border: none; font-size: 0.75rem; font-weight: 600; color: #2563eb; cursor: pointer;">
-                                        <x-heroicon-m-check class="w-3.5 h-3.5" style="width: 0.875rem; height: 0.875rem;" />
-                                        Jadikan Aktif
-                                    </button>
-                                @else
-                                    <span style="font-size: 0.75rem; color: #059669; font-weight: 500;">Sedang Digunakan</span>
-                                @endif
+                                <span style="font-size: 0.75rem; color: #059669; font-weight: 500;">Sedang Digunakan</span>
 
                                 <button type="button" 
                                         wire:click="deleteSignature({{ $sig->id }})"
-                                        wire:confirm="Yakin ingin menghapus tanda tangan Anda ini?"
+                                        wire:confirm="Yakin ingin menghapus tanda tangan Anda? Anda harus membuat tanda tangan baru untuk dapat menandatangani surat."
                                         class="sig-icon-sm"
                                         style="display: inline-flex; align-items: center; gap: 4px; background: none; border: none; font-size: 0.75rem; color: #ef4444; cursor: pointer;">
                                     <x-heroicon-m-trash class="w-3.5 h-3.5" style="width: 0.875rem; height: 0.875rem;" />

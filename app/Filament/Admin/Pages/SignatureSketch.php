@@ -159,10 +159,7 @@ class SignatureSketch extends Page implements HasForms
                     ->native(false)
                     ->prefixIcon('heroicon-o-building-office'),
 
-                Toggle::make('is_active')
-                    ->label('Jadikan tanda tangan aktif utama')
-                    ->helperText('Tanda tangan aktif akan otomatis menjadi pilihan utama di dokumen baru.')
-                    ->default(true),
+
             ])
             ->statePath('data');
     }
@@ -175,7 +172,7 @@ class SignatureSketch extends Page implements HasForms
         $nip = $formData['nip'] ?? null;
         $position = $formData['position'];
         $companyId = $formData['company_id'] ?? null;
-        $isActive = (bool) ($formData['is_active'] ?? true);
+        $isActive = true; // selalu aktif, hanya ada 1 tanda tangan per akun
 
         $signaturePath = null;
 
@@ -224,22 +221,23 @@ class SignatureSketch extends Page implements HasForms
             return;
         }
 
-        // Jika diset sebagai aktif, nonaktifkan tanda tangan lain milik user ini
-        if ($isActive) {
-            Signature::query()
-                ->where('user_id', Auth::id())
-                ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
-                ->update(['is_active' => false]);
+        // Hapus semua tanda tangan lama milik akun ini (1 akun = 1 tanda tangan)
+        $oldSignatures = Signature::where('user_id', Auth::id())->get();
+        foreach ($oldSignatures as $old) {
+            if ($old->signature_path && Storage::disk('public')->exists($old->signature_path)) {
+                Storage::disk('public')->delete($old->signature_path);
+            }
+            $old->delete();
         }
 
         $signature = Signature::create([
-            'user_id' => Auth::id(),
-            'company_id' => $companyId,
-            'name' => $name,
-            'nip' => $nip,
-            'position' => $position,
+            'user_id'        => Auth::id(),
+            'company_id'     => $companyId,
+            'name'           => $name,
+            'nip'            => $nip,
+            'position'       => $position,
             'signature_path' => $signaturePath,
-            'is_active' => $isActive,
+            'is_active'      => true, // selalu aktif, karena hanya ada 1
         ]);
 
         // Simpan juga ke user yang login jika relevan
