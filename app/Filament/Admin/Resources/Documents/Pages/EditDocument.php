@@ -45,6 +45,17 @@ class EditDocument extends EditRecord
         return $data;
     }
 
+    protected function afterSave(): void
+    {
+        /** @var \App\Models\Document $record */
+        $record = $this->getRecord();
+        $user = \Illuminate\Support\Facades\Auth::user();
+
+        if ($record->status === \App\Models\Document::STATUS_APPROVED && $user?->hasRole(['direktur', 'super_admin']) && ! $record->reviewed_by_direktur) {
+            $record->approveByDirektur($user);
+        }
+    }
+
     protected function getHeaderActions(): array
     {
         return [

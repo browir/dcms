@@ -78,6 +78,8 @@ class CreateDocument extends CreateRecord
         $record = $this->getRecord();
         if (in_array($record->status, [Document::STATUS_PENDING_KABID, Document::STATUS_PENDING_DIREKTUR])) {
             $record->submitForReview();
+        } elseif ($record->status === Document::STATUS_APPROVED && Auth::user()?->hasRole(['direktur', 'super_admin']) && ! $record->reviewed_by_direktur) {
+            $record->approveByDirektur(Auth::user());
         }
     }
 }

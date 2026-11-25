@@ -147,7 +147,38 @@ class ViewDocument extends ViewRecord
                         ->send();
                 }),
 
-            /* ── Submit / Re-submit for Review ── */
+            /* ── Terbitkan Langsung (Khusus Direktur / Super Admin) ── */
+            Action::make('direct_publish')
+                ->label('Terbitkan')
+                ->icon('heroicon-o-check-circle')
+                ->color('primary')
+                ->requiresConfirmation()
+                ->modalHeading('Terbitkan Dokumen / Surat?')
+                ->modalDescription('Dokumen akan langsung diterbitkan tanpa proses review dan tanda tangan digital Anda akan disematkan secara otomatis.')
+                ->modalIcon('heroicon-o-check-circle')
+                ->visible(fn (): bool => (auth()->user()?->hasRole(['direktur', 'super_admin']) ?? false)
+                    && in_array($this->record->status, [
+                        \App\Models\Document::STATUS_DRAFT,
+                        \App\Models\Document::STATUS_PENDING_KABID,
+                        \App\Models\Document::STATUS_PENDING_DIREKTUR,
+                    ]))
+                ->action(function () {
+                    /** @var \App\Models\User $user */
+                    $user = Auth::user();
+                    $this->record->approveByDirektur($user);
+
+                    if (in_array($this->record->document_type, ['form', 'hybrid']) && $this->record->content) {
+                        $this->record->generateFileFromContent();
+                    }
+
+                    Notification::make()
+                        ->title('Dokumen Berhasil Diterbitkan')
+                        ->body('Dokumen telah diterbitkan dan tanda tangan digital Anda telah disematkan.')
+                        ->success()
+                        ->send();
+                }),
+
+            /* ── Submit / Re-submit for Review (Selain Direktur) ── */
             Action::make('submit_review')
                 ->label(fn (): string => $this->record->rejections()->exists() ? 'Ajukan Ulang Review' : 'Kirim untuk Review')
                 ->icon('heroicon-o-paper-airplane')
@@ -165,7 +196,7 @@ class ViewDocument extends ViewRecord
                         : "Dokumen akan dikirim ke {$targetRole} untuk direview. Pastikan dokumen sudah lengkap.";
                 })
                 ->modalIcon('heroicon-o-paper-airplane')
-                ->visible(fn (): bool => $this->record->status === 'draft')
+                ->visible(fn (): bool => $this->record->status === 'draft' && ! (auth()->user()?->hasRole('direktur') ?? false))
                 ->action(function () {
                     $this->record->submitForReview();
                     $wasRejected = $this->record->rejections()->exists();

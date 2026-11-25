@@ -441,8 +441,8 @@ class DocumentsTable
             return $options;
         }
 
-        // Dokumen rejected/draft bisa diajukan untuk review oleh pemiliknya
-        if ($record->status === 'draft' && $record->user_id === $user->id) {
+        // Dokumen rejected/draft bisa diajukan untuk review oleh pemiliknya (kecuali Direktur yang langsung terbitkan)
+        if ($record->status === 'draft' && $record->user_id === $user->id && ! $user->hasRole('direktur')) {
             $wasRejected = $record->rejections()->exists();
             $options['submit_review'] = $wasRejected ? 'Ajukan Ulang Review' : 'Ajukan ke Review';
         }
@@ -459,10 +459,12 @@ class DocumentsTable
             $options['reject_direktur'] = 'Tolak Dokumen';
         }
 
-        // Super admin bisa setujui/tolak langsung draft
-        if ($user->hasRole('super_admin') && $record->status === 'draft') {
-            $options['approve'] = 'Setujui Langsung';
-            $options['reject'] = 'Tolak Dokumen';
+        // Direktur / Super admin bisa langsung terbitkan draft tanpa review
+        if ($user->hasRole(['direktur', 'super_admin']) && $record->status === 'draft') {
+            $options['approve'] = 'Terbitkan Langsung';
+            if ($user->hasRole('super_admin')) {
+                $options['reject'] = 'Tolak Dokumen';
+            }
         }
 
         return $options;
@@ -491,9 +493,11 @@ class DocumentsTable
             $descriptions['reject_direktur'] = 'Tolak dokumen ini pada tahap persetujuan akhir.';
         }
 
-        if ($user?->hasRole('super_admin') && $record->status === 'draft') {
-            $descriptions['approve'] = 'Lewati antrean review dan langsung tandai dokumen sebagai disetujui.';
-            $descriptions['reject'] = 'Tandai dokumen sebagai ditolak tanpa membuka dropdown tambahan.';
+        if ($user?->hasRole(['direktur', 'super_admin']) && $record->status === 'draft') {
+            $descriptions['approve'] = 'Lewati antrean review, langsung terbitkan dokumen, dan sematkan tanda tangan Anda.';
+            if ($user->hasRole('super_admin')) {
+                $descriptions['reject'] = 'Tandai dokumen sebagai ditolak tanpa membuka dropdown tambahan.';
+            }
         }
 
         return $descriptions;
