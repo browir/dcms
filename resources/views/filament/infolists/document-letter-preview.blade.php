@@ -1,8 +1,20 @@
 @php
     $record = $getRecord();
     $signaturePath = null;
-    if ($record?->signature_id && $record->signature && $record->signature->user_id === $record->created_by) {
-        $signaturePath = $record->signature->signature_path;
+    if ($record?->signature_id && $record->signature) {
+        $sigOwner = $record->signature->user_id;
+        $allowedSigners = array_filter([
+            $record->user_id,
+            $record->created_by,
+            $record->reviewed_by_direktur,
+            $record->direktur_id,
+            $record->reviewed_by_kabid,
+            $record->kabid_id,
+            $record->approver_id,
+        ]);
+        if ($record->status === 'approved' || in_array($sigOwner, $allowedSigners, true)) {
+            $signaturePath = $record->signature->signature_path;
+        }
     }
 @endphp
 

@@ -510,11 +510,18 @@ class DocumentsTable
             'reject_kabid' => $record->rejectByKabid($user, 'Ditolak dari menu proses'),
             'approve_direktur' => $record->approveByDirektur($user),
             'reject_direktur' => $record->rejectByDirektur($user, 'Ditolak dari menu proses'),
-            'approve' => $record->update([
-                'status' => 'approved',
-                'reviewed_by_direktur' => Auth::id(),
-                'direktur_reviewed_at' => now(),
-            ]),
+            'approve' => (function () use ($record, $user) {
+                $sig = \App\Models\Signature::where('user_id', $user->id)->where('is_active', true)->latest('id')->first();
+                $updateData = [
+                    'status' => 'approved',
+                    'reviewed_by_direktur' => $user->id,
+                    'direktur_reviewed_at' => now(),
+                ];
+                if ($sig) {
+                    $updateData['signature_id'] = $sig->id;
+                }
+                $record->update($updateData);
+            })(),
             'reject' => $record->update([
                 'status' => 'rejected',
             ]),

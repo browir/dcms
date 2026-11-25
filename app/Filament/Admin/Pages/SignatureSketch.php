@@ -81,20 +81,20 @@ class SignatureSketch extends Page implements HasForms
         return $form
             ->schema([
                 Select::make('profile_template')
-                    ->label('Template Profil Pejabat (Isi Otomatis)')
-                    ->placeholder('Pilih template pejabat untuk mengisi data otomatis...')
+                    ->label('Profil Pejabat (Isi Otomatis)')
+                    ->placeholder('Pilih profil pejabat untuk mengisi data otomatis...')
                     ->options(function () {
                         $opts = [
-                            'puga' => '⭐ dr. Puga Sharaz Wangi, M.A.R.S. — Direktur (NIP: 01042019232)',
+                            'puga' => 'dr. Puga Sharaz Wangi, M.A.R.S. — Direktur (NIP: 01042019232)',
                         ];
                         /** @var User|null $user */
                         $user = Auth::user();
                         if ($user && $user->name !== 'dr. Puga Sharaz Wangi, M.A.R.S.') {
                             $userNip = $user->nip ? " (NIP: {$user->nip})" : '';
                             $userPos = $user->hasRole('direktur') ? 'Direktur' : ($user->unit?->name ?? $user->department?->name ?? 'Pegawai');
-                            $opts['self'] = "👤 {$user->name} — {$userPos}{$userNip} (Profil Akun Saya)";
+                            $opts['self'] = "{$user->name} — {$userPos}{$userNip} (Profil Akun Saya)";
                         }
-                        $opts['custom'] = '✏️ Profil Lain / Ketik Manual Sendiri...';
+                        $opts['custom'] = 'Profil Lain / Input Manual...';
                         return $opts;
                     })
                     ->searchable()
@@ -103,7 +103,7 @@ class SignatureSketch extends Page implements HasForms
                     ->live()
                     ->dehydrated(false)
                     ->prefixIcon('heroicon-o-sparkles')
-                    ->helperText('Pilih salah satu profil pejabat untuk langsung mengisi Nama, NIP, dan Jabatan tanpa perlu menghafal NIP.')
+                    ->helperText('Pilih salah satu profil pejabat untuk langsung mengisi Nama, NIP, dan Jabatan secara otomatis.')
                     ->afterStateUpdated(function ($state, callable $set) {
                         if ($state === 'puga') {
                             $set('name', 'dr. Puga Sharaz Wangi, M.A.R.S.');

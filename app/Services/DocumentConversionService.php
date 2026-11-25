@@ -756,10 +756,21 @@ class DocumentConversionService
         $signaturePath = null;
         if ($document->signature_id) {
             $sig = $document->signature;
-            // Hanya izinkan jika tanda tangan milik akun si pembuat dokumen
-            $ownerId = $document->user_id ?? $document->created_by;
-            if ($sig && $sig->user_id === $ownerId) {
-                $signaturePath = $sig->signature_path;
+            if ($sig) {
+                $sigOwner = $sig->user_id;
+                $allowedSigners = array_filter([
+                    $document->user_id,
+                    $document->created_by,
+                    $document->reviewed_by_direktur,
+                    $document->direktur_id,
+                    $document->reviewed_by_kabid,
+                    $document->kabid_id,
+                    $document->approver_id,
+                ]);
+
+                if ($document->status === 'approved' || in_array($sigOwner, $allowedSigners, true)) {
+                    $signaturePath = $sig->signature_path;
+                }
             }
         }
 

@@ -551,12 +551,24 @@ class Document extends Model implements Auditable
      */
     public function approveByDirektur(User $direktur, ?string $notes = null): void
     {
-        $this->update([
+        // Otomatis sematkan tanda tangan digital aktif milik akun Direktur yang menyetujui
+        $sig = Signature::where('user_id', $direktur->id)
+            ->where('is_active', true)
+            ->latest('id')
+            ->first();
+
+        $updateData = [
             'status' => self::STATUS_APPROVED,
             'reviewed_by_direktur' => $direktur->id,
             'direktur_reviewed_at' => now(),
             'direktur_notes' => $notes,
-        ]);
+        ];
+
+        if ($sig) {
+            $updateData['signature_id'] = $sig->id;
+        }
+
+        $this->update($updateData);
 
         try {
             if ($this->user) {

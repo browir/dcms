@@ -339,13 +339,13 @@ class DocumentForm
                             Grid::make(['default' => 1, 'sm' => 12])
                                 ->schema([
                                     Select::make('preset_signer')
-                                        ->label('Template Pejabat Penanda Tangan (Pilih Cepat)')
-                                        ->placeholder('-- Pilih Template Pejabat (Nama, NIP & Jabatan Otomatis Terisi) --')
+                                        ->label('Profil Pejabat Penanda Tangan')
+                                        ->placeholder('Pilih profil pejabat untuk mengisi data penanda tangan otomatis...')
                                         ->options(function (Get $get) {
                                             $options = [];
 
                                             // 1. Template Utama Direktur
-                                            $options['puga'] = '⭐ dr. Puga Sharaz Wangi, M.A.R.S. — Direktur (NIP: 01042019232)';
+                                            $options['puga'] = 'dr. Puga Sharaz Wangi, M.A.R.S. — Direktur (NIP: 01042019232)';
 
                                             // 2. Daftar tanda tangan digital milik akun pengguna login (KHUSUS AKUN PEMBUAT)
                                             $mySignatures = Signature::query()
@@ -353,9 +353,8 @@ class DocumentForm
                                                 ->get();
 
                                             foreach ($mySignatures as $sig) {
-                                                $badge = $sig->is_active ? '⭐ ' : '';
                                                 $nip = $sig->nip ? " (NIP: {$sig->nip})" : '';
-                                                $options["mysig_{$sig->id}"] = "✍️ {$badge}{$sig->name} — {$sig->position}{$nip} (Tanda Tangan Saya)";
+                                                $options["mysig_{$sig->id}"] = "{$sig->name} — {$sig->position}{$nip} (Tanda Tangan Saya)";
                                             }
 
                                             // 3. User login saat ini (jika belum ada tanda tangan digital)
@@ -364,11 +363,11 @@ class DocumentForm
                                             if ($currentUser && $mySignatures->isEmpty() && $currentUser->name !== 'dr. Puga Sharaz Wangi, M.A.R.S.') {
                                                 $userNip = $currentUser->nip ? " (NIP: {$currentUser->nip})" : '';
                                                 $userRole = $currentUser->unit?->name ?? $currentUser->department?->name ?? 'Pegawai';
-                                                $options['self'] = "👤 {$currentUser->name} — {$userRole}{$userNip} (Saya Sendiri)";
+                                                $options['self'] = "{$currentUser->name} — {$userRole}{$userNip} (Profil Akun Saya)";
                                             }
 
                                             // 4. Opsi manual
-                                            $options['custom'] = '✏️ Input Manual Sendiri / Pejabat Lain...';
+                                            $options['custom'] = 'Input Manual / Pejabat Lainnya...';
 
                                             return $options;
                                         })
@@ -379,7 +378,7 @@ class DocumentForm
                                         ->dehydrated(false)
                                         ->columnSpan(['default' => 12, 'sm' => 12])
                                         ->prefixIcon('heroicon-o-user-circle')
-                                        ->helperText('Pilih template pejabat di atas agar Nama, NIP, dan Jabatan otomatis terisi tanpa perlu menghafal NIP.')
+                                        ->helperText('Pilih profil pejabat agar Nama, NIP, dan Jabatan terisi secara otomatis.')
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                             if (! $state) {
                                                 return;
@@ -440,7 +439,7 @@ class DocumentForm
 
                                     TextInput::make('signer_title')
                                         ->label('Jabatan Penanda Tangan')
-                                        ->placeholder('Contoh: Direktur')
+                                        ->placeholder('Contoh: Direktur / Kepala Bidang')
                                         ->default('Direktur')
                                         ->live(onBlur: true)
                                         ->columnSpan(['default' => 12, 'sm' => 4])
@@ -452,13 +451,13 @@ class DocumentForm
                                         }),
 
                                     TextInput::make('signer_name')
-                                        ->label('Nama Pejabat Penanda Tangan')
+                                        ->label('Direktur')
                                         ->placeholder('Contoh: dr. Puga Sharaz Wangi, M.A.R.S.')
                                         ->required(fn ($get) => in_array($get('document_type'), ['form', 'hybrid']))
                                         ->live(onBlur: true)
                                         ->columnSpan(['default' => 12, 'sm' => 4])
                                         ->prefixIcon('heroicon-o-user')
-                                        ->helperText('Wajib diisi sesuai nama pejabat yang bertanda tangan.')
+                                        ->helperText('Nama pejabat yang bertanda tangan sebagai direktur.')
                                         ->afterStateUpdated(function ($state, Set $set, Get $get, $old) {
                                             if (filled($get('content'))) {
                                                 $c = $get('content');
@@ -498,14 +497,14 @@ class DocumentForm
                                         }),
 
                                     Select::make('signature_id')
-                                        ->label('Tanda Tangan Digital Saya')
-                                        ->placeholder('-- Tanpa Goresan Digital (Tanda Tangan Basah) --')
+                                        ->label('Tanda Tangan Anda')
+                                        ->placeholder('Tanda Tangan Anda')
                                         ->options(function () {
                                             return Signature::query()
                                                 ->where('user_id', Auth::id())
                                                 ->get()
                                                 ->mapWithKeys(fn (Signature $s) => [
-                                                    $s->id => ($s->is_active ? '⭐ ' : '') . $s->name . ' — ' . $s->position . ($s->nip ? ' (NIP: ' . $s->nip . ')' : '')
+                                                    $s->id => $s->name . ' — ' . $s->position . ($s->nip ? ' (NIP: ' . $s->nip . ')' : '')
                                                 ])
                                                 ->all();
                                         })
@@ -519,11 +518,11 @@ class DocumentForm
                                             $hasSig = Signature::query()->where('user_id', Auth::id())->exists();
                                             return $hasSig
                                                 ? 'Hanya tanda tangan milik akun Anda sendiri yang dapat dibubuhkan.'
-                                                : 'Anda belum memiliki sketch tanda tangan. Buat di menu Dokumen > Sketch Tanda Tangan.';
+                                                : 'Anda belum memiliki tanda tangan digital. Buat di menu Dokumen > Sketch Tanda Tangan.';
                                         }),
 
                                     Toggle::make('has_stamp')
-                                        ->label('Bubuhkan Stempel Resmi (RSU Syifa Medika)')
+                                        ->label('Stempel (Syifa Medika)')
                                         ->helperText('Menampilkan stempel resmi rumah sakit pada kolom tanda tangan dokumen.')
                                         ->default(false)
                                         ->live()

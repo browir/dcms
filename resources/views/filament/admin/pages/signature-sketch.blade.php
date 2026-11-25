@@ -473,7 +473,7 @@
                         <span>Mode Layar Penuh Tanda Tangan</span>
                     </div>
                     <div style="font-size: 0.7rem; color: #94a3b8;">
-                        💡 Tips: Putar HP ke posisi miring (Landscape) jika membutuhkan area tanda tangan yang lebih luas.
+                        Tips: Putar perangkat ke posisi miring (Landscape) jika membutuhkan area tanda tangan yang lebih luas.
                     </div>
                 </div>
                 
