@@ -360,6 +360,15 @@ class DocumentConversionService
         // dan sematkan stempel serta goresan tanda tangan jika diaktifkan
         $content = self::alignSignatureBlockToRight($content, $hasStamp, $signaturePath, $isForPdf, $signerName);
 
+        // Pastikan bagian Lampiran Surat selalu dimulai pada halaman baru agar tidak terpotong antar halaman
+        if (str_contains($content, 'Lampiran Surat')) {
+            $content = preg_replace(
+                '/(?:<br\s*\/?>|\s|<hr\s*\/?>|<p[^>]*>\s*(?:&nbsp;|\s|<br\s*\/?>)*<\/p>)*(<div[^>]*page-break-before[^>]*>[\s\S]*?<\/div>\s*)?(<p\b[^>]*>\s*Lampiran Surat)/i',
+                '<div style="page-break-before: always; break-before: page;"></div>$2',
+                $content
+            ) ?? $content;
+        }
+
         $hasOfficialLetterHeader = str_contains($content, 'SURAT')
             || str_contains($content, 'KEPUTUSAN')
             || str_contains($content, 'Nomor:')
@@ -863,6 +872,13 @@ class DocumentConversionService
                     border-collapse: collapse;
                     width: 100%;
                     margin-bottom: 15px;
+                }
+                thead {
+                    display: table-header-group;
+                }
+                tr {
+                    page-break-inside: avoid;
+                    break-inside: avoid;
                 }
                 table.letter-layout-table,
                 table.letter-meta-table,
