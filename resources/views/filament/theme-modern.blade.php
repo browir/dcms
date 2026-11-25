@@ -571,5 +571,41 @@
         border: 1px solid rgba(156, 163, 175, 0.4) !important;
     }
 
+    /* ── RichEditor (TipTap/ProseMirror): Tabel tanda tangan resmi selalu berada di kanan (58% spacer : 42% ttd) ── */
+    .fi-fo-rich-editor .ProseMirror table.letter-signature-table,
+    .fi-fo-rich-editor .ProseMirror table:has(.letter-signature-block),
+    .fi-fo-rich-editor .ProseMirror table:has(tbody > tr:only-child > td:first-child:empty),
+    .fi-fo-rich-editor .ProseMirror table:has(tbody > tr:only-child > td:first-child > p:empty) {
+        width: 100% !important;
+        table-layout: fixed !important;
+        border: none !important;
+        margin-top: 1.5rem !important;
+        margin-bottom: 1.25rem !important;
+    }
+
+    .fi-fo-rich-editor .ProseMirror table.letter-signature-table tr > td:first-child,
+    .fi-fo-rich-editor .ProseMirror table:has(.letter-signature-block) tr > td:first-child,
+    .fi-fo-rich-editor .ProseMirror table:has(tbody > tr:only-child > td:first-child:empty) tr > td:first-child,
+    .fi-fo-rich-editor .ProseMirror table:has(tbody > tr:only-child > td:first-child > p:empty) tr > td:first-child {
+        width: 58% !important;
+        min-width: 58% !important;
+        max-width: 58% !important;
+        border: none !important;
+        padding: 0 !important;
+    }
+
+    .fi-fo-rich-editor .ProseMirror table.letter-signature-table tr > td:last-child,
+    .fi-fo-rich-editor .ProseMirror table:has(.letter-signature-block) tr > td:last-child,
+    .fi-fo-rich-editor .ProseMirror table:has(tbody > tr:only-child > td:first-child:empty) tr > td:last-child,
+    .fi-fo-rich-editor .ProseMirror table:has(tbody > tr:only-child > td:first-child > p:empty) tr > td:last-child {
+        width: 42% !important;
+        min-width: 42% !important;
+        max-width: 42% !important;
+        border: none !important;
+        padding: 0 !important;
+        text-align: left !important;
+        vertical-align: top !important;
+    }
+
 </style>
 

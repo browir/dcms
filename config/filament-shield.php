@@ -214,6 +214,8 @@ return [
             App\Filament\Admin\Pages\Dashboard::class,
             // Diatur izin custom access_reminder_hub.
             ReminderHub::class,
+            // Diatur izin custom manage_signature_sketch.
+            \App\Filament\Admin\Pages\SignatureSketch::class,
         ],
     ],
 
@@ -264,6 +266,7 @@ return [
         'send_meeting_reminder' => 'Kirim pengingat rapat',
         'send_expiry_reminder' => 'Kirim pengingat masa berlaku',
         'edit_letter_perihal' => 'Ubah perihal surat setelah terbit',
+        'manage_signature_sketch' => 'Kelola Sketch Tanda Tangan Pejabat / Direktur',
     ],
 
     /*

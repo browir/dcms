@@ -27,9 +27,22 @@
     $downloadPdfUrl ??= null;
     $streamPdfUrl ??= null;
     $downloadWordUrl ??= null;
+    $hasStamp = (bool) ($hasStamp ?? false);
+    $signaturePath ??= null;
 
     $isEmpty = blank(trim(strip_tags((string) ($content ?? ''), '<img><table>')));
-    $letterHtml = $isEmpty ? '' : \App\Services\DocumentConversionService::prepareLetterContent($content ?? '', $title ?? null, $code, $tanggalSurat ?? null);
+    $letterHtml = $isEmpty ? '' : \App\Services\DocumentConversionService::prepareLetterContent(
+        $content ?? '',
+        $title ?? null,
+        $code,
+        $tanggalSurat ?? null,
+        $signerName ?? null,
+        $signerNip ?? null,
+        $signerTitle ?? null,
+        $hasStamp,
+        $signaturePath,
+        false
+    );
     $assets = \App\Services\DocumentConversionService::getLetterheadAssetUrls();
 @endphp
 
@@ -170,6 +183,9 @@
         padding: calc(3 * var(--u)) calc(4 * var(--u)) !important;
     }
     .dlp-content table.letter-signature-table {
+        width: 100% !important;
+        table-layout: fixed !important;
+        border: none !important;
         margin-top: calc(24 * var(--u)) !important;
         margin-bottom: calc(20 * var(--u)) !important;
     }
@@ -177,10 +193,45 @@
         border: none !important;
         padding: 0 !important;
     }
+    .dlp-content table.letter-signature-table tr > td:first-child {
+        width: 58% !important;
+        min-width: 58% !important;
+        max-width: 58% !important;
+        border: none !important;
+    }
+    .dlp-content table.letter-signature-table tr > td:last-child,
     .dlp-content .letter-signature-block {
+        width: 42% !important;
+        min-width: 42% !important;
+        max-width: 42% !important;
         text-align: left !important;
         vertical-align: top !important;
         padding-left: 0 !important;
+        border: none !important;
+    }
+    .dlp-content .letter-sig-stamp-container {
+        position: relative;
+        width: 100%;
+        min-height: calc(65 * var(--u));
+        margin: calc(4 * var(--u)) 0;
+    }
+    .dlp-content .letter-sig-stamp-container .letter-stamp-img {
+        position: absolute;
+        left: calc(-50 * var(--u));
+        top: 0;
+        width: calc(135 * var(--u));
+        height: auto;
+        opacity: 0.88;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .dlp-content .letter-sig-stamp-container .letter-signature-img {
+        position: relative;
+        max-height: calc(75 * var(--u));
+        max-width: calc(175 * var(--u));
+        object-fit: contain;
+        display: block;
+        z-index: 1;
     }
 
     /* Tabel data bergaris (Tabel Petugas SPT, Daftar Undangan, SPPD, dll.) */

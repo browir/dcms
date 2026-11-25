@@ -23,6 +23,7 @@ class DocumentTemplate extends Model
         'company_id',
         'category_id',
         'is_active',
+        'has_stamp',
         'allow_file_upload',
         'allow_manual_input',
     ];
@@ -30,6 +31,7 @@ class DocumentTemplate extends Model
     protected $casts = [
         'template_fields' => 'array',
         'is_active' => 'boolean',
+        'has_stamp' => 'boolean',
         'allow_file_upload' => 'boolean',
         'allow_manual_input' => 'boolean',
     ];

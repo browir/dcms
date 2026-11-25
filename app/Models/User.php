@@ -26,6 +26,7 @@ class User extends Authenticatable implements Auditable, FilamentUser, HasAvatar
         'name',
         'email',
         'avatar_url',
+        'signature_path',
         'phone',
         'username',
         'nip',
@@ -205,6 +206,11 @@ class User extends Authenticatable implements Auditable, FilamentUser, HasAvatar
     public function discussions(): HasMany
     {
         return $this->hasMany(DocumentDiscussion::class);
+    }
+
+    public function signatures(): HasMany
+    {
+        return $this->hasMany(Signature::class);
     }
 
     /**

@@ -55,9 +55,9 @@ class AdminPanelProvider extends PanelProvider
             ->navigationGroups([
                 NavigationGroup::make('Agenda'),
                 NavigationGroup::make('Administrasi'),
-                NavigationGroup::make('Dokumen')->icon('heroicon-o-document-duplicate'),
-                NavigationGroup::make('Data Master')->icon('heroicon-o-circle-stack'),
-                NavigationGroup::make('Pengaturan')->icon('heroicon-o-cog-6-tooth'),
+                NavigationGroup::make('Dokumen'),
+                NavigationGroup::make('Data Master'),
+                NavigationGroup::make('Pengaturan'),
             ])
             ->renderHook(
                 'panels::head.end',

@@ -9,6 +9,7 @@ use App\Models\Document;
 use App\Models\DocumentCategory;
 use App\Models\DocumentTemplate;
 use App\Models\LetterNumber;
+use App\Models\Signature;
 use App\Models\Unit;
 use App\Models\User;
 use Filament\Actions\Action;
@@ -308,6 +309,10 @@ class DocumentForm
                                         return;
                                     }
 
+                                    if ($template->has_stamp) {
+                                        $set('has_stamp', true);
+                                    }
+
                                     $nomor = $get('code_number');
                                     if (! $nomor && $get('letter_number_id')) {
                                         $nomor = LetterNumber::find($get('letter_number_id'))?->nomor;
@@ -318,14 +323,212 @@ class DocumentForm
                                         ? \Illuminate\Support\Carbon::parse($get('published_at'))->translatedFormat('d F Y')
                                         : now()->translatedFormat('d F Y');
 
+                                    $signerName = filled($get('signer_name')) ? $get('signer_name') : '[Nama Penanda Tangan]';
+                                    $signerNip = filled($get('signer_nip')) ? $get('signer_nip') : '[NIP Penanda Tangan]';
+                                    $signerTitle = filled($get('signer_title')) ? $get('signer_title') : 'Direktur';
+
                                     $content = str_replace(
-                                        ['{nomor_surat}', '{nomor}', '{tanggal}', '{nama_direktur}', '{nip_direktur}'],
-                                        [$nomor, $nomor, $tanggal, 'dr. Puga Sharaz Wangi, M.A.R.S.', '01042019232'],
+                                        ['{nomor_surat}', '{nomor}', '{tanggal}', '{nama_direktur}', '{nip_direktur}', '{jabatan_direktur}', '{jabatan}'],
+                                        [$nomor, $nomor, $tanggal, $signerName, $signerNip, $signerTitle, $signerTitle],
                                         $template->template_content
                                     );
 
                                     $set('content', $content);
                                 }),
+
+                            Grid::make(['default' => 1, 'sm' => 12])
+                                ->schema([
+                                    Select::make('preset_signer')
+                                        ->label('Template Pejabat Penanda Tangan (Pilih Cepat)')
+                                        ->placeholder('-- Pilih Template Pejabat (Nama, NIP & Jabatan Otomatis Terisi) --')
+                                        ->options(function (Get $get) {
+                                            $options = [];
+
+                                            // 1. Template Utama Direktur
+                                            $options['puga'] = '⭐ dr. Puga Sharaz Wangi, M.A.R.S. — Direktur (NIP: 01042019232)';
+
+                                            // 2. Daftar tanda tangan digital milik akun pengguna login (KHUSUS AKUN PEMBUAT)
+                                            $mySignatures = Signature::query()
+                                                ->where('user_id', Auth::id())
+                                                ->get();
+
+                                            foreach ($mySignatures as $sig) {
+                                                $badge = $sig->is_active ? '⭐ ' : '';
+                                                $nip = $sig->nip ? " (NIP: {$sig->nip})" : '';
+                                                $options["mysig_{$sig->id}"] = "✍️ {$badge}{$sig->name} — {$sig->position}{$nip} (Tanda Tangan Saya)";
+                                            }
+
+                                            // 3. User login saat ini (jika belum ada tanda tangan digital)
+                                            /** @var User|null $currentUser */
+                                            $currentUser = Auth::user();
+                                            if ($currentUser && $mySignatures->isEmpty() && $currentUser->name !== 'dr. Puga Sharaz Wangi, M.A.R.S.') {
+                                                $userNip = $currentUser->nip ? " (NIP: {$currentUser->nip})" : '';
+                                                $userRole = $currentUser->unit?->name ?? $currentUser->department?->name ?? 'Pegawai';
+                                                $options['self'] = "👤 {$currentUser->name} — {$userRole}{$userNip} (Saya Sendiri)";
+                                            }
+
+                                            // 4. Opsi manual
+                                            $options['custom'] = '✏️ Input Manual Sendiri / Pejabat Lain...';
+
+                                            return $options;
+                                        })
+                                        ->searchable()
+                                        ->preload()
+                                        ->native(false)
+                                        ->live()
+                                        ->dehydrated(false)
+                                        ->columnSpan(['default' => 12, 'sm' => 12])
+                                        ->prefixIcon('heroicon-o-user-circle')
+                                        ->helperText('Pilih template pejabat di atas agar Nama, NIP, dan Jabatan otomatis terisi tanpa perlu menghafal NIP.')
+                                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                            if (! $state) {
+                                                return;
+                                            }
+
+                                            $oldName = $get('signer_name') ?: '[Nama Penanda Tangan]';
+                                            $oldNip = $get('signer_nip') ?: '[NIP Penanda Tangan]';
+                                            $oldTitle = $get('signer_title') ?: 'Direktur';
+
+                                            $newName = '';
+                                            $newNip = '';
+                                            $newTitle = 'Direktur';
+
+                                            if ($state === 'puga') {
+                                                $newName = 'dr. Puga Sharaz Wangi, M.A.R.S.';
+                                                $newNip = '01042019232';
+                                                $newTitle = 'Direktur';
+                                                $set('signature_id', null);
+                                            } elseif (str_starts_with($state, 'mysig_')) {
+                                                $sigId = (int) str_replace('mysig_', '', $state);
+                                                $sig = Signature::where('user_id', Auth::id())->find($sigId);
+                                                if ($sig) {
+                                                    $newName = $sig->name;
+                                                    $newNip = $sig->nip ?? '';
+                                                    $newTitle = $sig->position;
+                                                    $set('signature_id', $sig->id);
+                                                }
+                                            } elseif ($state === 'self') {
+                                                /** @var User|null $user */
+                                                $user = Auth::user();
+                                                if ($user) {
+                                                    $newName = $user->name;
+                                                    $newNip = $user->nip ?? '';
+                                                    $newTitle = $user->unit?->name ?? $user->department?->name ?? 'Pegawai';
+                                                    $set('signature_id', null);
+                                                }
+                                            } elseif ($state === 'custom') {
+                                                $set('signer_name', '');
+                                                $set('signer_nip', '');
+                                                $set('signature_id', null);
+                                                return;
+                                            }
+
+                                            $set('signer_name', $newName);
+                                            $set('signer_nip', $newNip);
+                                            $set('signer_title', $newTitle);
+
+                                            if (filled($get('content'))) {
+                                                $c = $get('content');
+                                                $c = str_replace(
+                                                    [$oldName, $oldNip, $oldTitle, '[Nama Penanda Tangan]', '[NIP Penanda Tangan]', '{nama_direktur}', '{nip_direktur}'],
+                                                    [$newName, $newNip, $newTitle, $newName, $newNip, $newName, $newNip],
+                                                    $c
+                                                );
+                                                $set('content', $c);
+                                            }
+                                        }),
+
+                                    TextInput::make('signer_title')
+                                        ->label('Jabatan Penanda Tangan')
+                                        ->placeholder('Contoh: Direktur')
+                                        ->default('Direktur')
+                                        ->live(onBlur: true)
+                                        ->columnSpan(['default' => 12, 'sm' => 4])
+                                        ->prefixIcon('heroicon-o-briefcase')
+                                        ->afterStateUpdated(function ($state, Set $set, Get $get, $old) {
+                                            if ($state && $old && $state !== $old && filled($get('content'))) {
+                                                $set('content', str_replace($old, $state, $get('content')));
+                                            }
+                                        }),
+
+                                    TextInput::make('signer_name')
+                                        ->label('Nama Pejabat Penanda Tangan')
+                                        ->placeholder('Contoh: dr. Puga Sharaz Wangi, M.A.R.S.')
+                                        ->required(fn ($get) => in_array($get('document_type'), ['form', 'hybrid']))
+                                        ->live(onBlur: true)
+                                        ->columnSpan(['default' => 12, 'sm' => 4])
+                                        ->prefixIcon('heroicon-o-user')
+                                        ->helperText('Wajib diisi sesuai nama pejabat yang bertanda tangan.')
+                                        ->afterStateUpdated(function ($state, Set $set, Get $get, $old) {
+                                            if (filled($get('content'))) {
+                                                $c = $get('content');
+                                                $target = filled($old) ? $old : '[Nama Penanda Tangan]';
+                                                $replacement = filled($state) ? $state : '[Nama Penanda Tangan]';
+                                                if (str_contains($c, $target)) {
+                                                    $c = str_replace($target, $replacement, $c);
+                                                } elseif (str_contains($c, '[Nama Penanda Tangan]')) {
+                                                    $c = str_replace('[Nama Penanda Tangan]', $replacement, $c);
+                                                } elseif (str_contains($c, '{nama_direktur}')) {
+                                                    $c = str_replace('{nama_direktur}', $replacement, $c);
+                                                }
+                                                $set('content', $c);
+                                            }
+                                        }),
+
+                                    TextInput::make('signer_nip')
+                                        ->label('NIP Penanda Tangan')
+                                        ->placeholder('Contoh: 01042019232')
+                                        ->live(onBlur: true)
+                                        ->columnSpan(['default' => 12, 'sm' => 4])
+                                        ->prefixIcon('heroicon-o-identification')
+                                        ->afterStateUpdated(function ($state, Set $set, Get $get, $old) {
+                                            if (filled($get('content'))) {
+                                                $c = $get('content');
+                                                $target = filled($old) ? $old : '[NIP Penanda Tangan]';
+                                                $replacement = filled($state) ? $state : '[NIP Penanda Tangan]';
+                                                if (str_contains($c, $target)) {
+                                                    $c = str_replace($target, $replacement, $c);
+                                                } elseif (str_contains($c, '[NIP Penanda Tangan]')) {
+                                                    $c = str_replace('[NIP Penanda Tangan]', $replacement, $c);
+                                                } elseif (str_contains($c, '{nip_direktur}')) {
+                                                    $c = str_replace('{nip_direktur}', $replacement, $c);
+                                                }
+                                                $set('content', $c);
+                                            }
+                                        }),
+
+                                    Select::make('signature_id')
+                                        ->label('Tanda Tangan Digital Saya')
+                                        ->placeholder('-- Tanpa Goresan Digital (Tanda Tangan Basah) --')
+                                        ->options(function () {
+                                            return Signature::query()
+                                                ->where('user_id', Auth::id())
+                                                ->get()
+                                                ->mapWithKeys(fn (Signature $s) => [
+                                                    $s->id => ($s->is_active ? '⭐ ' : '') . $s->name . ' — ' . $s->position . ($s->nip ? ' (NIP: ' . $s->nip . ')' : '')
+                                                ])
+                                                ->all();
+                                        })
+                                        ->searchable()
+                                        ->preload()
+                                        ->native(false)
+                                        ->live()
+                                        ->columnSpan(['default' => 12, 'sm' => 6])
+                                        ->prefixIcon('heroicon-o-pencil-square')
+                                        ->helperText(function () {
+                                            $hasSig = Signature::query()->where('user_id', Auth::id())->exists();
+                                            return $hasSig
+                                                ? 'Hanya tanda tangan milik akun Anda sendiri yang dapat dibubuhkan.'
+                                                : 'Anda belum memiliki sketch tanda tangan. Buat di menu Dokumen > Sketch Tanda Tangan.';
+                                        }),
+
+                                    Toggle::make('has_stamp')
+                                        ->label('Bubuhkan Stempel Resmi (RSU Syifa Medika)')
+                                        ->helperText('Menampilkan stempel resmi rumah sakit pada kolom tanda tangan dokumen.')
+                                        ->default(false)
+                                        ->live()
+                                        ->columnSpan(['default' => 12, 'sm' => 6]),
+                                ]),
 
                             RichEditor::make('content')
                                 ->hiddenLabel()
@@ -791,11 +994,25 @@ class DocumentForm
             $code = LetterNumber::query()->whereKey($get('letter_number_id'))->value('nomor');
         }
 
+        $signatureId = $get('signature_id');
+        $signaturePath = null;
+        if ($signatureId) {
+            $sig = Signature::where('user_id', Auth::id())->find($signatureId);
+            if ($sig) {
+                $signaturePath = $sig->signature_path;
+            }
+        }
+
         return [
             'content' => is_string($content) ? $content : '',
             'title' => $get('title'),
             'code' => $code,
             'tanggalSurat' => $get('tanggal_surat'),
+            'signerName' => $get('signer_name'),
+            'signerNip' => $get('signer_nip'),
+            'signerTitle' => $get('signer_title'),
+            'hasStamp' => (bool) $get('has_stamp'),
+            'signaturePath' => $signaturePath,
             'badge' => 'Pratinjau Langsung',
             'note' => 'belum disimpan',
         ];

@@ -297,11 +297,19 @@ class DocumentConversionService
         }
         $footerBase64 = is_file($footerPath) ? 'data:'.$mimeOf($footerPath).';base64,'.base64_encode(file_get_contents($footerPath)) : null;
 
+        // Stempel resmi (RSU Syifa Medika Banjarbaru)
+        $stampPath = public_path('images/stempel_rsusm.png');
+        if (! is_file($stampPath)) {
+            $stampPath = public_path('letterhead/stempel_rsusm.png');
+        }
+        $stampBase64 = is_file($stampPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($stampPath)) : null;
+
         return [
             'kop'       => $kopBase64,
             'watermark' => $bgBase64,   // alias untuk kompatibilitas
             'footer'    => $footerBase64,
             'bg'        => $bgBase64,
+            'stamp'     => $stampBase64,
         ];
     }
 
@@ -315,7 +323,18 @@ class DocumentConversionService
      * Dipakai bersama oleh PDF (buildHtmlForPdf) dan pratinjau HTML
      * (view filament.partials.letter-sheet) agar keduanya selalu identik.
      */
-    public static function prepareLetterContent(?string $content, ?string $title, ?string $code, mixed $tanggalSurat = null): string
+    public static function prepareLetterContent(
+        ?string $content,
+        ?string $title,
+        ?string $code,
+        mixed $tanggalSurat = null,
+        ?string $signerName = null,
+        ?string $signerNip = null,
+        ?string $signerTitle = null,
+        bool $hasStamp = false,
+        ?string $signaturePath = null,
+        bool $isForPdf = false
+    ): string
     {
         $title = htmlspecialchars(filled($title) ? $title : 'Surat Resmi');
         $code = htmlspecialchars(filled($code) ? $code : '-');
@@ -323,18 +342,23 @@ class DocumentConversionService
             ? \Illuminate\Support\Carbon::parse($tanggalSurat)->locale('id')->isoFormat('D MMMM YYYY')
             : now()->locale('id')->isoFormat('D MMMM YYYY');
 
+        $signerName = filled($signerName) ? $signerName : 'dr. Puga Sharaz Wangi, M.A.R.S.';
+        $signerNip = filled($signerNip) ? $signerNip : '01042019232';
+        $signerTitle = filled($signerTitle) ? $signerTitle : 'Direktur';
+
         // Ganti placeholder template yang belum terisi jika ada
         $content = str_replace(
-            ['{nomor_surat}', '{nomor}', '{tanggal}', '{nama_direktur}', '{nip_direktur}'],
-            [$code, $code, $tanggal, 'dr. Puga Sharaz Wangi, M.A.R.S.', '01042019232'],
+            ['{nomor_surat}', '{nomor}', '{tanggal}', '{nama_direktur}', '{nip_direktur}', '{jabatan_direktur}', '{jabatan}'],
+            [$code, $code, $tanggal, $signerName, $signerNip, $signerTitle, $signerTitle],
             (string) $content
         );
 
-        // Pastikan blok tanda tangan terposisi di sebelah kanan (standar tata naskah dinas)
-        $content = self::alignSignatureBlockToRight($content);
-
-        // Normalisasi semua tabel: tabel tata letak (identitas, jadwal, meta, ttd) tanpa border, tabel data bergaris
+        // Normalisasi semua tabel: tabel tata letak (identitas, jadwal, meta) tanpa border, tabel data bergaris
         $content = self::normalizeDocumentTables($content);
+
+        // Pastikan blok tanda tangan terposisi di sebelah kanan (standar tata naskah dinas)
+        // dan sematkan stempel serta goresan tanda tangan jika diaktifkan
+        $content = self::alignSignatureBlockToRight($content, $hasStamp, $signaturePath, $isForPdf, $signerName);
 
         $hasOfficialLetterHeader = str_contains($content, 'SURAT')
             || str_contains($content, 'KEPUTUSAN')
@@ -358,16 +382,24 @@ class DocumentConversionService
      * Menangani tabel tanda tangan (kolom kiri kosong/spacer, kolom kanan isi tanda tangan)
      * serta paragraf tanda tangan (single <p> dengan <br> maupun multi <p> dari RichEditor).
      */
-    public static function alignSignatureBlockToRight(string $content): string
+    public static function alignSignatureBlockToRight(
+        string $content,
+        bool $hasStamp = false,
+        ?string $signaturePath = null,
+        bool $isForPdf = false,
+        ?string $signerName = null
+    ): string
     {
-        // 1. Tangani tabel 2 kolom di mana kolom pertama kosong/spacer dan kolom kedua berisi tanda tangan
+        // 1. Tangani tabel tanda tangan (2 kolom di mana kolom pertama kosong/spacer dan kolom kedua berisi tanda tangan, atau tabel dengan class letter-signature-table)
         $content = preg_replace_callback(
             '/<table\b[^>]*>((?:(?!<\/table>)[\s\S])*?)<\/table>/i',
             function ($tableMatch) {
                 $tableInner = $tableMatch[1];
-                if (preg_match('/<tr\b[^>]*>\s*<td\b[^>]*>(?:<p\b[^>]*>)?(?:\s|&nbsp;|<br\s*\/?>)*(?:<\/p>)?<\/td>\s*<td\b[^>]*>([\s\S]*?(?:Direktur|Hormat kami|NIP\.|dr\.\s*Puga|\{nama_direktur\})[\s\S]*?)<\/td>\s*<\/tr>/i', $tableInner, $matches)) {
-                    $signContent = trim($matches[1]);
-                    return '<table class="letter-signature-table" style="width: 100%; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
+
+                // Jika sudah merupakan tabel tanda tangan lengkap dengan spacer dan blok penandatangan
+                if (preg_match('/<td\b[^>]*class="[^"]*letter-signature-block[^"]*"[^>]*>([\s\S]*?)<\/td>/i', $tableInner, $blockMatch)) {
+                    $signContent = trim($blockMatch[1]);
+                    return '<table class="letter-signature-table" style="width: 100%; table-layout: fixed; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
                         . '<tbody>'
                         . '<tr>'
                         . '<td style="width: 58%; border: none !important; padding: 0;">&nbsp;</td>'
@@ -378,18 +410,62 @@ class DocumentConversionService
                         . '</tbody>'
                         . '</table>';
                 }
+
+                // Periksa setiap baris <tr>: apakah ada baris 2 kolom di mana cell 1 kosong dan cell 2 berisi tanda tangan
+                if (preg_match('/<tr\b[^>]*>\s*<td\b[^>]*>([\s\S]*?)<\/td>\s*<td\b[^>]*>([\s\S]*?)<\/td>\s*<\/tr>/i', $tableInner, $rowMatch)) {
+                    $c1Text = trim(html_entity_decode(strip_tags($rowMatch[1])));
+                    $c2Html = $rowMatch[2];
+
+                    $isSigCell = (bool) preg_match('/(Direktur|Hormat kami|NIP\.|dr\.\s*Puga|\{nama_direktur\}|Plt\.|Kepala|Sekretaris|Mengetahui|Yang menyatakan|Penanda Tangan)/i', $c2Html);
+
+                    if ($c1Text === '' && $isSigCell) {
+                        $signContent = trim($c2Html);
+                        return '<table class="letter-signature-table" style="width: 100%; table-layout: fixed; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
+                            . '<tbody>'
+                            . '<tr>'
+                            . '<td style="width: 58%; border: none !important; padding: 0;">&nbsp;</td>'
+                            . '<td class="letter-signature-block" style="width: 42%; border: none !important; padding: 0; text-align: left; vertical-align: top;">'
+                            . $signContent
+                            . '</td>'
+                            . '</tr>'
+                            . '</tbody>'
+                            . '</table>';
+                    }
+                }
+
+                // Tabel 1 kolom berisi tanda tangan
+                if (preg_match('/<tr\b[^>]*>\s*<td\b[^>]*>([\s\S]*?)<\/td>\s*<\/tr>/i', $tableInner, $oneRowMatch) && ! preg_match('/<td\b[^>]*>[\s\S]*?<\/td>\s*<td\b/i', $tableInner)) {
+                    $singleHtml = $oneRowMatch[1];
+                    if (preg_match('/(Direktur|Hormat kami|NIP\.|dr\.\s*Puga|\{nama_direktur\}|Plt\.|Kepala|Sekretaris|Mengetahui|Yang menyatakan|Penanda Tangan)/i', $singleHtml)
+                        && ! str_contains($singleHtml, 'Pejabat berwenang')
+                        && ! str_contains($singleHtml, 'Nama karyawan')) {
+                        return '<table class="letter-signature-table" style="width: 100%; table-layout: fixed; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
+                            . '<tbody>'
+                            . '<tr>'
+                            . '<td style="width: 58%; border: none !important; padding: 0;">&nbsp;</td>'
+                            . '<td class="letter-signature-block" style="width: 42%; border: none !important; padding: 0; text-align: left; vertical-align: top;">'
+                            . trim($singleHtml)
+                            . '</td>'
+                            . '</tr>'
+                            . '</tbody>'
+                            . '</table>';
+                    }
+                }
+
                 return $tableMatch[0];
             },
             $content
         );
 
         // 2. Multi-paragraf tanda tangan di luar tabel (urutan <p>...</p> berisi tanggal & jabatan/direktur/NIP)
-        $pattern = '/((?:<p\b[^>]*>\s*(?:Banjarbaru,|Hormat kami|Ditetapkan di|Direktur,|<strong[^>]*>Direktur)[\s\S]*?<\/p>)(?:\s*<p\b[^>]*>[\s\S]*?<\/p>){1,6})/i';
+        $pattern = '/((?:<p\b[^>]*>\s*(?:Banjarbaru,|Hormat kami|Ditetapkan di)[\s\S]*?<\/p>)(?:\s*<p\b[^>]*>[\s\S]*?<\/p>){1,6})/i';
         $content = preg_replace_callback($pattern, function ($matches) {
             $block = $matches[1];
-            if ((str_contains($block, 'NIP') || str_contains($block, 'Direktur') || str_contains($block, 'Puga'))
-                && ! str_contains($block, 'letter-signature-block')) {
-                return '<table class="letter-signature-table" style="width: 100%; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
+            if ((str_contains($block, 'NIP') || str_contains($block, 'Direktur') || str_contains($block, 'Puga') || str_contains($block, 'Plt.') || str_contains($block, 'Kepala') || str_contains($block, 'Sekretaris'))
+                && ! str_contains($block, 'letter-signature-block')
+                && ! str_contains($block, 'Yang bertanda tangan')) {
+
+                return '<table class="letter-signature-table" style="width: 100%; table-layout: fixed; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
                     . '<tbody>'
                     . '<tr>'
                     . '<td style="width: 58%; border: none !important; padding: 0;">&nbsp;</td>'
@@ -412,6 +488,7 @@ class DocumentConversionService
                 }
                 $prefix = trim($matches[1]);
                 $sig = trim($matches[2]);
+
                 $res = '';
                 if ($prefix !== '') {
                     $res .= '<p>' . $prefix . '</p>';
@@ -431,7 +508,102 @@ class DocumentConversionService
             $content
         );
 
+        // 4. Setelah blok tanda tangan terbentuk di .letter-signature-block, sematkan stempel & tanda tangan jika diminta
+        if ($hasStamp || $signaturePath) {
+            $content = preg_replace_callback(
+                '/<td\s+[^>]*class="[^"]*letter-signature-block[^"]*"([^>]*)>([\s\S]*?)<\/td>/i',
+                function ($tdMatch) use ($hasStamp, $signaturePath, $isForPdf, $signerName) {
+                    $attrs = $tdMatch[1];
+                    $inner = $tdMatch[2];
+                    $injected = self::injectSignatureAndStamp($inner, $hasStamp, $signaturePath, $isForPdf, $signerName);
+                    return '<td class="letter-signature-block"' . $attrs . '>' . $injected . '</td>';
+                },
+                $content,
+                1
+            );
+        }
+
         return $content;
+    }
+
+    /**
+     * Menyisipkan gambar tanda tangan digital dan stempel resmi ke dalam blok penandatangan.
+     */
+    public static function injectSignatureAndStamp(
+        string $signContent,
+        bool $hasStamp = false,
+        ?string $signaturePath = null,
+        bool $isForPdf = false,
+        ?string $signerName = null
+    ): string {
+        if (! $hasStamp && ! $signaturePath) {
+            return $signContent;
+        }
+
+        // Hindari duplikasi jika sudah terpasang
+        if (str_contains($signContent, 'letter-sig-stamp-container')) {
+            return $signContent;
+        }
+
+        $stampSrc = null;
+        if ($hasStamp) {
+            if ($isForPdf) {
+                $assets = self::getLetterheadAssets();
+                $stampSrc = $assets['stamp'];
+            } else {
+                $stampSrc = asset('images/stempel_rsusm.png');
+            }
+        }
+
+        $sigSrc = null;
+        if ($signaturePath) {
+            if ($isForPdf) {
+                $fullPath = storage_path('app/public/' . $signaturePath);
+                if (is_file($fullPath)) {
+                    $sigSrc = 'data:image/png;base64,' . base64_encode(file_get_contents($fullPath));
+                }
+            } else {
+                $sigSrc = \Illuminate\Support\Facades\Storage::disk('public')->url($signaturePath);
+            }
+        }
+
+        $sigStampHtml = '<div class="letter-sig-stamp-container" style="position: relative; width: 100%; min-height: 65px; margin: 4px 0;">';
+        if ($stampSrc) {
+            $sigStampHtml .= '<img src="' . $stampSrc . '" alt="Stempel Resmi" class="letter-stamp-img" style="position: absolute; left: -50px; top: 0px; width: 135px; height: auto; opacity: 0.88; pointer-events: none; z-index: 2;" />';
+        }
+        if ($sigSrc) {
+            $sigStampHtml .= '<img src="' . $sigSrc . '" alt="Tanda Tangan" class="letter-signature-img" style="position: relative; max-height: 75px; max-width: 175px; object-fit: contain; display: block; z-index: 1;" />';
+        } else {
+            $sigStampHtml .= '<div style="height: 55px;">&nbsp;</div>';
+        }
+        $sigStampHtml .= '</div>';
+
+        // 1. Multi-paragraf dengan <p>&nbsp;</p> atau <p><br></p> di antara jabatan dan nama
+        if (preg_match('/(\s*<p\b[^>]*>(?:&nbsp;|<br\s*\/?>|\s)*<\/p>\s*)+/i', $signContent)) {
+            return preg_replace('/(\s*<p\b[^>]*>(?:&nbsp;|<br\s*\/?>|\s)*<\/p>\s*)+/i', $sigStampHtml, $signContent, 1);
+        }
+
+        // 2. Rentetan <br> di dalam teks (misal: Direktur,<br><br><br> atau <strong>Direktur,</strong><br><br><br>)
+        if (preg_match('/(<br\s*\/?>\s*){2,}/i', $signContent)) {
+            return preg_replace('/(<br\s*\/?>\s*){2,}/i', '<br>' . $sigStampHtml, $signContent, 1);
+        }
+
+        // 3. Sisipkan tepat sebelum nama penanda tangan (ber-underline, ber-strong, diawali dr., atau cocok dengan $signerName / [Nama Penanda Tangan])
+        $namePatterns = ['\[Nama Penanda Tangan\]'];
+        if (filled($signerName)) {
+            $namePatterns[] = preg_quote($signerName, '/');
+        }
+        $nameRegex = '(?:<p\b[^>]*>\s*)?(?:<strong>\s*<u>|<u>\s*<strong>|<strong>|<u>|dr\.|' . implode('|', $namePatterns) . ')';
+        if (preg_match('/(' . $nameRegex . ')/i', $signContent)) {
+            return preg_replace('/(' . $nameRegex . ')/i', $sigStampHtml . '$1', $signContent, 1);
+        }
+
+        // 4. Sisipkan sebelum baris NIP jika nama tidak terdeteksi
+        if (preg_match('/(<(?:p|br\s*\/?>)\s*NIP[\.:\s])/i', $signContent)) {
+            return preg_replace('/(<(?:p|br\s*\/?>)\s*NIP[\.:\s])/i', $sigStampHtml . '$1', $signContent, 1);
+        }
+
+        return $signContent . $sigStampHtml;
     }
 
     /**
@@ -450,16 +622,51 @@ class DocumentConversionService
      */
     public static function normalizeDocumentTables(string $content): string
     {
-        return preg_replace_callback(
+        $res = preg_replace_callback(
             '/<table\b([^>]*)>((?:(?!<\/table>)[\s\S])*?)<\/table>/i',
             function ($matches) {
                 $tableAttrs = $matches[1];
                 $tableInner = $matches[2];
 
-                // 1. Signature table: pertahankan dan pastikan border none
-                if (str_contains($tableAttrs, 'letter-signature-table')) {
-                    return '<table class="letter-signature-table" style="width: 100%; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
-                        . preg_replace('/<td\b([^>]*)>/i', '<td$1 style="border: none !important; padding: 0 !important;">', $tableInner)
+                // 1. Signature table: deteksi tabel tanda tangan (baik yang sudah memiliki class maupun yang berasal dari TipTap)
+                $isSignatureTable = str_contains($tableAttrs, 'letter-signature-table');
+                $sigContent = null;
+
+                if (! $isSignatureTable && preg_match('/<tr\b[^>]*>\s*<td\b[^>]*>([\s\S]*?)<\/td>\s*<td\b[^>]*>([\s\S]*?)<\/td>\s*<\/tr>/i', $tableInner, $sigRowMatch)) {
+                    $c1Text = trim(html_entity_decode(strip_tags($sigRowMatch[1])));
+                    $c2Html = $sigRowMatch[2];
+                    $isSigCell = (bool) preg_match('/(Direktur|Hormat kami|NIP\.|dr\.\s*Puga|\{nama_direktur\}|Plt\.|Kepala|Sekretaris|Mengetahui|Yang menyatakan|Penanda Tangan)/i', $c2Html);
+                    if ($c1Text === '' && $isSigCell && ! str_contains($c2Html, 'Yang bertanda tangan') && ! str_contains($c2Html, 'menerangkan bahwa')) {
+                        $isSignatureTable = true;
+                        $sigContent = trim($c2Html);
+                    }
+                }
+
+                if ($isSignatureTable) {
+                    if ($sigContent === null) {
+                        if (preg_match('/<td\b[^>]*class="[^"]*letter-signature-block[^"]*"[^>]*>([\s\S]*?)<\/td>/i', $tableInner, $bMatch)) {
+                            $sigContent = trim($bMatch[1]);
+                        } elseif (preg_match('/<tr\b[^>]*>\s*<td\b[^>]*>([\s\S]*?)<\/td>\s*<td\b[^>]*>([\s\S]*?)<\/td>\s*<\/tr>/i', $tableInner, $rMatch)) {
+                            $r1Text = trim(html_entity_decode(strip_tags($rMatch[1])));
+                            if ($r1Text === '') {
+                                $sigContent = trim($rMatch[2]);
+                            }
+                        }
+                    }
+
+                    if ($sigContent !== null) {
+                        return '<table class="letter-signature-table" style="width: 100%; table-layout: fixed; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
+                            . '<tbody><tr>'
+                            . '<td style="width: 58%; border: none !important; padding: 0;">&nbsp;</td>'
+                            . '<td class="letter-signature-block" style="width: 42%; border: none !important; padding: 0; text-align: left; vertical-align: top;">'
+                            . $sigContent
+                            . '</td>'
+                            . '</tr></tbody>'
+                            . '</table>';
+                    }
+
+                    return '<table class="letter-signature-table" style="width: 100%; table-layout: fixed; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
+                        . $tableInner
                         . '</table>';
                 }
 
@@ -517,6 +724,8 @@ class DocumentConversionService
             },
             $content
         );
+
+        return $res ?? $content;
     }
 
     /**
@@ -529,11 +738,13 @@ class DocumentConversionService
         $kop = collect(['images/kop-rsusm.png', 'images/logo-rsusm.png'])->first(fn ($p) => is_file(public_path($p)));
         $bg = collect(['images/letter-bg.jpg', 'images/letter-bg.png'])->first(fn ($p) => is_file(public_path($p)));
         $footer = collect(['images/letter-footer-slogan.png', 'images/letter-footer-slogan.jpg', 'images/letter-footer.png'])->first(fn ($p) => is_file(public_path($p)));
+        $stamp = collect(['images/stempel_rsusm.png', 'letterhead/stempel_rsusm.png'])->first(fn ($p) => is_file(public_path($p)));
 
         return [
             'kop'    => $kop ? asset($kop) : null,
             'bg'     => $bg ? asset($bg) : null,
             'footer' => $footer ? asset($footer) : null,
+            'stamp'  => $stamp ? asset($stamp) : null,
         ];
     }
 
@@ -542,7 +753,28 @@ class DocumentConversionService
         $assets = self::getLetterheadAssets($document->company_id);
         $title = htmlspecialchars($document->title ?? 'Surat Resmi');
 
-        $content = self::prepareLetterContent($document->content, $document->title, $document->code_number, $document->tanggal_surat);
+        $signaturePath = null;
+        if ($document->signature_id) {
+            $sig = $document->signature;
+            // Hanya izinkan jika tanda tangan milik akun si pembuat dokumen
+            $ownerId = $document->user_id ?? $document->created_by;
+            if ($sig && $sig->user_id === $ownerId) {
+                $signaturePath = $sig->signature_path;
+            }
+        }
+
+        $content = self::prepareLetterContent(
+            $document->content,
+            $document->title,
+            $document->code_number,
+            $document->tanggal_surat,
+            $document->signer_name,
+            $document->signer_nip,
+            $document->signer_title,
+            (bool) $document->has_stamp,
+            $signaturePath,
+            true
+        );
         $optionalHeading = '';
 
         // Kop surat di header (fixed, atas halaman)
@@ -643,6 +875,8 @@ class DocumentConversionService
                 }
                 table.letter-signature-table {
                     width: 100% !important;
+                    table-layout: fixed !important;
+                    border: none !important;
                     margin-top: 24px !important;
                     margin-bottom: 20px !important;
                 }
@@ -650,10 +884,38 @@ class DocumentConversionService
                     border: none !important;
                     padding: 0 !important;
                 }
+                table.letter-signature-table tr > td:first-child {
+                    width: 58% !important;
+                    border: none !important;
+                }
+                table.letter-signature-table tr > td:last-child,
                 .letter-signature-block {
+                    width: 42% !important;
                     text-align: left !important;
                     vertical-align: top !important;
                     padding-left: 0 !important;
+                    border: none !important;
+                }
+                .letter-sig-stamp-container {
+                    position: relative;
+                    width: 100%;
+                    min-height: 65px;
+                    margin: 4px 0;
+                }
+                .letter-sig-stamp-container .letter-stamp-img {
+                    position: absolute;
+                    left: -50px;
+                    top: 0px;
+                    width: 135px;
+                    height: auto;
+                    opacity: 0.88;
+                }
+                .letter-sig-stamp-container .letter-signature-img {
+                    position: relative;
+                    max-height: 75px;
+                    max-width: 175px;
+                    object-fit: contain;
+                    display: block;
                 }
                 table.letter-data-table,
                 table:not(.letter-layout-table):not(.letter-meta-table):not(.letter-signature-table) {
@@ -673,7 +935,6 @@ class DocumentConversionService
                     font-weight: bold;
                     text-align: center;
                     background-color: #f2f2f2;
-                }
                 }
                 /* Footer slogan di kanan bawah */
                 .footer-slogan {

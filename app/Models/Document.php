@@ -63,6 +63,11 @@ class Document extends Model implements Auditable
         'file_name',
         'file_hash',
         'content',
+        'signer_name',
+        'signer_nip',
+        'signer_title',
+        'has_stamp',
+        'signature_id',
         'document_type',
         'generated_file_path',
         'company_id',
@@ -96,6 +101,7 @@ class Document extends Model implements Auditable
         'review_reminder_sent_at' => 'date',
         'is_mandatory_read' => 'boolean',
         'is_public' => 'boolean',
+        'has_stamp' => 'boolean',
     ];
 
     protected static function boot()
@@ -390,6 +396,11 @@ class Document extends Model implements Auditable
     public function category(): BelongsTo
     {
         return $this->belongsTo(DocumentCategory::class);
+    }
+
+    public function signature(): BelongsTo
+    {
+        return $this->belongsTo(Signature::class);
     }
 
     /**
