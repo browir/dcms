@@ -39,6 +39,11 @@ class ListIncomingLetters extends ListRecords
                 ->modifyQueryUsing($forUnit)
                 ->badge(fn () => $count(fn (Builder $q) => $forUnit($q)->where('status', IncomingLetter::STATUS_BARU)))
                 ->badgeColor('warning'),
+            'diteruskan_ke_saya' => Tab::make('Diteruskan ke Saya')
+                ->icon('heroicon-m-arrow-right-circle')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('forwarded_to', $user->id))
+                ->badge(fn () => $count(fn (Builder $q) => $q->where('forwarded_to', $user->id)->where('status', '!=', IncomingLetter::STATUS_SELESAI)))
+                ->badgeColor('info'),
             'belum_selesai' => Tab::make('Belum Selesai')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', '!=', IncomingLetter::STATUS_SELESAI)),
             'selesai' => Tab::make('Selesai')

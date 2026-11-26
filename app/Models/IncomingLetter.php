@@ -134,12 +134,14 @@ class IncomingLetter extends Model
 
     /**
      * Daftar pilihan user untuk dropdown teruskan surat — semua user aktif kecuali pengirim.
+     * Jika $companyId diberikan, dibatasi ke perusahaan yang sama.
      */
-    public static function recipientOptions(?int $excludeUserId = null): array
+    public static function recipientOptions(?int $excludeUserId = null, ?int $companyId = null): array
     {
         return User::query()
             ->with(['roles', 'department', 'unit'])
             ->when($excludeUserId, fn ($q) => $q->where('id', '!=', $excludeUserId))
+            ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
             ->orderBy('name')
             ->get()
             ->mapWithKeys(function (User $u) {
@@ -164,6 +166,18 @@ class IncomingLetter extends Model
             'forwarded_at'   => now(),
             'forward_notes'  => $notes,
         ])->save();
+
+        activity('surat_masuk')
+            ->performedOn($this)
+            ->causedBy($sender)
+            ->withProperties([
+                'nomor_agenda'   => $this->nomor_agenda,
+                'forwarded_to'   => $recipient->id,
+                'recipient_name' => $recipient->name,
+                'forward_notes'  => $notes,
+            ])
+            ->event('forwarded')
+            ->log("Meneruskan surat masuk ke {$recipient->name}");
 
         try {
             $recipient->notify(new \App\Notifications\IncomingLetterForwardedNotification($this, $sender));

@@ -173,6 +173,18 @@ class IncomingLetterResource extends Resource
                         ->placeholder('Belum dibaca'),
                     TextEntry::make('completed_at')->label('Selesai')->dateTime('d M Y H:i')->placeholder('—'),
                 ]),
+
+            Section::make('Disposisi / Terusan')
+                ->icon('heroicon-o-arrow-right-circle')
+                ->columns(['default' => 1, 'md' => 3])
+                ->columnSpanFull()
+                ->visible(fn (IncomingLetter $record): bool => filled($record->forwarded_to))
+                ->schema([
+                    TextEntry::make('forwardedToUser.name')->label('Diteruskan ke')->weight('bold')->placeholder('—'),
+                    TextEntry::make('forwarder.name')->label('Diteruskan oleh')->placeholder('—'),
+                    TextEntry::make('forwarded_at')->label('Waktu Diteruskan')->dateTime('d M Y H:i')->placeholder('—'),
+                    TextEntry::make('forward_notes')->label('Catatan Disposisi')->placeholder('—')->columnSpanFull(),
+                ]),
         ]);
     }
 

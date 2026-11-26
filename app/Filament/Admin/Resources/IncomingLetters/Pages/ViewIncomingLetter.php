@@ -72,6 +72,7 @@ class ViewIncomingLetter extends ViewRecord
                     : 'Teruskan ke...')
                 ->icon('heroicon-o-arrow-right-circle')
                 ->color('warning')
+                ->visible(fn (IncomingLetter $record): bool => $record->status !== IncomingLetter::STATUS_SELESAI)
                 ->modalWidth('lg')
                 ->modalHeading('Teruskan Surat Masuk')
                 ->modalDescription('Pilih orang yang akan menerima terusan surat ini. Orang tersebut akan mendapat notifikasi dan dapat melihat surat ini.')
@@ -80,7 +81,15 @@ class ViewIncomingLetter extends ViewRecord
                     Select::make('recipient_id')
                         ->label('Teruskan ke')
                         ->placeholder('Cari nama atau jabatan...')
-                        ->options(fn (): array => IncomingLetter::recipientOptions(Auth::id()))
+                        ->options(function (): array {
+                            /** @var User|null $auth */
+                            $auth = Auth::user();
+                            $companyId = ($auth && ! $auth->hasRole('super_admin') && ! $auth->can('view_all_companies_data'))
+                                ? $auth->company_id
+                                : null;
+
+                            return IncomingLetter::recipientOptions($auth?->id, $companyId);
+                        })
                         ->searchable()
                         ->preload()
                         ->native(false)
@@ -105,7 +114,7 @@ class ViewIncomingLetter extends ViewRecord
                         ->success()
                         ->send();
 
-                    $this->refreshFormData(['forwarded_to', 'forwarded_at', 'forward_notes']);
+                    $this->refreshFormData(['forwarded_to', 'forwarded_by', 'forwarded_at', 'forward_notes']);
                 }),
 
             Action::make('complete')
