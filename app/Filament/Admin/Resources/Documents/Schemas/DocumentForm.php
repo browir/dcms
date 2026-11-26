@@ -527,6 +527,109 @@ class DocumentForm
                                         ->default(false)
                                         ->live()
                                         ->columnSpan(['default' => 12, 'sm' => 6]),
+
+                                    Toggle::make('has_double_signature')
+                                        ->label('Double Tanda Tangan (Kabid & Direktur) — Opsional')
+                                        ->helperText('Aktifkan jika surat keluar memerlukan dua tanda tangan sejajar (Kabid di kiri, Direktur di kanan).')
+                                        ->default(false)
+                                        ->live()
+                                        ->visible(fn (Get $get, ?Document $record, $livewire): bool => self::isSuratKeluarContext($get, $record, $livewire))
+                                        ->columnSpan(['default' => 12, 'sm' => 6]),
+
+                                    Select::make('kabid_signature_id')
+                                        ->label('Tanda Tangan Kedua (Kiri)')
+                                        ->placeholder('Pilih tanda tangan digital Anda (opsional)')
+                                        ->options(fn (): array => self::mySignatureOptions())
+                                        ->searchable()
+                                        ->preload()
+                                        ->native(false)
+                                        ->live()
+                                        ->visible(fn (Get $get, ?Document $record, $livewire): bool => self::isSuratKeluarContext($get, $record, $livewire) && (bool) $get('has_double_signature'))
+                                        ->columnSpan(['default' => 12, 'sm' => 6])
+                                        ->prefixIcon('heroicon-o-pencil-square')
+                                        ->helperText('Tanda tangan Anda untuk kolom kiri, atau otomatis terisi saat Kabid ACC.'),
+
+                                    Select::make('preset_kabid_signer')
+                                        ->label('Profil Penanda Tangan Kedua (Kiri)')
+                                        ->placeholder('Pilih profil pejabat atau input manual...')
+                                        ->options(fn (): array => self::secondSignerProfileOptions())
+                                        ->searchable()
+                                        ->preload()
+                                        ->native(false)
+                                        ->live()
+                                        ->dehydrated(false)
+                                        ->visible(fn (Get $get, ?Document $record, $livewire): bool => self::isSuratKeluarContext($get, $record, $livewire) && (bool) $get('has_double_signature'))
+                                        ->columnSpan(['default' => 12, 'sm' => 12])
+                                        ->prefixIcon('heroicon-o-user-circle')
+                                        ->helperText('Pilih profil pejabat agar Jabatan, Nama, dan NIP penanda tangan kedua terisi otomatis, atau isi manual di bawah.')
+                                        ->afterStateUpdated(function ($state, Set $set) {
+                                            if (! $state) {
+                                                return;
+                                            }
+
+                                            if ($state === 'custom') {
+                                                $set('kabid_signer_name', '');
+                                                $set('kabid_signer_nip', '');
+                                                $set('kabid_signature_id', null);
+                                                return;
+                                            }
+
+                                            if (str_starts_with($state, 'mysig_')) {
+                                                $sigId = (int) str_replace('mysig_', '', $state);
+                                                $sig = Signature::where('user_id', Auth::id())->find($sigId);
+                                                if ($sig) {
+                                                    $set('kabid_signer_name', $sig->name);
+                                                    $set('kabid_signer_nip', $sig->nip ?? '');
+                                                    $set('kabid_signer_title', $sig->position);
+                                                    $set('kabid_signature_id', $sig->id);
+                                                }
+                                                return;
+                                            }
+
+                                            if (str_starts_with($state, 'user_')) {
+                                                $userId = (int) str_replace('user_', '', $state);
+                                                $u = User::with(['roles', 'department', 'unit'])->find($userId);
+                                                if ($u) {
+                                                    $role = $u->roles->first()?->name;
+                                                    $dept = $u->department?->name ?? $u->unit?->name;
+                                                    $title = match ($role) {
+                                                        'kabid' => $dept ? "Kepala Bidang {$dept}" : 'Kepala Bidang',
+                                                        'direktur' => 'Direktur',
+                                                        'Sekretaris' => 'Sekretaris',
+                                                        default => $dept ?: 'Pejabat',
+                                                    };
+                                                    $set('kabid_signer_name', $u->name);
+                                                    $set('kabid_signer_nip', $u->nip ?? '');
+                                                    $set('kabid_signer_title', $title);
+                                                    $set('kabid_signature_id', null);
+                                                }
+                                            }
+                                        }),
+
+                                    TextInput::make('kabid_signer_title')
+                                        ->label('Jabatan Penanda Tangan Kedua')
+                                        ->placeholder('Contoh: Kepala Bidang Pelayanan Medis')
+                                        ->default('Kepala Bidang')
+                                        ->live(onBlur: true)
+                                        ->visible(fn (Get $get, ?Document $record, $livewire): bool => self::isSuratKeluarContext($get, $record, $livewire) && (bool) $get('has_double_signature'))
+                                        ->columnSpan(['default' => 12, 'sm' => 4])
+                                        ->prefixIcon('heroicon-o-briefcase'),
+
+                                    TextInput::make('kabid_signer_name')
+                                        ->label('Nama Penanda Tangan Kedua')
+                                        ->placeholder('Isi manual atau otomatis saat Kabid ACC')
+                                        ->live(onBlur: true)
+                                        ->visible(fn (Get $get, ?Document $record, $livewire): bool => self::isSuratKeluarContext($get, $record, $livewire) && (bool) $get('has_double_signature'))
+                                        ->columnSpan(['default' => 12, 'sm' => 4])
+                                        ->prefixIcon('heroicon-o-user'),
+
+                                    TextInput::make('kabid_signer_nip')
+                                        ->label('NIP Penanda Tangan Kedua')
+                                        ->placeholder('Contoh: 198501012010011001 (opsional)')
+                                        ->live(onBlur: true)
+                                        ->visible(fn (Get $get, ?Document $record, $livewire): bool => self::isSuratKeluarContext($get, $record, $livewire) && (bool) $get('has_double_signature'))
+                                        ->columnSpan(['default' => 12, 'sm' => 4])
+                                        ->prefixIcon('heroicon-o-identification'),
                                 ]),
 
                             RichEditor::make('content')
@@ -1002,6 +1105,15 @@ class DocumentForm
             }
         }
 
+        $kabidSignatureId = $get('kabid_signature_id');
+        $kabidSignaturePath = null;
+        if ($kabidSignatureId) {
+            $kSig = Signature::where('user_id', Auth::id())->find($kabidSignatureId);
+            if ($kSig) {
+                $kabidSignaturePath = $kSig->signature_path;
+            }
+        }
+
         return [
             'content' => is_string($content) ? $content : '',
             'title' => $get('title'),
@@ -1012,6 +1124,11 @@ class DocumentForm
             'signerTitle' => $get('signer_title'),
             'hasStamp' => (bool) $get('has_stamp'),
             'signaturePath' => $signaturePath,
+            'hasDoubleSignature' => (bool) $get('has_double_signature'),
+            'kabidSignaturePath' => $kabidSignaturePath,
+            'kabidSignerName' => $get('kabid_signer_name'),
+            'kabidSignerNip' => $get('kabid_signer_nip'),
+            'kabidSignerTitle' => $get('kabid_signer_title'),
             'badge' => 'Pratinjau Langsung',
             'note' => 'belum disimpan',
         ];
@@ -1084,5 +1201,72 @@ class DocumentForm
         }
 
         return 'Dokumen siap disimpan. Setelah itu Anda bisa lanjut ke proses review dari daftar dokumen.';
+    }
+
+    /** Menentukan apakah form sedang berada dalam konteks Surat Keluar. */
+    private static function isSuratKeluarContext(Get $get, ?Document $record = null, mixed $livewire = null): bool
+    {
+        if (property_exists($livewire ?? new \stdClass, 'kelompok') && ($livewire->kelompok ?? null) === DocumentCategory::KELOMPOK_SURAT_KELUAR) {
+            return true;
+        }
+
+        if (request()->query('kelompok') === DocumentCategory::KELOMPOK_SURAT_KELUAR) {
+            return true;
+        }
+
+        if ($record?->category?->kelompok === DocumentCategory::KELOMPOK_SURAT_KELUAR) {
+            return true;
+        }
+
+        $categoryId = $get('category_id');
+        if (filled($categoryId)) {
+            return DocumentCategory::query()
+                ->whereKey($categoryId)
+                ->where('kelompok', DocumentCategory::KELOMPOK_SURAT_KELUAR)
+                ->exists();
+        }
+
+        return false;
+    }
+
+    /** Daftar tanda tangan digital milik akun yang sedang login. */
+    private static function mySignatureOptions(): array
+    {
+        return Signature::query()
+            ->where('user_id', Auth::id())
+            ->get()
+            ->mapWithKeys(fn (Signature $s) => [
+                $s->id => $s->name . ' — ' . $s->position . ($s->nip ? ' (NIP: ' . $s->nip . ')' : ''),
+            ])
+            ->all();
+    }
+
+    /** Daftar profil pejabat untuk penanda tangan kedua (Kabid / pejabat lainnya). */
+    private static function secondSignerProfileOptions(): array
+    {
+        $options = [];
+
+        foreach (Signature::query()->where('user_id', Auth::id())->get() as $sig) {
+            $nip = $sig->nip ? " (NIP: {$sig->nip})" : '';
+            $options["mysig_{$sig->id}"] = "{$sig->name} — {$sig->position}{$nip} (Tanda Tangan Saya)";
+        }
+
+        $companyId = Auth::user()?->company_id;
+        User::query()
+            ->with(['roles', 'department', 'unit'])
+            ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
+            ->whereHas('roles', fn ($q) => $q->whereIn('name', ['kabid', 'direktur', 'Sekretaris', 'manager']))
+            ->orderBy('name')
+            ->get()
+            ->each(function (User $u) use (&$options) {
+                $role = ucfirst($u->roles->first()?->name ?? 'Pejabat');
+                $dept = $u->department?->name ?? $u->unit?->name ?? '';
+                $nip = $u->nip ? " (NIP: {$u->nip})" : '';
+                $options["user_{$u->id}"] = "{$u->name} — {$role}" . ($dept ? " ({$dept})" : '') . $nip;
+            });
+
+        $options['custom'] = 'Input Manual / Pejabat Lainnya...';
+
+        return $options;
     }
 }

@@ -333,7 +333,12 @@ class DocumentConversionService
         ?string $signerTitle = null,
         bool $hasStamp = false,
         ?string $signaturePath = null,
-        bool $isForPdf = false
+        bool $isForPdf = false,
+        bool $hasDoubleSignature = false,
+        ?string $kabidSignaturePath = null,
+        ?string $kabidSignerName = null,
+        ?string $kabidSignerNip = null,
+        ?string $kabidSignerTitle = null
     ): string
     {
         $title = htmlspecialchars(filled($title) ? $title : 'Surat Resmi');
@@ -359,6 +364,18 @@ class DocumentConversionService
         // Pastikan blok tanda tangan terposisi di sebelah kanan (standar tata naskah dinas)
         // dan sematkan stempel serta goresan tanda tangan jika diaktifkan
         $content = self::alignSignatureBlockToRight($content, $hasStamp, $signaturePath, $isForPdf, $signerName);
+
+        // Jika double tanda tangan (Kabid & Direktur) aktif, ubah blok tanda tangan menjadi 2 kolom sejajar
+        if ($hasDoubleSignature) {
+            $content = self::applyDoubleSignatureLayout(
+                $content,
+                $kabidSignaturePath,
+                $kabidSignerName,
+                $kabidSignerNip,
+                $kabidSignerTitle,
+                $isForPdf
+            );
+        }
 
         // Pastikan bagian Lampiran Surat selalu dimulai pada halaman baru agar tidak terpotong antar halaman
         if (str_contains($content, 'Lampiran Surat')) {
@@ -530,6 +547,89 @@ class DocumentConversionService
                 $content,
                 1
             );
+        }
+
+        return $content;
+    }
+
+    /**
+     * Mengubah blok tanda tangan tunggal di kanan menjadi dua kolom sejajar (Kabid di kiri, Direktur di kanan).
+     */
+    public static function applyDoubleSignatureLayout(
+        string $content,
+        ?string $kabidSignaturePath = null,
+        ?string $kabidSignerName = null,
+        ?string $kabidSignerNip = null,
+        ?string $kabidSignerTitle = null,
+        bool $isForPdf = false
+    ): string {
+        $kabidTitle = htmlspecialchars(filled($kabidSignerTitle) ? $kabidSignerTitle : 'Kepala Bidang');
+        $kabidName = htmlspecialchars(filled($kabidSignerName) ? $kabidSignerName : '.............................');
+        $kabidNip = filled($kabidSignerNip) ? htmlspecialchars($kabidSignerNip) : null;
+
+        $kabidSigSrc = null;
+        if ($kabidSignaturePath) {
+            if ($isForPdf) {
+                $fullPath = storage_path('app/public/' . $kabidSignaturePath);
+                if (is_file($fullPath)) {
+                    $kabidSigSrc = 'data:image/png;base64,' . base64_encode(file_get_contents($fullPath));
+                }
+            } else {
+                $kabidSigSrc = \Illuminate\Support\Facades\Storage::disk('public')->url($kabidSignaturePath);
+            }
+        }
+
+        $kabidSigHtml = '<div class="letter-sig-stamp-container" style="position: relative; width: 100%; min-height: 80px; margin: 4px 0;">';
+        if ($kabidSigSrc) {
+            $kabidSigHtml .= '<img src="' . $kabidSigSrc . '" alt="Tanda Tangan Kabid" class="letter-signature-img" style="position: relative; max-height: 100px; max-width: 220px; width: auto; object-fit: contain; display: block;" />';
+        } else {
+            $kabidSigHtml .= '<div style="height: 70px;">&nbsp;</div>';
+        }
+        $kabidSigHtml .= '</div>';
+
+        $kabidBlock = '<p style="margin: 0;">Mengetahui,</p>'
+            . '<p style="margin: 0;"><strong>' . $kabidTitle . '</strong></p>'
+            . $kabidSigHtml
+            . '<p style="margin: 0;"><strong><u>' . $kabidName . '</u></strong></p>'
+            . ($kabidNip ? '<p style="margin: 0;">NIP. ' . $kabidNip . '</p>' : '');
+
+        $replaced = false;
+        $content = preg_replace_callback(
+            '/<table\b[^>]*class="[^"]*letter-signature-table[^"]*"[^>]*>[\s\S]*?<td\b[^>]*class="[^"]*letter-signature-block[^"]*"[^>]*>([\s\S]*?)<\/td>[\s\S]*?<\/table>/i',
+            function ($match) use ($kabidBlock, &$replaced) {
+                $replaced = true;
+                $direkturBlock = trim($match[1]);
+
+                return '<table class="letter-signature-table letter-double-signature-table" style="width: 100%; table-layout: fixed; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
+                    . '<tbody>'
+                    . '<tr>'
+                    . '<td class="letter-kabid-signature-block" style="width: 46%; border: none !important; padding: 0; text-align: left; vertical-align: top;">'
+                    . $kabidBlock
+                    . '</td>'
+                    . '<td class="letter-signature-spacer" style="width: 8%; border: none !important; padding: 0;">&nbsp;</td>'
+                    . '<td class="letter-direktur-signature-block" style="width: 46%; border: none !important; padding: 0; text-align: left; vertical-align: top;">'
+                    . $direkturBlock
+                    . '</td>'
+                    . '</tr>'
+                    . '</tbody>'
+                    . '</table>';
+            },
+            $content,
+            1
+        ) ?? $content;
+
+        if (! $replaced) {
+            $content .= '<table class="letter-signature-table letter-double-signature-table" style="width: 100%; table-layout: fixed; border: none !important; border-collapse: collapse; margin-top: 24px; margin-bottom: 20px;">'
+                . '<tbody>'
+                . '<tr>'
+                . '<td class="letter-kabid-signature-block" style="width: 46%; border: none !important; padding: 0; text-align: left; vertical-align: top;">'
+                . $kabidBlock
+                . '</td>'
+                . '<td class="letter-signature-spacer" style="width: 8%; border: none !important; padding: 0;">&nbsp;</td>'
+                . '<td class="letter-direktur-signature-block" style="width: 46%; border: none !important; padding: 0; text-align: left; vertical-align: top;">&nbsp;</td>'
+                . '</tr>'
+                . '</tbody>'
+                . '</table>';
         }
 
         return $content;
@@ -783,6 +883,9 @@ class DocumentConversionService
             }
         }
 
+        $kabidSignaturePath = $document->kabidSignature?->signature_path;
+        $kabidSignerName = $document->kabid_signer_name ?: $document->kabidReviewer?->name;
+
         $content = self::prepareLetterContent(
             $document->content,
             $document->title,
@@ -793,7 +896,12 @@ class DocumentConversionService
             $document->signer_title,
             (bool) $document->has_stamp,
             $signaturePath,
-            true
+            true,
+            (bool) $document->has_double_signature,
+            $kabidSignaturePath,
+            $kabidSignerName,
+            $document->kabid_signer_nip,
+            $document->kabid_signer_title
         );
         $optionalHeading = '';
 
@@ -919,16 +1027,27 @@ class DocumentConversionService
                     border: none !important;
                     padding: 0 !important;
                 }
-                table.letter-signature-table tr > td:first-child {
+                table.letter-signature-table:not(.letter-double-signature-table) tr > td:first-child {
                     width: 58% !important;
                     border: none !important;
                 }
-                table.letter-signature-table tr > td:last-child,
+                table.letter-signature-table:not(.letter-double-signature-table) tr > td:last-child,
                 .letter-signature-block {
                     width: 42% !important;
                     text-align: left !important;
                     vertical-align: top !important;
                     padding-left: 0 !important;
+                    border: none !important;
+                }
+                table.letter-double-signature-table td.letter-kabid-signature-block,
+                table.letter-double-signature-table td.letter-direktur-signature-block {
+                    width: 46% !important;
+                    text-align: left !important;
+                    vertical-align: top !important;
+                    border: none !important;
+                }
+                table.letter-double-signature-table td.letter-signature-spacer {
+                    width: 8% !important;
                     border: none !important;
                 }
                 .letter-sig-stamp-container {

@@ -66,8 +66,13 @@ class Document extends Model implements Auditable
         'signer_name',
         'signer_nip',
         'signer_title',
+        'kabid_signer_name',
+        'kabid_signer_nip',
+        'kabid_signer_title',
         'has_stamp',
+        'has_double_signature',
         'signature_id',
+        'kabid_signature_id',
         'document_type',
         'generated_file_path',
         'company_id',
@@ -103,6 +108,7 @@ class Document extends Model implements Auditable
         'is_mandatory_read' => 'boolean',
         'is_public' => 'boolean',
         'has_stamp' => 'boolean',
+        'has_double_signature' => 'boolean',
     ];
 
     protected static function boot()
@@ -404,6 +410,11 @@ class Document extends Model implements Auditable
         return $this->belongsTo(Signature::class);
     }
 
+    public function kabidSignature(): BelongsTo
+    {
+        return $this->belongsTo(Signature::class, 'kabid_signature_id');
+    }
+
     /**
      * Relasi ke User (pembuat/pemilik dokumen)
      */
@@ -559,12 +570,29 @@ class Document extends Model implements Auditable
      */
     public function approveByKabid(User $kabid, ?string $notes = null): void
     {
-        $this->update([
+        $kabidSig = Signature::where('user_id', $kabid->id)
+            ->where('is_active', true)
+            ->latest('id')
+            ->first();
+
+        $updateData = [
             'status' => self::STATUS_PENDING_DIREKTUR,
             'reviewed_by_kabid' => $kabid->id,
             'kabid_reviewed_at' => now(),
             'kabid_notes' => $notes,
-        ]);
+        ];
+
+        if ($kabidSig) {
+            $updateData['kabid_signature_id'] = $kabidSig->id;
+        }
+
+        if ($this->has_double_signature) {
+            $updateData['kabid_signer_name'] = $this->kabid_signer_name ?: ($kabidSig?->name ?: $kabid->name);
+            $updateData['kabid_signer_nip'] = $this->kabid_signer_nip ?: $kabidSig?->nip;
+            $updateData['kabid_signer_title'] = $this->kabid_signer_title ?: ($kabidSig?->position ?: 'Kepala Bidang');
+        }
+
+        $this->update($updateData);
 
         // Kirim notifikasi ke para Direktur perusahaan
         $direkturUsers = User::role('direktur')

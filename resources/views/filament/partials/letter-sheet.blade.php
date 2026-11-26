@@ -29,6 +29,11 @@
     $downloadWordUrl ??= null;
     $hasStamp = (bool) ($hasStamp ?? false);
     $signaturePath ??= null;
+    $hasDoubleSignature = (bool) ($hasDoubleSignature ?? false);
+    $kabidSignaturePath ??= null;
+    $kabidSignerName ??= null;
+    $kabidSignerNip ??= null;
+    $kabidSignerTitle ??= null;
 
     $isEmpty = blank(trim(strip_tags((string) ($content ?? ''), '<img><table>')));
     $letterHtml = $isEmpty ? '' : \App\Services\DocumentConversionService::prepareLetterContent(
@@ -41,7 +46,12 @@
         $signerTitle ?? null,
         $hasStamp,
         $signaturePath,
-        false
+        false,
+        $hasDoubleSignature,
+        $kabidSignaturePath,
+        $kabidSignerName,
+        $kabidSignerNip,
+        $kabidSignerTitle
     );
     $assets = \App\Services\DocumentConversionService::getLetterheadAssetUrls();
 @endphp
@@ -193,13 +203,13 @@
         border: none !important;
         padding: 0 !important;
     }
-    .dlp-content table.letter-signature-table tr > td:first-child {
+    .dlp-content table.letter-signature-table:not(.letter-double-signature-table) tr > td:first-child {
         width: 58% !important;
         min-width: 58% !important;
         max-width: 58% !important;
         border: none !important;
     }
-    .dlp-content table.letter-signature-table tr > td:last-child,
+    .dlp-content table.letter-signature-table:not(.letter-double-signature-table) tr > td:last-child,
     .dlp-content .letter-signature-block {
         width: 42% !important;
         min-width: 42% !important;
@@ -207,6 +217,21 @@
         text-align: left !important;
         vertical-align: top !important;
         padding-left: 0 !important;
+        border: none !important;
+    }
+    .dlp-content table.letter-double-signature-table td.letter-kabid-signature-block,
+    .dlp-content table.letter-double-signature-table td.letter-direktur-signature-block {
+        width: 46% !important;
+        min-width: 46% !important;
+        max-width: 46% !important;
+        text-align: left !important;
+        vertical-align: top !important;
+        border: none !important;
+    }
+    .dlp-content table.letter-double-signature-table td.letter-signature-spacer {
+        width: 8% !important;
+        min-width: 8% !important;
+        max-width: 8% !important;
         border: none !important;
     }
     .dlp-content .letter-sig-stamp-container {
