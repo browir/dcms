@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\IncomingLetterForwardedNotification;
 use App\Services\LetterNumberService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 
 /**
  * Surat Masuk dari pihak luar. Nomornya dari pengirim (nomor_surat); di DCMS dicatat dengan
@@ -38,15 +41,17 @@ class IncomingLetter extends Model
     protected $fillable = [
         'company_id', 'pengirim', 'nomor_surat', 'tanggal_surat', 'tanggal_terima', 'perihal',
         'ringkasan', 'sifat', 'file_path', 'department_id', 'unit_id', 'created_by',
+        'forwarded_to', 'forwarded_at', 'forward_notes', 'forwarded_by',
     ];
 
     protected $casts = [
-        'tanggal_surat' => 'date',
+        'tanggal_surat'  => 'date',
         'tanggal_terima' => 'date',
-        'read_at' => 'datetime',
-        'completed_at' => 'datetime',
-        'nomor_urut' => 'integer',
-        'tahun' => 'integer',
+        'read_at'        => 'datetime',
+        'completed_at'   => 'datetime',
+        'forwarded_at'   => 'datetime',
+        'nomor_urut'     => 'integer',
+        'tahun'          => 'integer',
     ];
 
     protected static function booted(): void
@@ -117,10 +122,61 @@ class IncomingLetter extends Model
         return $this->belongsTo(User::class, 'read_by');
     }
 
+    public function forwardedToUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'forwarded_to');
+    }
+
+    public function forwarder(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'forwarded_by');
+    }
+
+    /**
+     * Daftar pilihan user untuk dropdown teruskan surat — semua user aktif kecuali pengirim.
+     */
+    public static function recipientOptions(?int $excludeUserId = null): array
+    {
+        return User::query()
+            ->with(['roles', 'department', 'unit'])
+            ->when($excludeUserId, fn ($q) => $q->where('id', '!=', $excludeUserId))
+            ->orderBy('name')
+            ->get()
+            ->mapWithKeys(function (User $u) {
+                $role = $u->roles->first()?->name ?? 'staf';
+                $dept = $u->department?->name ?? $u->unit?->name ?? '';
+                $label = $u->name . ' — ' . ucfirst($role) . ($dept ? " ({$dept})" : '');
+
+                return [$u->id => $label];
+            })
+            ->all();
+    }
+
+    /**
+     * Teruskan surat masuk ke orang tertentu (disposisi manual).
+     * Penerima terusan mendapat notifikasi dan bisa melihat surat meski bukan unit aslinya.
+     */
+    public function forwardTo(User $recipient, User $sender, ?string $notes = null): void
+    {
+        $this->forceFill([
+            'forwarded_to'   => $recipient->id,
+            'forwarded_by'   => $sender->id,
+            'forwarded_at'   => now(),
+            'forward_notes'  => $notes,
+        ])->save();
+
+        try {
+            $recipient->notify(new \App\Notifications\IncomingLetterForwardedNotification($this, $sender));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send IncomingLetterForwardedNotification: ' . $e->getMessage());
+        }
+    }
+
     /**
      * Surat masuk yang boleh dilihat user:
      * - admin global / pencatat surat (izin Create:IncomingLetter) / direktur → seluruh perusahaannya,
      * - kabid → departemennya, staf → unitnya, serta surat yang ia catat sendiri.
+     * - penerima terusan (forwarded_to) → dapat melihat surat yang diteruskan kepadanya.
      */
     public function scopeAccess(Builder $query, ?User $user = null): Builder
     {
@@ -135,22 +191,43 @@ class IncomingLetter extends Model
             return $query;
         }
 
-        return $query->where(function (Builder $q) use ($user) {
-            $q->where('created_by', $user->id)
-                ->orWhere(function (Builder $scope) use ($user) {
-                    $scope->where('company_id', $user->company_id);
+        // Bangun kondisi akses sebagai OR-conditions langsung di Builder utama,
+        // tanpa nested closure di level pertama (menghindari Filament Builder-clone bug).
+        $table = (new self)->getTable();
 
-                    if ($user->hasRole('direktur') || $user->can('Create:IncomingLetter')) {
-                        return;
-                    }
+        // Kondisi 1: surat yang ia buat sendiri
+        $conditions   = ["`{$table}`.`created_by` = ?"];
+        $bindings     = [$user->id];
 
-                    $scope->where(function (Builder $own) use ($user) {
-                        $own->when($user->unit_id, fn (Builder $u) => $u->where('unit_id', $user->unit_id))
-                            ->when($user->hasRole('kabid') && $user->department_id, fn (Builder $d) => $d->orWhere('department_id', $user->department_id))
-                            ->when(! $user->unit_id && ! ($user->hasRole('kabid') && $user->department_id), fn (Builder $none) => $none->whereRaw('1 = 0'));
-                    });
-                });
-        });
+        // Kondisi 2: surat yang diteruskan kepadanya
+        $conditions[] = "`{$table}`.`forwarded_to` = ?";
+        $bindings[]   = $user->id;
+
+        // Kondisi 3: surat di perusahaan yang sama, dengan pembatasan unit/departemen
+        if ($user->hasRole('direktur') || $user->can('Create:IncomingLetter')) {
+            // Direktur & pencatat: semua surat perusahaan
+            $conditions[] = "`{$table}`.`company_id` = ?";
+            $bindings[]   = $user->company_id;
+        } elseif ($user->hasRole('kabid') && $user->department_id && $user->unit_id) {
+            // Kabid punya unit: surat untuk unitnya ATAU departemennya
+            $conditions[] = "(`{$table}`.`company_id` = ? AND (`{$table}`.`unit_id` = ? OR `{$table}`.`department_id` = ?))";
+            $bindings[]   = $user->company_id;
+            $bindings[]   = $user->unit_id;
+            $bindings[]   = $user->department_id;
+        } elseif ($user->hasRole('kabid') && $user->department_id) {
+            // Kabid tanpa unit: surat untuk departemennya
+            $conditions[] = "(`{$table}`.`company_id` = ? AND `{$table}`.`department_id` = ?)";
+            $bindings[]   = $user->company_id;
+            $bindings[]   = $user->department_id;
+        } elseif ($user->unit_id) {
+            // Staf: surat untuk unitnya
+            $conditions[] = "(`{$table}`.`company_id` = ? AND `{$table}`.`unit_id` = ?)";
+            $bindings[]   = $user->company_id;
+            $bindings[]   = $user->unit_id;
+        }
+        // else: hanya surat buatan sendiri + yang diteruskan kepadanya
+
+        return $query->whereRaw('(' . implode(' OR ', $conditions) . ')', $bindings);
     }
 
     /** User yang menjadi tujuan surat (anggota unit tujuan). */

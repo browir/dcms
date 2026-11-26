@@ -22,6 +22,8 @@ use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -300,10 +302,32 @@ class DocumentsTable
                             ->label('Tindakan')
                             ->options(self::getProcessOptions($record))
                             ->descriptions(self::getProcessDescriptions($record))
+                            ->live()
                             ->required(),
+
+                        Radio::make('review_mode')
+                            ->label('Tujuan Penerusan Review')
+                            ->options([
+                                'auto' => 'Otomatis sesuai alur (Kabid / Direktur)',
+                                'manual' => 'Pilih Orang Manual',
+                            ])
+                            ->default('auto')
+                            ->live()
+                            ->visible(fn ($get): bool => $get('process_action') === 'submit_review')
+                            ->required(fn ($get): bool => $get('process_action') === 'submit_review'),
+
+                        Select::make('reviewer_id')
+                            ->label('Pilih Peninjau (Reviewer)')
+                            ->placeholder('Cari dan pilih orang yang akan mereview...')
+                            ->options(fn (): array => Document::reviewerOptions(Auth::id()))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->visible(fn ($get): bool => $get('process_action') === 'submit_review' && $get('review_mode') === 'manual')
+                            ->required(fn ($get): bool => $get('process_action') === 'submit_review' && $get('review_mode') === 'manual'),
                     ])
                     ->action(function (array $data, Document $record): void {
-                        self::handleProcessAction($record, $data['process_action']);
+                        self::handleProcessAction($record, $data['process_action'], $data);
                     })
                     ->visible(fn (Document $record): bool => self::hasProcessActions($record))
                     ->extraAttributes(['class' => 'hidden md:inline-flex', 'data-process-action' => 'true']),
@@ -447,14 +471,15 @@ class DocumentsTable
             $options['submit_review'] = $wasRejected ? 'Ajukan Ulang Review' : 'Ajukan ke Review';
         }
 
-        // Kabid / Super Admin bisa ACC atau Tolak dokumen yang pending_kabid
-        if ($record->status === Document::STATUS_PENDING_KABID && ($user->hasRole(['kabid', 'super_admin']))) {
+        // Kabid / Super Admin / Peninjau Manual bisa ACC atau Tolak dokumen yang pending_kabid
+        if ($record->status === Document::STATUS_PENDING_KABID && ($user->hasRole(['kabid', 'super_admin']) || $record->reviewer_id === $user->id)) {
             $options['approve_kabid'] = 'Setujui Dokumen (Teruskan ke Direktur)';
             $options['reject_kabid'] = 'Tolak Dokumen';
         }
 
-        // Direktur / Super Admin bisa ACC atau Tolak dokumen yang pending_direktur maupun pending_kabid
-        if (in_array($record->status, [Document::STATUS_PENDING_KABID, Document::STATUS_PENDING_DIREKTUR]) && ($user->hasRole(['direktur', 'super_admin']))) {
+        // Direktur / Super Admin / Peninjau Manual (jika status pending_direktur) bisa ACC atau Tolak
+        if (in_array($record->status, [Document::STATUS_PENDING_KABID, Document::STATUS_PENDING_DIREKTUR])
+            && ($user->hasRole(['direktur', 'super_admin']) || ($record->reviewer_id === $user->id && $record->status === Document::STATUS_PENDING_DIREKTUR))) {
             $options['approve_direktur'] = 'Setujui Dokumen (Final)';
             $options['reject_direktur'] = 'Tolak Dokumen';
         }
@@ -503,17 +528,20 @@ class DocumentsTable
         return $descriptions;
     }
 
-    protected static function handleProcessAction(Document $record, string $processAction): void
+    protected static function handleProcessAction(Document $record, string $processAction, array $data = []): void
     {
         /** @var User $user */
         $user = Auth::user();
+        $manualReviewerId = ($data['review_mode'] ?? 'auto') === 'manual'
+            ? (int) ($data['reviewer_id'] ?? 0)
+            : null;
 
         match ($processAction) {
-            'submit_review' => $record->submitForReview(),
-            'approve_kabid' => $record->approveByKabid($user),
-            'reject_kabid' => $record->rejectByKabid($user, 'Ditolak dari menu proses'),
+            'submit_review'    => $record->submitForReview($manualReviewerId ?: null),
+            'approve_kabid'    => $record->approveByKabid($user),
+            'reject_kabid'     => $record->rejectByKabid($user, 'Ditolak dari menu proses'),
             'approve_direktur' => $record->approveByDirektur($user),
-            'reject_direktur' => $record->rejectByDirektur($user, 'Ditolak dari menu proses'),
+            'reject_direktur'  => $record->rejectByDirektur($user, 'Ditolak dari menu proses'),
             'approve' => (function () use ($record, $user) {
                 $sig = \App\Models\Signature::where('user_id', $user->id)->where('is_active', true)->latest('id')->first();
                 $updateData = [
@@ -534,14 +562,14 @@ class DocumentsTable
 
         Notification::make()
             ->title(match ($processAction) {
-                'submit_review' => 'Dokumen diajukan untuk review',
-                'approve_kabid' => 'Dokumen disetujui Kabid & diteruskan ke Direktur',
-                'reject_kabid' => 'Dokumen ditolak Kabid',
+                'submit_review'    => 'Dokumen diajukan untuk review',
+                'approve_kabid'    => 'Dokumen disetujui Kabid & diteruskan ke Direktur',
+                'reject_kabid'     => 'Dokumen ditolak Kabid',
                 'approve_direktur' => 'Dokumen disetujui final oleh Direktur',
-                'reject_direktur' => 'Dokumen ditolak oleh Direktur',
-                'approve' => 'Dokumen disetujui',
-                'reject' => 'Dokumen ditolak',
-                default => 'Proses dokumen selesai',
+                'reject_direktur'  => 'Dokumen ditolak oleh Direktur',
+                'approve'          => 'Dokumen disetujui',
+                'reject'           => 'Dokumen ditolak',
+                default            => 'Proses dokumen selesai',
             })
             ->success()
             ->send();

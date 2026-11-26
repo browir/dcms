@@ -77,6 +77,7 @@ class Document extends Model implements Auditable
         'jenis_surat',
         'tanggal_surat',
         'user_id',
+        'reviewer_id',
         'updated_by',
         'status',
         'version',
@@ -412,6 +413,14 @@ class Document extends Model implements Auditable
     }
 
     /**
+     * Relasi ke User yang ditunjuk secara manual sebagai peninjau (reviewer)
+     */
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewer_id');
+    }
+
+    /**
      * Relasi ke User yang terakhir mengedit dokumen
      */
     public function updatedByUser(): BelongsTo
@@ -432,17 +441,71 @@ class Document extends Model implements Auditable
     // ========== WORKFLOW & NOTIFIKASI ==========
 
     /**
-     * Ajukan dokumen untuk direview oleh atasan.
+     * Daftar pilihan peninjau (reviewer) manual yang aktif.
+     *
+     * @return array<int, string>
+     */
+    public static function reviewerOptions(?int $excludeUserId = null): array
+    {
+        return User::query()
+            ->with(['roles', 'department', 'unit'])
+            ->where('is_active', true)
+            ->when($excludeUserId, fn (Builder $q) => $q->where('id', '!=', $excludeUserId))
+            ->orderBy('name')
+            ->get()
+            ->mapWithKeys(function (User $u): array {
+                $role = $u->roles->pluck('name')->map(fn (string $r) => match ($r) {
+                    'super_admin' => 'Super Admin',
+                    'direktur' => 'Direktur',
+                    'kabid' => 'Kabid',
+                    'Sekretaris' => 'Sekretaris',
+                    default => ucfirst($r),
+                })->implode(', ');
+                $org = $u->unit?->name ?? $u->department?->name;
+                $meta = collect([$role, $org])->filter()->implode(' • ');
+
+                return [$u->id => $meta !== '' ? "{$u->name} ({$meta})" : $u->name];
+            })
+            ->all();
+    }
+
+    /**
+     * Ajukan dokumen untuk direview oleh atasan atau orang yang dipilih secara manual.
      * Khusus Sekretaris (tidak memiliki Kabid), dokumen langsung diajukan ke Direktur.
      * Untuk staf/pegawai umum, melalui review Kabid terlebih dahulu.
      */
-    public function submitForReview(): void
+    public function submitForReview(?int $manualReviewerId = null): void
     {
+        if ($manualReviewerId) {
+            $reviewer = User::find($manualReviewerId);
+            if ($reviewer) {
+                $targetStatus = $reviewer->hasRole('direktur')
+                    ? self::STATUS_PENDING_DIREKTUR
+                    : self::STATUS_PENDING_KABID;
+
+                $this->update([
+                    'status' => $targetStatus,
+                    'reviewer_id' => $reviewer->id,
+                ]);
+
+                try {
+                    $reviewer->notify(new DocumentSubmittedNotification($this));
+                } catch (\Throwable $e) {
+                    Log::error('Failed to send DocumentSubmittedNotification to manual reviewer: '.$e->getMessage());
+                }
+
+                return;
+            }
+        }
+
         $creator = $this->user ?? Auth::user();
         $isSekretaris = $creator && method_exists($creator, 'hasRole') && $creator->hasRole('Sekretaris');
 
         if ($isSekretaris) {
-            $this->update(['status' => self::STATUS_PENDING_DIREKTUR]);
+            $this->update([
+                'status' => self::STATUS_PENDING_DIREKTUR,
+                'reviewer_id' => null,
+            ]);
 
             // Kirim notifikasi langsung ke Direktur
             $direkturUsers = User::role('direktur')
@@ -465,7 +528,10 @@ class Document extends Model implements Auditable
         }
 
         // Semua dokumen staf reguler melalui review Kabid terlebih dahulu
-        $this->update(['status' => self::STATUS_PENDING_KABID]);
+        $this->update([
+            'status' => self::STATUS_PENDING_KABID,
+            'reviewer_id' => null,
+        ]);
 
         // Cari Kabid di departemen yang sama
         $kabidUsers = User::role('kabid')
@@ -688,27 +754,54 @@ class Document extends Model implements Auditable
 
         if ($user->hasRole('direktur')) {
             // Direktur HANYA melihat dokumen yang sudah di-ACC Kabid (pending_direktur)
-            // dan dokumen yang sudah selesai (approved/rejected)
-            return $query->where('company_id', $user->company_id)
-                ->whereIn('status', [
-                    self::STATUS_PENDING_DIREKTUR,
-                    self::STATUS_APPROVED,
-                    self::STATUS_REJECTED,
-                ]);
+            // atau yang diteruskan manual kepadanya, serta dokumen yang sudah selesai (approved/rejected)
+            return $query->where(function ($q) use ($user) {
+                $q->where('company_id', $user->company_id)
+                    ->whereIn('status', [
+                        self::STATUS_PENDING_DIREKTUR,
+                        self::STATUS_APPROVED,
+                        self::STATUS_REJECTED,
+                    ]);
+            })->orWhere(function ($q) use ($user) {
+                $q->where('reviewer_id', $user->id)
+                    ->whereIn('status', [
+                        self::STATUS_PENDING_KABID,
+                        self::STATUS_PENDING_DIREKTUR,
+                        self::STATUS_APPROVED,
+                        self::STATUS_REJECTED,
+                    ]);
+            });
         }
 
         if ($user->hasRole('kabid')) {
             // Kabid HANYA melihat dokumen di departemennya sendiri yang menunggu ACC Kabid
-            // dan dokumen yang sudah selesai
-            return $query->where('department_id', $user->department_id)
-                ->whereIn('status', [
-                    self::STATUS_PENDING_KABID,
-                    self::STATUS_APPROVED,
-                    self::STATUS_REJECTED,
-                ]);
+            // atau yang diteruskan manual kepadanya, serta dokumen yang sudah selesai
+            return $query->where(function ($q) use ($user) {
+                $q->where('department_id', $user->department_id)
+                    ->whereIn('status', [
+                        self::STATUS_PENDING_KABID,
+                        self::STATUS_APPROVED,
+                        self::STATUS_REJECTED,
+                    ]);
+            })->orWhere(function ($q) use ($user) {
+                $q->where('reviewer_id', $user->id)
+                    ->whereIn('status', [
+                        self::STATUS_PENDING_KABID,
+                        self::STATUS_PENDING_DIREKTUR,
+                        self::STATUS_APPROVED,
+                        self::STATUS_REJECTED,
+                    ]);
+            });
         }
 
-        return $query->whereRaw('1 = 0');
+        // Peninjau manual dari role lain: hanya melihat dokumen yang ditujukan kepadanya
+        return $query->where('reviewer_id', $user->id)
+            ->whereIn('status', [
+                self::STATUS_PENDING_KABID,
+                self::STATUS_PENDING_DIREKTUR,
+                self::STATUS_APPROVED,
+                self::STATUS_REJECTED,
+            ]);
     }
 
     // ========== EXPIRY SCOPES ==========
@@ -729,19 +822,36 @@ class Document extends Model implements Auditable
         }
 
         if ($user->hasRole('kabid')) {
-            return $query->where('department_id', $user->department_id)->where('status', self::STATUS_PENDING_KABID);
+            return $query->where(function ($q) use ($user) {
+                $q->where('department_id', $user->department_id)
+                    ->where('status', self::STATUS_PENDING_KABID);
+            })->orWhere(function ($q) use ($user) {
+                $q->where('reviewer_id', $user->id)
+                    ->whereIn('status', [self::STATUS_PENDING_KABID, self::STATUS_PENDING_DIREKTUR]);
+            });
         }
 
         if ($user->hasRole('direktur')) {
-            return $query->where('company_id', $user->company_id)->where('status', self::STATUS_PENDING_DIREKTUR);
+            return $query->where(function ($q) use ($user) {
+                $q->where('company_id', $user->company_id)
+                    ->where('status', self::STATUS_PENDING_DIREKTUR);
+            })->orWhere(function ($q) use ($user) {
+                $q->where('reviewer_id', $user->id)
+                    ->whereIn('status', [self::STATUS_PENDING_KABID, self::STATUS_PENDING_DIREKTUR]);
+            });
         }
 
-        return $query->where('user_id', $user->id)->whereIn('status', [
-            self::STATUS_DRAFT,
-            self::STATUS_REJECTED,
-            self::STATUS_PENDING_KABID,
-            self::STATUS_PENDING_DIREKTUR,
-        ]);
+        return $query->where(function ($q) use ($user) {
+            $q->where('user_id', $user->id)->whereIn('status', [
+                self::STATUS_DRAFT,
+                self::STATUS_REJECTED,
+                self::STATUS_PENDING_KABID,
+                self::STATUS_PENDING_DIREKTUR,
+            ]);
+        })->orWhere(function ($q) use ($user) {
+            $q->where('reviewer_id', $user->id)
+                ->whereIn('status', [self::STATUS_PENDING_KABID, self::STATUS_PENDING_DIREKTUR]);
+        });
     }
 
     public function scopeExpiringSoon(Builder $query, int $days = 30): Builder
@@ -899,11 +1009,13 @@ class Document extends Model implements Auditable
             return $query;
         }
 
-        // User biasa: hanya bisa melihat dokumen yang ia buat sendiri dan tidak bisa melihat surat keluar
+        // User biasa: hanya bisa melihat dokumen & surat keluar yang ia buat sendiri,
+        // atau yang diteruskan secara manual kepadanya untuk direview
         if ($user->isRegularUser()) {
-            return $query
-                ->where('user_id', $user->id)
-                ->whereDoesntHave('category', fn (Builder $c) => $c->where('kelompok', DocumentCategory::KELOMPOK_SURAT_KELUAR));
+            return $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                    ->orWhere('reviewer_id', $user->id);
+            });
         }
 
         return $query->where(function ($q) use ($user) {
@@ -915,8 +1027,9 @@ class Document extends Model implements Auditable
                 }
             })
 
-                // Cabang 2: Pembuat dokumen (Uploader) selalu dapat melihat dokumen miliknya sendiri
+                // Cabang 2: Pembuat dokumen (Uploader) & peninjau manual selalu dapat melihat dokumen terkait
                 ->orWhere('user_id', $user->id)
+                ->orWhere('reviewer_id', $user->id)
 
                 // Cabang 3: Dokumen Non-Publik (is_public = false) -> HANYA untuk akun dengan departemen yang SAMA
                 ->orWhere(function ($nonPub) use ($user) {

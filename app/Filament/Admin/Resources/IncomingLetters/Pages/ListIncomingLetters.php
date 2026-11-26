@@ -30,7 +30,7 @@ class ListIncomingLetters extends ListRecords
     {
         /** @var User $user */
         $user = Auth::user();
-        $forUnit = fn (Builder $q): Builder => $q->where('unit_id', $user->unit_id ?? 0);
+        $forUnit = fn (Builder $query): Builder => $query->where('unit_id', $user->unit_id ?? 0);
         $count = fn (callable $scope): ?int => ($n = $scope(IncomingLetter::query()->access())->count()) > 0 ? $n : null;
 
         return [
@@ -40,9 +40,9 @@ class ListIncomingLetters extends ListRecords
                 ->badge(fn () => $count(fn (Builder $q) => $forUnit($q)->where('status', IncomingLetter::STATUS_BARU)))
                 ->badgeColor('warning'),
             'belum_selesai' => Tab::make('Belum Selesai')
-                ->modifyQueryUsing(fn (Builder $q) => $q->where('status', '!=', IncomingLetter::STATUS_SELESAI)),
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', '!=', IncomingLetter::STATUS_SELESAI)),
             'selesai' => Tab::make('Selesai')
-                ->modifyQueryUsing(fn (Builder $q) => $q->where('status', IncomingLetter::STATUS_SELESAI)),
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', IncomingLetter::STATUS_SELESAI)),
             'semua' => Tab::make('Semua'),
         ];
     }

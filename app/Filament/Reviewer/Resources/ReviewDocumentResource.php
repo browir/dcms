@@ -185,7 +185,8 @@ class ReviewDocumentResource extends Resource
                             /** @var User $user */
                             $user = Auth::user();
 
-                            return $record->status === Document::STATUS_PENDING_KABID && $user->hasRole('kabid');
+                            return $record->status === Document::STATUS_PENDING_KABID
+                                && ($user->hasRole('kabid') || $record->reviewer_id === $user->id);
                         })
                         ->modalDescription('Dokumen ini akan diteruskan ke Direktur untuk keputusan akhir.')
                         ->modalSubmitActionLabel('Ya, Setujui')
@@ -217,7 +218,8 @@ class ReviewDocumentResource extends Resource
                             /** @var User $user */
                             $user = Auth::user();
 
-                            return $record->status === Document::STATUS_PENDING_KABID && $user->hasRole('kabid');
+                            return $record->status === Document::STATUS_PENDING_KABID
+                                && ($user->hasRole('kabid') || $record->reviewer_id === $user->id);
                         })
                         ->requiresConfirmation()
                         ->modalHeading('Tolak Dokumen')
@@ -252,7 +254,8 @@ class ReviewDocumentResource extends Resource
                             /** @var User $user */
                             $user = Auth::user();
 
-                            return $record->status === Document::STATUS_PENDING_DIREKTUR && $user->hasRole('direktur');
+                            return $record->status === Document::STATUS_PENDING_DIREKTUR
+                                && ($user->hasRole('direktur') || $record->reviewer_id === $user->id);
                         })
                         ->requiresConfirmation()
                         ->modalHeading('Setujui Dokumen — Keputusan Akhir')
@@ -286,7 +289,8 @@ class ReviewDocumentResource extends Resource
                             /** @var User $user */
                             $user = Auth::user();
 
-                            return $record->status === Document::STATUS_PENDING_DIREKTUR && $user->hasRole('direktur');
+                            return $record->status === Document::STATUS_PENDING_DIREKTUR
+                                && ($user->hasRole('direktur') || $record->reviewer_id === $user->id);
                         })
                         ->requiresConfirmation()
                         ->modalHeading('Tolak Dokumen — Keputusan Akhir')

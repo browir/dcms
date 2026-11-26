@@ -9,6 +9,8 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
+use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -183,32 +185,136 @@ class ViewDocument extends ViewRecord
                 ->label(fn (): string => $this->record->rejections()->exists() ? 'Ajukan Ulang Review' : 'Kirim untuk Review')
                 ->icon('heroicon-o-paper-airplane')
                 ->color('primary')
-                ->requiresConfirmation()
+                ->modalWidth('lg')
                 ->modalHeading(fn (): string => $this->record->rejections()->exists()
                     ? 'Ajukan Ulang Dokumen yang Diperbaiki?'
                     : 'Kirim Dokumen untuk Review?')
-                ->modalDescription(function (): string {
-                    $isSekretaris = auth()->user()?->hasRole('Sekretaris') || $this->record->user?->hasRole('Sekretaris');
-                    $targetRole = $isSekretaris ? 'Direktur' : 'Kepala Bidang';
-
-                    return $this->record->rejections()->exists()
-                        ? "Dokumen versi terbaru Anda akan dikirim ulang ke {$targetRole} untuk direview. Pastikan semua perbaikan sudah dilakukan."
-                        : "Dokumen akan dikirim ke {$targetRole} untuk direview. Pastikan dokumen sudah lengkap.";
-                })
+                ->modalDescription('Pilih apakah dokumen diteruskan mengikuti alur otomatis atau langsung ke orang tertentu secara manual.')
+                ->modalSubmitActionLabel('Kirim Review')
                 ->modalIcon('heroicon-o-paper-airplane')
                 ->visible(fn (): bool => $this->record->status === 'draft' && ! (auth()->user()?->hasRole('direktur') ?? false))
-                ->action(function () {
-                    $this->record->submitForReview();
+                ->form([
+                    Radio::make('review_mode')
+                        ->label('Tujuan Penerusan Review')
+                        ->options(function (): array {
+                            $isSekretaris = auth()->user()?->hasRole('Sekretaris') || $this->record->user?->hasRole('Sekretaris');
+                            $autoLabel = $isSekretaris
+                                ? 'Otomatis sesuai alur (ke Direktur)'
+                                : 'Otomatis sesuai alur (ke Kepala Bidang)';
+
+                            return [
+                                'auto' => $autoLabel,
+                                'manual' => 'Pilih Orang Manual',
+                            ];
+                        })
+                        ->default('auto')
+                        ->live()
+                        ->required(),
+
+                    Select::make('reviewer_id')
+                        ->label('Pilih Peninjau (Reviewer)')
+                        ->placeholder('Cari dan pilih orang yang akan mereview...')
+                        ->options(fn (): array => \App\Models\Document::reviewerOptions(Auth::id()))
+                        ->searchable()
+                        ->preload()
+                        ->native(false)
+                        ->visible(fn ($get): bool => $get('review_mode') === 'manual')
+                        ->required(fn ($get): bool => $get('review_mode') === 'manual')
+                        ->helperText('Surat/dokumen akan langsung diteruskan dan dinotifikasikan ke orang yang Anda pilih.'),
+                ])
+                ->action(function (array $data) {
+                    $manualReviewerId = ($data['review_mode'] ?? 'auto') === 'manual'
+                        ? (int) ($data['reviewer_id'] ?? 0)
+                        : null;
+
+                    $this->record->submitForReview($manualReviewerId ?: null);
                     $wasRejected = $this->record->rejections()->exists();
-                    $isSekretaris = auth()->user()?->hasRole('Sekretaris') || $this->record->user?->hasRole('Sekretaris');
-                    $targetRole = $isSekretaris ? 'Direktur' : 'Kabid';
+
+                    if ($manualReviewerId) {
+                        $reviewerName = \App\Models\User::find($manualReviewerId)?->name ?? 'peninjau terpilih';
+                        $targetLabel = $reviewerName;
+                    } else {
+                        $isSekretaris = auth()->user()?->hasRole('Sekretaris') || $this->record->user?->hasRole('Sekretaris');
+                        $targetLabel = $isSekretaris ? 'Direktur' : 'Kabid';
+                    }
 
                     Notification::make()
                         ->title($wasRejected ? 'Dokumen diajukan ulang' : 'Dokumen dikirim')
                         ->body($wasRejected
-                            ? "Dokumen hasil perbaikan berhasil diajukan ulang ke {$targetRole}."
-                            : "Dokumen berhasil dikirim untuk review {$targetRole}.")
+                            ? "Dokumen hasil perbaikan berhasil diajukan ulang ke {$targetLabel}."
+                            : "Dokumen berhasil dikirim untuk review {$targetLabel}.")
                         ->success()
+                        ->send();
+                    $this->refreshFormData(['status', 'reviewer_id']);
+                }),
+
+            /* ── Setujui / Tolak untuk Peninjau Manual yang Ditunjuk ── */
+            Action::make('approve_manual_review')
+                ->label('Setujui Review')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->requiresConfirmation()
+                ->modalHeading('Setujui Dokumen / Surat?')
+                ->modalDescription(fn (): string => Auth::user()?->hasRole('direktur') || $this->record->status === \App\Models\Document::STATUS_PENDING_DIREKTUR
+                    ? 'Dokumen akan disetujui final dan diterbitkan.'
+                    : 'Dokumen akan disetujui dan diteruskan ke Direktur untuk persetujuan akhir.')
+                ->form([
+                    Textarea::make('notes')
+                        ->label('Catatan Review (Opsional)')
+                        ->rows(3),
+                ])
+                ->visible(fn (): bool => $this->record->reviewer_id === Auth::id()
+                    && in_array($this->record->status, [
+                        \App\Models\Document::STATUS_PENDING_KABID,
+                        \App\Models\Document::STATUS_PENDING_DIREKTUR,
+                    ]))
+                ->action(function (array $data) {
+                    /** @var \App\Models\User $user */
+                    $user = Auth::user();
+                    if ($user->hasRole('direktur') || $this->record->status === \App\Models\Document::STATUS_PENDING_DIREKTUR) {
+                        $this->record->approveByDirektur($user, $data['notes'] ?? null);
+                    } else {
+                        $this->record->approveByKabid($user, $data['notes'] ?? null);
+                    }
+
+                    Notification::make()
+                        ->title('Review Disetujui')
+                        ->body('Dokumen berhasil disetujui.')
+                        ->success()
+                        ->send();
+                    $this->refreshFormData(['status']);
+                }),
+
+            Action::make('reject_manual_review')
+                ->label('Tolak Review')
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->modalHeading('Tolak Dokumen / Surat?')
+                ->form([
+                    Textarea::make('notes')
+                        ->label('Alasan Penolakan')
+                        ->required()
+                        ->rows(3),
+                ])
+                ->visible(fn (): bool => $this->record->reviewer_id === Auth::id()
+                    && in_array($this->record->status, [
+                        \App\Models\Document::STATUS_PENDING_KABID,
+                        \App\Models\Document::STATUS_PENDING_DIREKTUR,
+                    ]))
+                ->action(function (array $data) {
+                    /** @var \App\Models\User $user */
+                    $user = Auth::user();
+                    if ($user->hasRole('direktur') || $this->record->status === \App\Models\Document::STATUS_PENDING_DIREKTUR) {
+                        $this->record->rejectByDirektur($user, $data['notes']);
+                    } else {
+                        $this->record->rejectByKabid($user, $data['notes']);
+                    }
+
+                    Notification::make()
+                        ->title('Dokumen Ditolak')
+                        ->body('Dokumen dikembalikan ke pembuat dengan catatan penolakan.')
+                        ->danger()
                         ->send();
                     $this->refreshFormData(['status']);
                 }),

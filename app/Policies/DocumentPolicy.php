@@ -25,14 +25,12 @@ class DocumentPolicy
         }
 
         /** @var User $authUser */
-        if ($authUser->isRegularUser()) {
-            if ($document->user_id !== $authUser->id) {
-                return false;
-            }
+        if ($document->reviewer_id === $authUser->id) {
+            return true;
+        }
 
-            if ($document->category?->kelompok === \App\Models\DocumentCategory::KELOMPOK_SURAT_KELUAR) {
-                return false;
-            }
+        if ($authUser->isRegularUser()) {
+            return $document->user_id === $authUser->id;
         }
 
         return true;
@@ -85,6 +83,11 @@ class DocumentPolicy
     public function review(AuthUser $authUser, Document $document): bool
     {
         /** @var User $authUser */
+
+        // Peninjau manual yang ditunjuk bisa review dokumen yang sedang menunggu
+        if ($document->reviewer_id === $authUser->id && in_array($document->status, [Document::STATUS_PENDING_KABID, Document::STATUS_PENDING_DIREKTUR])) {
+            return true;
+        }
 
         // Kabid: review dokumen di departemennya yang sedang menunggu ACC Kabid
         if ($authUser->hasRole('kabid') && $document->status === Document::STATUS_PENDING_KABID) {

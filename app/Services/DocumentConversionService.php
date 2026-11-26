@@ -797,7 +797,9 @@ class DocumentConversionService
         );
         $optionalHeading = '';
 
-        // Kop surat di header (fixed, atas halaman)
+        // Kop surat — ditampilkan sebagai running element (hanya halaman 1 via @page :first)
+        // Untuk dompdf: kop dimasukkan sebagai bagian dari konten biasa (bukan fixed)
+        // agar tidak diulang di setiap halaman lampiran
         $kopHtml = $assets['kop']
             ? "<div class='header-kop'><img src='{$assets['kop']}' alt='Kop Surat RSU Syifa Medika'/></div>"
             : '';
@@ -872,6 +874,7 @@ class DocumentConversionService
                     border-collapse: collapse;
                     width: 100%;
                     margin-bottom: 15px;
+                    page-break-inside: auto;
                 }
                 thead {
                     display: table-header-group;
@@ -879,6 +882,11 @@ class DocumentConversionService
                 tr {
                     page-break-inside: avoid;
                     break-inside: avoid;
+                }
+                /* Judul section (mis. DAFTAR UNDANGAN) tidak terpisah dari tabel di bawahnya */
+                p + table {
+                    page-break-before: avoid;
+                    break-before: avoid;
                 }
                 table.letter-layout-table,
                 table.letter-meta-table,

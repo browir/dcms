@@ -216,7 +216,14 @@ class IncomingLetterResource extends Resource
             ->filters([
                 SelectFilter::make('status')->label('Status')->options(IncomingLetter::STATUS)->multiple(),
                 SelectFilter::make('sifat')->label('Sifat')->options(IncomingLetter::SIFAT)->multiple(),
-                SelectFilter::make('unit_id')->label('Unit Tujuan')->relationship('unit', 'name')->searchable()->preload(),
+                SelectFilter::make('unit_id')
+                    ->label('Unit Tujuan')
+                    ->options(fn (): array => self::unitOptions())
+                    ->searchable()
+                    ->baseQuery(fn (Builder $query, array $data): Builder => $query->when(
+                        filled($data['value'] ?? null),
+                        fn (Builder $q) => $q->where('unit_id', $data['value']),
+                    )),
                 Filter::make('periode')
                     ->schema([
                         DatePicker::make('dari')->label('Diterima dari')->native(false),

@@ -7,6 +7,8 @@ use App\Models\IncomingLetter;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\Auth;
@@ -62,6 +64,50 @@ class ViewIncomingLetter extends ViewRecord
                 ->icon('heroicon-m-paper-clip')
                 ->visible(fn (IncomingLetter $record): bool => filled($record->file_path))
                 ->url(fn (IncomingLetter $record): string => route('surat-masuk.file', $record), shouldOpenInNewTab: true),
+
+            /* ── Teruskan ke orang (Disposisi Manual) ── */
+            Action::make('forward')
+                ->label(fn (): string => $this->record->forwarded_to
+                    ? 'Teruskan Lagi'
+                    : 'Teruskan ke...')
+                ->icon('heroicon-o-arrow-right-circle')
+                ->color('warning')
+                ->modalWidth('lg')
+                ->modalHeading('Teruskan Surat Masuk')
+                ->modalDescription('Pilih orang yang akan menerima terusan surat ini. Orang tersebut akan mendapat notifikasi dan dapat melihat surat ini.')
+                ->modalSubmitActionLabel('Teruskan Sekarang')
+                ->form([
+                    Select::make('recipient_id')
+                        ->label('Teruskan ke')
+                        ->placeholder('Cari nama atau jabatan...')
+                        ->options(fn (): array => IncomingLetter::recipientOptions(Auth::id()))
+                        ->searchable()
+                        ->preload()
+                        ->native(false)
+                        ->required()
+                        ->helperText('Orang ini akan mendapat notifikasi dan bisa membuka surat ini.'),
+
+                    Textarea::make('notes')
+                        ->label('Catatan / Disposisi (Opsional)')
+                        ->placeholder('Contoh: Mohon ditindaklanjuti, Harap diproses sesuai SOP...')
+                        ->rows(3),
+                ])
+                ->action(function (array $data): void {
+                    /** @var User $sender */
+                    $sender = Auth::user();
+                    $recipient = User::findOrFail($data['recipient_id']);
+
+                    $this->record->forwardTo($recipient, $sender, $data['notes'] ?? null);
+
+                    Notification::make()
+                        ->title('Surat berhasil diteruskan')
+                        ->body("Surat masuk telah diteruskan ke {$recipient->name}.")
+                        ->success()
+                        ->send();
+
+                    $this->refreshFormData(['forwarded_to', 'forwarded_at', 'forward_notes']);
+                }),
+
             Action::make('complete')
                 ->label('Tandai Selesai')
                 ->icon('heroicon-m-check-circle')
@@ -74,7 +120,9 @@ class ViewIncomingLetter extends ViewRecord
                     Notification::make()->title('Surat masuk ditandai selesai')->success()->send();
                     $this->refreshFormData(['status', 'completed_at', 'read_at']);
                 }),
+
             EditAction::make()->color('gray'),
         ];
     }
 }
+
