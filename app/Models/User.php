@@ -227,6 +227,14 @@ class User extends Authenticatable implements Auditable, FilamentUser, HasAvatar
     }
 
     /**
+     * User biasa (pegawai/user) tanpa peran manajemen atau persetujuan surat.
+     */
+    public function isRegularUser(): bool
+    {
+        return ! $this->hasRole(['super_admin', 'direktur', 'kabid', 'Sekretaris', 'manager']);
+    }
+
+    /**
      * Accessors
      */
     public function getOrganizationPathAttribute(): string

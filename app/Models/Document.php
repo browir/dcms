@@ -899,6 +899,13 @@ class Document extends Model implements Auditable
             return $query;
         }
 
+        // User biasa: hanya bisa melihat dokumen yang ia buat sendiri dan tidak bisa melihat surat keluar
+        if ($user->isRegularUser()) {
+            return $query
+                ->where('user_id', $user->id)
+                ->whereDoesntHave('category', fn (Builder $c) => $c->where('kelompok', DocumentCategory::KELOMPOK_SURAT_KELUAR));
+        }
+
         return $query->where(function ($q) use ($user) {
             // Cabang 1: Dokumen Publik -> Terbuka untuk seluruh akun di perusahaan yang sama
             $q->where(function ($pub) use ($user) {

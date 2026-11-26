@@ -88,7 +88,12 @@ class DocumentResource extends Resource
      */
     public static function getNavigationItems(): array
     {
+        /** @var \App\Models\User|null $user */
+        $user = auth()->user();
+        $isRegularUser = $user?->isRegularUser() ?? false;
+
         return collect(DocumentCategory::KELOMPOK)
+            ->when($isRegularUser, fn ($items) => $items->except([DocumentCategory::KELOMPOK_SURAT_KELUAR]))
             ->map(fn (string $label, string $kelompok): NavigationItem => NavigationItem::make($label)
                 ->group(static::getNavigationGroup())
                 ->sort(static::getNavigationSort() + ($kelompok === DocumentCategory::KELOMPOK_SURAT_KELUAR ? 1 : 0))

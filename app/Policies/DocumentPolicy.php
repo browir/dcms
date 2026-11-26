@@ -20,7 +20,22 @@ class DocumentPolicy
 
     public function view(AuthUser $authUser, Document $document): bool
     {
-        return $authUser->can('View:Document');
+        if (! $authUser->can('View:Document')) {
+            return false;
+        }
+
+        /** @var User $authUser */
+        if ($authUser->isRegularUser()) {
+            if ($document->user_id !== $authUser->id) {
+                return false;
+            }
+
+            if ($document->category?->kelompok === \App\Models\DocumentCategory::KELOMPOK_SURAT_KELUAR) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function create(AuthUser $authUser): bool

@@ -23,6 +23,17 @@ class ListDocuments extends ListRecords
     #[Url]
     public ?string $kelompok = null;
 
+    public function mount(): void
+    {
+        parent::mount();
+
+        /** @var User|null $user */
+        $user = Auth::user();
+        if ($this->kelompok === DocumentCategory::KELOMPOK_SURAT_KELUAR && $user?->isRegularUser()) {
+            abort(403, 'Anda tidak memiliki akses untuk melihat Surat Keluar.');
+        }
+    }
+
     public function getTitle(): string
     {
         return DocumentCategory::KELOMPOK[$this->kelompok] ?? 'Dokumen';

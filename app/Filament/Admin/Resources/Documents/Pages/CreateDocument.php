@@ -19,6 +19,17 @@ class CreateDocument extends CreateRecord
     #[Url]
     public ?string $kelompok = null;
 
+    public function mount(): void
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+        if ($this->kelompok === DocumentCategory::KELOMPOK_SURAT_KELUAR && $user?->isRegularUser()) {
+            abort(403, 'Anda tidak memiliki akses ke Surat Keluar.');
+        }
+
+        parent::mount();
+    }
+
     public function getTitle(): string
     {
         return $this->kelompok === DocumentCategory::KELOMPOK_SURAT_KELUAR ? 'Buat Surat Keluar' : 'Buat Dokumen';
