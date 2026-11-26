@@ -610,23 +610,23 @@ class DocumentForm
                                         ->label('Jabatan Penanda Tangan Kedua')
                                         ->placeholder('Contoh: Kepala Bidang Pelayanan Medis')
                                         ->default('Kepala Bidang')
-                                        ->live(onBlur: true)
+                                        ->live(debounce: 400)
                                         ->visible(fn (Get $get, ?Document $record, $livewire): bool => self::isSuratKeluarContext($get, $record, $livewire) && (bool) $get('has_double_signature'))
                                         ->columnSpan(['default' => 12, 'sm' => 4])
                                         ->prefixIcon('heroicon-o-briefcase'),
 
                                     TextInput::make('kabid_signer_name')
                                         ->label('Nama Penanda Tangan Kedua')
-                                        ->placeholder('Isi manual atau otomatis saat Kabid ACC')
-                                        ->live(onBlur: true)
+                                        ->placeholder('Ketik nama manual (atau otomatis saat Kabid ACC)')
+                                        ->live(debounce: 400)
                                         ->visible(fn (Get $get, ?Document $record, $livewire): bool => self::isSuratKeluarContext($get, $record, $livewire) && (bool) $get('has_double_signature'))
                                         ->columnSpan(['default' => 12, 'sm' => 4])
                                         ->prefixIcon('heroicon-o-user'),
 
                                     TextInput::make('kabid_signer_nip')
                                         ->label('NIP Penanda Tangan Kedua')
-                                        ->placeholder('Contoh: 198501012010011001 (opsional)')
-                                        ->live(onBlur: true)
+                                        ->placeholder('Ketik NIP manual (opsional)')
+                                        ->live(debounce: 400)
                                         ->visible(fn (Get $get, ?Document $record, $livewire): bool => self::isSuratKeluarContext($get, $record, $livewire) && (bool) $get('has_double_signature'))
                                         ->columnSpan(['default' => 12, 'sm' => 4])
                                         ->prefixIcon('heroicon-o-identification'),
